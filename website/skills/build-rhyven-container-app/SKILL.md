@@ -12,7 +12,7 @@ response, and retains `/data` between calls. Use service mode for background wor
 
 The image contains the language runtime and dependencies. Recipients need a
 compatible local Docker Engine, not Python or a host virtual environment.
-Advertise tested platforms only: Linux is supported; macOS is a feedback preview.
+Advertise tested platforms only: the current Rhyven preview supports Linux.
 
 ## Scaffold the complete contract
 

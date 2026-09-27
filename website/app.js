@@ -18,6 +18,14 @@ const appPresentation = {
   'repo-documentation-tool':{title:'Rhyven Repo Documentation Tool',icon:'code',color:'cyan',short:'Map a repository’s symbols, relationships and agent-written summaries.'},
   messaging:{title:'Messaging',icon:'message',color:'purple',short:'Send messages through persistent local inboxes and channels.'}
 };
+const wholeMatch = (pattern, value) => typeof value==='string' && pattern.exec(value)?.[0]===value;
+function validInstallMetadata(app) {
+  return app && wholeMatch(/^[a-z][a-z0-9_-]{0,63}\/[a-z][a-z0-9_-]{0,63}/, app.id)
+    && app.name===app.id.split('/')[1] && Object.hasOwn(groups, app.kind)
+    && (app.registry===null || wholeMatch(/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9_][A-Za-z0-9_.-]*/, app.registry));
+}
+const presentationFor = app => Object.hasOwn(appPresentation, app.name)
+  ? appPresentation[app.name] : {title:app.name,icon:'box',color:'cyan',short:app.description};
 const workflow = [
   {category:'rhyven/work-management',function:'object_task_create',args:{data:{title:'Verify release recovery',labels:['release']}},title:'Create a task record',body:'A task gives the next agent a stable record to read, update and complete.'},
   {category:'rhyven/project-knowledge',function:'action_remember',args:{title:'Recovery decision',body:'Restore database and container files.',topic:'release'},title:'Save a project decision',body:'An immutable note preserves the decision and its context beyond this session.'},
@@ -59,7 +67,7 @@ async function copyText(text, button) {
   }
 }
 function appCard(app) {
-  const p = appPresentation[app.name] || {title:app.name,icon:'box',color:'cyan',short:app.description};
+  const p = presentationFor(app);
   return `<button type="button" class="app-card" data-app="${esc(app.id)}" aria-label="View ${esc(p.title)} details"><span class="app-card-top"><span class="app-icon ${p.color}">${icon(p.icon)}</span><span class="app-version">v${esc(app.version)}</span></span><h3>${esc(p.title)}</h3><p>${esc(p.short)}</p><span class="app-card-bottom"><span>${icon(app.publisher==='rhyven'?'layers':'box')}${app.publisher==='rhyven'?'Rhyven app':esc(app.publisher)+' app'}</span><span class="open-card-icon">${icon('arrow-up')}</span></span></button>`;
 }
 function renderCatalog() {
@@ -87,6 +95,10 @@ async function loadCatalog() {
     const response = await fetch('./data/catalog.json');
     if (!response.ok) throw new Error('Catalog request failed');
     const catalog = await response.json();
+    // Catalog values become shell arguments when a visitor copies installation instructions.
+    if (!Array.isArray(catalog.apps) || !catalog.apps.every(validInstallMetadata)) {
+      throw new Error('Invalid catalog installation metadata');
+    }
     apps = catalog.apps;
     const order = ['work-management','project-knowledge','error-management','ci-management','inventory','repo-documentation-tool','messaging'];
     apps.sort((a,b)=>order.indexOf(a.name)-order.indexOf(b.name));
@@ -95,14 +107,14 @@ async function loadCatalog() {
     $$('[data-runtime-version]').forEach(el=>el.textContent=catalog.runtime_version);
     renderCatalog();
   } catch {
-    $('#app-groups').innerHTML = `<div class="empty-state"><h3>The local catalog could not be loaded.</h3><p>Serve the website over localhost using the command in website/README.md.</p><button type="button" class="button button-small" data-retry-catalog>Try again</button></div>`;
-    $('#catalog-status').textContent = 'The local catalog could not be loaded.';
+    $('#app-groups').innerHTML = `<div class="empty-state"><h3>The app catalog could not be loaded.</h3><p>Please try again. If the problem continues, contact support@rhyvenai.com.</p><button type="button" class="button button-small" data-retry-catalog>Try again</button></div>`;
+    $('#catalog-status').textContent = 'The app catalog could not be loaded.';
   }
 }
 function showApp(id, trigger) {
   const app = apps.find(a=>a.id===id);
   if (!app) return;
-  const p = appPresentation[app.name] || {title:app.name,icon:'box',color:'cyan'};
+  const p = presentationFor(app);
   const command = app.registry
     ? `rhyven --collection my-project registry-sync ${app.registry} --anonymous\nrhyven --collection my-project inspect ${app.id}\nrhyven --collection my-project install ${app.id} --accept-permissions${app.kind==='service'?'\nrhyven daemon start':''}`
     : null;

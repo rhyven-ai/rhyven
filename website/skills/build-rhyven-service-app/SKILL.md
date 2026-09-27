@@ -137,7 +137,7 @@ Clean up a trial by stopping its service and `rhyven --home ./counter-trial daem
 For OS startup, `rhyven daemon unit --out ./rhyven-supervisor.service` generates
 a unit for review; it does not install/enable one. Linux user units usually start
 at login; boot without login needs systemd lingering and an available Docker engine.
-macOS startup is a feedback preview; native Windows supervision is not implemented.
+The current Rhyven preview supports Linux service supervision.
 
 Agents use the same three tools as other apps. Service lifecycle functions live
 under `rhyven/runtime`; app actions use the installed app ID as their category.

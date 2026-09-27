@@ -67,7 +67,7 @@ guest 'sudo cloud-init status --wait'
 tar -C "$source_root" -cf - examples/container-service-python qa/public_registry_check.py qa/universal_market_check.py qa/public_container_check.py qa/tui_refresh_check.py | guest 'mkdir source; tar -xf - -C source'
 guest 'set -e; test ! -e /var/run/docker.sock; ! command -v docker; ! command -v rhyven; ! command -v cargo; ! command -v gh'
 if [ -n "$download_url" ]; then
-  guest "bash -o pipefail -c 'curl -fsSL $download_url/install.sh | bash -s -- --containers --yes'"
+  guest "bash -o pipefail -c 'curl -fsSL $download_url/install.sh | bash -s -- --download-base-url $download_url --containers --yes'"
 else
   tar -C "$release" -cf - install.sh SHA256SUMS SHA256SUMS.sig release-key.pem VERSION LICENSE NOTICE THIRD_PARTY_NOTICES.txt rhyven-linux-x86_64 | guest 'mkdir release; tar -xf - -C release'
   guest 'bash release/install.sh --from-dir release --containers --yes --no-modify-path'

@@ -10,7 +10,7 @@ class Handler(SimpleHTTPRequestHandler):
     def end_headers(self):
         for name, value in HEADERS.items():
             self.send_header(name, value)
-        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('Cache-Control', 'public, no-cache, no-transform')
         super().end_headers()
 
 if __name__ == '__main__':

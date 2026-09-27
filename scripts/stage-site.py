@@ -73,7 +73,7 @@ def stage(downloads, output):
                 shutil.copyfile(src, dst)
         headers = dict(policy.HEADERS, **{'Strict-Transport-Security': 'max-age=31536000'})
         (tree / '_headers').write_text('/*\n' + ''.join(f'  {k}: {v}\n' for k, v in headers.items()) +
-            '  Cache-Control: no-cache\n/releases/*\n  Cache-Control: public, max-age=31536000, immutable\n')
+            '  Cache-Control: public, no-cache, no-transform\n/releases/*\n  Cache-Control: public, max-age=31536000, immutable, no-transform\n')
         tree.rename(output)
     return version
 

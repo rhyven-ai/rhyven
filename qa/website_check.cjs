@@ -189,7 +189,7 @@ const output = '/tmp/rhyven-website-screenshots';
     assert.equal(await installer.locator('code').textContent(),installCommand);
     await installer.locator('[data-copy-code]').click();
     assert.equal(await page.evaluate(()=>navigator.clipboard.readText()),installCommand);
-    assert.match(await page.locator('.doc-body').textContent(),/Domain installer not published yet/);
+    assert.match(await page.locator('.doc-body').textContent(),/Preview release 0\.4\.0-rc\.8/);
     assert.doesNotMatch(await page.locator('.doc-body').textContent(),/gh auth login|Build from source|cargo build/);
     assert.equal(await page.locator('.doc-body .code-block').nth(1).locator('code').textContent(),'rhyven');
     await page.evaluate(()=>window.scrollTo(0,0));
@@ -199,7 +199,7 @@ const output = '/tmp/rhyven-website-screenshots';
       assert((await page.locator('.doc-body').textContent()).length>500,topic);
       assert.equal(await page.locator('#docs-nav [aria-current="page"]').getAttribute('href'),topic);
       const links=await page.locator('.doc-body a').evaluateAll(a=>a.map(x=>x.getAttribute('href')));
-      const publicLinks = new Set(['https://github.com/rhyven-ai/registry', 'https://github.com/rhyven-ai/apps', 'https://github.com/rhyven-ai/rhyven', 'https://github.com/rhyven-ai/rhyven/blob/main/LICENSE', 'https://github.com/rhyven-ai/rhyven/blob/main/CONTRIBUTING.md', 'https://github.com/rhyven-ai/rhyven/security/advisories/new', 'https://github.com/rhyven-ai/registry/releases/tag/v0.4.0-rc.6']);
+      const publicLinks = new Set(['https://github.com/rhyven-ai/registry', 'https://github.com/rhyven-ai/apps', 'https://github.com/rhyven-ai/rhyven', 'https://github.com/rhyven-ai/rhyven/blob/main/LICENSE', 'https://github.com/rhyven-ai/rhyven/blob/main/CONTRIBUTING.md', 'https://github.com/rhyven-ai/rhyven/security/advisories/new', 'mailto:support@rhyvenai.com']);
       assert(links.every(link=>link.startsWith('#') || publicLinks.has(link)),'unexpected external docs link');
     }
     await page.goto(base+'/#docs/agent-interface',{waitUntil:'networkidle'});

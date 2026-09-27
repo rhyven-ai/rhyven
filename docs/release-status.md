@@ -1,13 +1,13 @@
 # Release status
 
-The source candidate is 0.4.0-rc.8, introducing the Apache-2.0 engine release.
+The downloadable runtime is 0.4.0-rc.8, introducing the Apache-2.0 engine release.
 It includes the CLI, TUI, three-tool MCP, REST, declarative execution, container
 actions, supervised services, collections, staged updates and backup/restore.
 
-The public binary/registry validator remains 0.4.0-rc.6. The website installer
-for rhyvenai.com is prepared but not deployed. Newer source and container app
-candidates do not replace existing released artifacts. Align runtime, validator,
-app versions and signed downloads before promoting the next binary release.
+The public runtime and registry validator are 0.4.0-rc.8. The website installer
+at https://rhyvenai.com/install.sh serves signed Linux x86-64/ARM64 and macOS
+Intel/Apple Silicon binaries. The macOS builds remain feedback previews.
+Newer container app candidates do not replace existing released app versions.
 
 Linux is the supported preview platform; macOS is a feedback target. Native
 Windows is not supported. Real-device container acceptance, additional agent

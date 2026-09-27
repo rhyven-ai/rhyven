@@ -4,11 +4,26 @@
 # SSH commands intentionally expand tilde and variables inside the guest shell.
 # shellcheck disable=SC2029,SC2088,SC2016
 set -euo pipefail
-release=$(realpath "${1:?release directory required}")
+release=$(realpath "${1:?release directory required (VERSION is required for a public download)}")
 source_root=$(realpath "${2:-.}")
+download_url=${3:-}
+if [ -n "$download_url" ]; then
+  [[ "$download_url" =~ ^https://[A-Za-z0-9][A-Za-z0-9.-]*(/[A-Za-z0-9._~/-]*)?$ ]] || { echo 'Expected an HTTPS download origin' >&2; exit 2; }
+fi
+expected_version=$(cat "$release/VERSION")
+[[ "$expected_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][A-Za-z0-9.-]+)?$ ]] || exit 2
 work=$(mktemp -d)
 vm_pid=
-cleanup() { if [ -n "$vm_pid" ]; then kill "$vm_pid" 2>/dev/null || true; wait "$vm_pid" 2>/dev/null || true; fi; rm -rf "$work"; }
+cleanup() {
+  if [ -n "$vm_pid" ]; then kill "$vm_pid" 2>/dev/null || true; wait "$vm_pid" 2>/dev/null || true; fi
+  if [ -n "${RHYVEN_VM_REPORT_DIR:-}" ]; then
+    mkdir -p "$RHYVEN_VM_REPORT_DIR"
+    for name in console.log setup.json unavailable.json stopped.json boot-before boot-after tui.json; do
+      if [ -f "$work/$name" ]; then cp "$work/$name" "$RHYVEN_VM_REPORT_DIR/$name"; fi
+    done
+  fi
+  rm -rf "$work"
+}
 trap cleanup EXIT
 ssh-keygen -q -t ed25519 -N '' -f "$work/key"
 base=https://cloud-images.ubuntu.com/releases/noble/release
@@ -49,14 +64,29 @@ wait_guest() {
 }
 wait_guest
 guest 'sudo cloud-init status --wait'
-tar -C "$release" -cf - install.sh SHA256SUMS SHA256SUMS.sig release-key.pem VERSION LICENSE NOTICE THIRD_PARTY_NOTICES.txt rhyven-linux-x86_64 | guest 'mkdir release; tar -xf - -C release'
-tar -C "$source_root" -cf - examples/container-service-python | guest 'mkdir source; tar -xf - -C source'
-guest 'set -e; test ! -e /var/run/docker.sock; ! command -v docker; bash release/install.sh --from-dir release --containers --yes --no-modify-path'
+tar -C "$source_root" -cf - examples/container-service-python qa/public_registry_check.py qa/universal_market_check.py qa/public_container_check.py qa/tui_refresh_check.py | guest 'mkdir source; tar -xf - -C source'
+guest 'set -e; test ! -e /var/run/docker.sock; ! command -v docker; ! command -v rhyven; ! command -v cargo; ! command -v gh'
+if [ -n "$download_url" ]; then
+  guest "bash -o pipefail -c 'curl -fsSL $download_url/install.sh | bash -s -- --containers --yes'"
+else
+  tar -C "$release" -cf - install.sh SHA256SUMS SHA256SUMS.sig release-key.pem VERSION LICENSE NOTICE THIRD_PARTY_NOTICES.txt rhyven-linux-x86_64 | guest 'mkdir release; tar -xf - -C release'
+  guest 'bash release/install.sh --from-dir release --containers --yes --no-modify-path'
+fi
+guest "test \"\$(~/.local/bin/rhyven --version)\" = 'rhyven $expected_version'"
+guest "~/.local/bin/rhyven --agent; ~/.local/bin/rhyven connect --client generic --print; ~/.local/bin/rhyven connect --check"
 # Refresh the systemd user manager as well as login-shell supplementary groups.
 guest 'sudo reboot' || true
 sleep 3
 wait_guest
 guest '~/.local/bin/rhyven setup --containers; ~/.local/bin/rhyven doctor' > "$work/setup.json"
+if [ -n "$download_url" ]; then
+  guest "bash -lc 'command -v rhyven; rhyven --version'"
+  guest 'python3 source/qa/public_registry_check.py ~/.local/bin/rhyven'
+  guest 'sudo apt-get update -qq && sudo apt-get install -y python3-pyte'
+  guest 'python3 source/qa/tui_refresh_check.py ~/.local/bin/rhyven tui.json'
+  guest 'cat tui.json' > "$work/tui.json"
+  guest 'python3 source/qa/public_container_check.py ~/.local/bin/rhyven'
+fi
 guest 'docker info >/dev/null; docker build --iidfile image.id source/examples/container-service-python'
 guest "python3 - <<'PY'
 import json

@@ -15,11 +15,21 @@ The source version is **0.4.0-rc.8**, an open-source preview. Linux is the
 supported preview platform. macOS builds are feedback targets; full container
 acceptance on macOS is pending. Native Windows is not supported.
 
-The existing public binary preview remains
-[v0.4.0-rc.6](https://github.com/rhyven-ai/registry/releases/tag/v0.4.0-rc.6).
-The one-command installer for rhyvenai.com is prepared but not yet deployed.
-A source release does not replace existing binaries or container image digests.
+The signed **0.4.0-rc.8** installer and platform binaries are available at
+[rhyvenai.com](https://rhyvenai.com). App versions and container image digests
+are released independently.
 See [installation](docs/installation.md) and [release status](docs/release-status.md).
+
+## Install
+
+```sh
+curl -fsSL https://rhyvenai.com/install.sh | bash -s -- --containers
+rhyven
+```
+
+Omit `--containers` if you only need declarative apps. The installer verifies
+signatures and checksums and requests approval for Docker dependency setup.
+Open a new terminal after installation so PATH changes take effect.
 
 ## Build from source
 

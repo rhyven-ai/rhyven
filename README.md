@@ -1,0 +1,146 @@
+# Rhyven
+
+Rhyven is an open-source marketplace, package manager and runtime for headless
+apps that agents use through a shared interface. The engine, CLI, terminal
+marketplace, MCP/REST adapters and Rhyven apps are licensed under Apache-2.0.
+
+Apps run in your environment and keep their state in your collections. Use
+schemas and bounded operations for declarative apps, Docker for custom actions,
+or supervised containers for persistent services. Installing an app requires
+no app-specific MCP server or changes to the runtime.
+
+## Status
+
+The source version is **0.4.0-rc.8**, an open-source preview. Linux is the
+supported preview platform. macOS builds are feedback targets; full container
+acceptance on macOS is pending. Native Windows is not supported.
+
+The existing public binary preview remains
+[v0.4.0-rc.6](https://github.com/rhyven-ai/registry/releases/tag/v0.4.0-rc.6).
+The one-command installer for rhyvenai.com is prepared but not yet deployed.
+A source release does not replace existing binaries or container image digests.
+See [installation](docs/installation.md) and [release status](docs/release-status.md).
+
+## Build from source
+
+Install Rust 1.90 or later, a C compiler and platform build tools. SQLite is
+bundled; declarative apps do not require Docker or host Python.
+
+```sh
+git clone https://github.com/rhyven-ai/rhyven.git
+cd rhyven
+cargo build --release --locked --bin rhyven
+./target/release/rhyven --version
+./target/release/rhyven
+```
+
+Or install the CLI from a checkout with `cargo install --path crates/cli --locked`.
+On Debian/Ubuntu the compiler prerequisites are `build-essential` and
+`pkg-config`. See [contributing](CONTRIBUTING.md) for development checks.
+
+## Connect an agent
+
+```sh
+rhyven --collection my-project connect --client generic --print
+rhyven --collection my-project connect --check
+```
+
+Use a named client adapter when appropriate, or merge the printed MCP entry into
+your client configuration. Reload the client and confirm the collection through
+its actual connection. [Connection guide](docs/harnesses.md).
+
+The universal MCP exposes three tools:
+
+```text
+rhyven_categories()
+rhyven_describe(category)
+rhyven_call(category, function, args)
+```
+
+A category is an exact app ID such as `rhyven/work-management`. Descriptions
+return function names, argument schemas, permissions and agent guidance. REST
+exposes the same contract; local MCP can call the core directly or bridge to a
+shared REST server. [Architecture](docs/architecture.md).
+
+Give your agent the [usage skill](website/skills/use-rhyven/SKILL.md) or merge the
+shorter [usage rule](website/skills/use-rhyven/RULE.md) into its project instructions.
+
+## Find and install apps
+
+```sh
+rhyven --collection my-project registry-refresh rhyven-ai/registry --anonymous
+```
+
+This fetches metadata without downloading apps. An agent can describe
+`rhyven/marketplace`, search listings, show repository stars and permissions,
+and prepare an install request. Downloads require human approval through the
+host consent flow. [Agent marketplace](docs/agent-marketplace.md).
+
+For terminal browsing, explicitly download the package catalog first:
+
+```sh
+rhyven registry-sync rhyven-ai/registry --anonymous
+rhyven
+```
+
+The TUI supports browsing, installation, updates and removal. Collections have
+separate app state; agents using the same collection can share records. Removal
+retains data for compatible reinstallation. [Collections](docs/collections.md).
+
+## Build an app
+
+```sh
+rhyven app init acme/checklist --dir ./checklist
+rhyven app validate ./checklist
+rhyven app test ./checklist
+rhyven app package ./checklist --out ./checklist.rhyven.json
+```
+
+| App type | Behavior | Guide |
+| --- | --- | --- |
+| Declarative | Typed records, relationships, actions, calculations, rules and search | [Engine features](docs/declarative-engine.md) |
+| Container action | Custom executable logic, bounded calls and persistent data | [Container deployment](docs/deploy-container.md) |
+| Persistent service | Background work, readiness, heartbeats and supervised recovery | [Service deployment](docs/deploy-service.md) |
+
+The [package format](docs/package-format.md) is shared by all three types.
+`app publish` adds a package to a local catalog; submitting a marketplace listing
+uses the [GitHub registry flow](docs/github-registry.md). The public registry is
+[rhyven-ai/registry](https://github.com/rhyven-ai/registry), and the separate
+app-only source repository is [rhyven-ai/apps](https://github.com/rhyven-ai/apps).
+
+## State and recovery
+
+Rhyven owns SQLite records, audit events and retry receipts for declarative apps.
+Containers own their files under `/data`. Collections are state boundaries for
+trusted clients, not per-agent security boundaries.
+
+```sh
+rhyven backup my-project --out project.rhyven
+rhyven restore project.rhyven --collection recovered-project
+```
+
+Restore requires a new collection; container backups require permission review.
+Updates migrate and validate staged state before activation. See
+[backup, migrations and recovery](docs/recovery-and-updates.md).
+
+## Local website
+
+```sh
+python3 website/serve.py
+```
+
+Open http://localhost:5173 for the marketplace catalog, documentation and
+copyable skills. Corvid is in progress as a separate agent harness; Razorback
+is coming soon. [Website development](website/README.md).
+
+## License and security
+
+Rhyven is licensed under [Apache-2.0](LICENSE). See [NOTICE](NOTICE) and
+[third-party licenses](THIRD_PARTY.md). Free personal and commercial use,
+modification and redistribution are permitted under the license. It does not
+grant general trademark rights. Binary notices are available with
+`rhyven license --third-party`.
+
+Report vulnerabilities privately using [SECURITY.md](SECURITY.md). Contributions
+are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Avoid uploading credentials,
+local databases, customer data or signing keys in issues, commits or artifacts.

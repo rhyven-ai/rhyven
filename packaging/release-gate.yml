@@ -1,0 +1,40 @@
+name: V1 release gates
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux-docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Rust checks
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal --component clippy,rustfmt
+          cargo +1.90.0 fmt --all --check
+          cargo +1.90.0 clippy --workspace --all-targets --locked -- -D warnings
+          cargo +1.90.0 test --workspace --locked
+          cargo +1.90.0 build --release --locked --bin rhyven
+      - name: Transport and collection parity
+        run: |
+          python3 qa/universal_market_check.py target/release/rhyven
+          python3 qa/shared_runtime_check.py target/release/rhyven
+          python3 qa/collections_check.py target/release/rhyven
+      - name: Distribution and source exports
+        run: |
+          python3 -m unittest discover -s qa -p 'test_*.py' -v
+          python3 qa/direct_download_check.py target/release/rhyven
+      - name: Build trusted test fixtures
+        run: |
+          docker build --iidfile /tmp/example.id examples/container-python
+          docker build --iidfile /tmp/probe.id qa/fixtures/container-probe
+      - name: Container isolation and recovery
+        run: |
+          python3 qa/container_check.py target/release/rhyven /tmp/example.id
+          python3 qa/container_limits_check.py target/release/rhyven /tmp/probe.id
+          python3 qa/recovery_check.py target/release/rhyven /tmp/probe.id

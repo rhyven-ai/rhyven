@@ -1,0 +1,32 @@
+# Test the published runtime and apps from a fresh runner.
+name: Public app installation acceptance
+on:
+  workflow_dispatch:
+    inputs:
+      registry_ref:
+        description: Public registry branch or commit to test
+        type: string
+        default: main
+permissions:
+  contents: read
+jobs:
+  public-install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RHYVEN_TEST_REGISTRY_REF: ${{ inputs.registry_ref }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Download public runtime without GitHub credentials
+        run: |
+          mkdir runtime
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            https://github.com/rhyven-ai/registry/releases/download/v0.4.0-rc.6/rhyven-linux-x86_64 \
+            --output runtime/rhyven-linux-x86_64
+          sha256sum --check packaging/current-validator.sha256
+          chmod +x runtime/rhyven-linux-x86_64
+          test "$(runtime/rhyven-linux-x86_64 --version)" = 'rhyven 0.4.0-rc.6'
+      - name: Install and use published container apps anonymously
+        run: python3 qa/public_container_check.py runtime/rhyven-linux-x86_64

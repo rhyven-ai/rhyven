@@ -1,0 +1,68 @@
+# Builds, tests and scans without publishing images or releases.
+name: Publication security audit
+on:
+  workflow_call:
+    inputs:
+      test_jdtls_candidate:
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      test_jdtls_candidate:
+        type: boolean
+        default: false
+        description: Test upstream JDT LS 1.61.0; record exact bytes without publishing
+permissions:
+  contents: read
+jobs:
+  containers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [messaging, repo-documentation-tool]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Build matching runtime
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          cargo +1.90.0 build --locked --release --bin rhyven
+      - name: Evaluate upstream Java security update
+        if: matrix.app == 'repo-documentation-tool' && inputs.test_jdtls_candidate
+        run: |
+          mkdir -p dist/security-audit
+          curl --fail --location --retry 3 --max-time 180 https://download.eclipse.org/jdtls/milestones/1.61.0/jdt-language-server-1.61.0-202609031315.tar.gz -o /tmp/jdtls.tar.gz
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          path = Path('apps/repo-documentation-tool/toolchains.json')
+          pins = json.loads(path.read_text())
+          pins[0] = {'url': 'https://download.eclipse.org/jdtls/milestones/1.61.0/jdt-language-server-1.61.0-202609031315.tar.gz', 'sha256': hashlib.sha256(Path('/tmp/jdtls.tar.gz').read_bytes()).hexdigest()}
+          path.write_text(json.dumps(pins, indent=2) + '\n')
+          Path('dist/security-audit/candidate-toolchains.json').write_text(path.read_text())
+          PY
+      - name: Build candidate app and test real Docker behavior
+        env:
+          APP: ${{ matrix.app }}
+        run: |
+          docker build --pull --iidfile /tmp/app.id -t rhyven-audit:local "apps/$APP"
+          python3 -m unittest discover -s "apps/$APP/tests" -v
+          if [ "$APP" = messaging ]; then
+            python3 qa/official_apps_check.py target/release/rhyven /tmp/app.id
+          else
+            python3 apps/repo-documentation-tool/tests/integration.py target/release/rhyven /tmp/app.id
+          fi
+      - name: Scan and review candidate image
+        if: always()
+        env:
+          APP: ${{ matrix.app }}
+        run: bash scripts/scan-built-image.sh rhyven-audit:local "$APP" dist/security-audit
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: security-${{ matrix.app }}
+          path: dist/security-audit/
+          if-no-files-found: error

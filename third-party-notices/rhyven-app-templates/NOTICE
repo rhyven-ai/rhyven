@@ -1,0 +1,6 @@
+Rhyven reference app manifests and app templates
+Copyright 2026 Rhyven contributors
+
+The reference app manifests and app scaffolding templates embedded in the
+Rhyven binary are Apache-2.0. Retain this license and notice when redistributing
+those app materials. The engine has its own Apache-2.0 license and notice.

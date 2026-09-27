@@ -1,0 +1,96 @@
+# Maintainer-dispatched image audit and publication.
+name: Build Rhyven app images
+on:
+  workflow_dispatch:
+    inputs:
+      audit_only:
+        description: Build, test and scan without publishing
+        type: boolean
+        default: true
+      test_jdtls_candidate:
+        description: Evaluate upstream Java security update during audit
+        type: boolean
+        default: false
+      app:
+        description: App images to build and test
+        type: choice
+        default: all
+        options: [all, repo-documentation-tool, messaging]
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: inputs.audit_only
+    permissions:
+      contents: read
+    uses: ./.github/workflows/security-audit.yml
+    with:
+      test_jdtls_candidate: ${{ inputs.test_jdtls_candidate }}
+  images:
+    if: ${{ !inputs.audit_only && github.repository == 'rhyven-ai/rhyven' }}
+    permissions:
+      contents: write
+      packages: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(inputs.app == 'messaging' && '["messaging"]' || inputs.app == 'repo-documentation-tool' && '["repo-documentation-tool"]' || '["repo-documentation-tool","messaging"]') }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APP: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Build source and require a matching distributed runtime
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          cargo +1.90.0 build --release --locked --bin rhyven
+          version=$(target/release/rhyven --version)
+          version=${version#rhyven }
+          printf 'RELEASE_TAG=v%s\n' "$version" >> "$GITHUB_ENV"
+          mkdir runtime
+          gh release download "v$version" --repo "$GITHUB_REPOSITORY" --pattern rhyven-linux-x86_64 --pattern SHA256SUMS --dir runtime
+          python3 - <<'CHECK'
+          from pathlib import Path
+          import hashlib
+          entries = [line.split() for line in Path('runtime/SHA256SUMS').read_text().splitlines()]
+          hashes = [digest for digest, name in entries if name == 'rhyven-linux-x86_64']
+          assert len(hashes) == 1
+          assert hashlib.sha256(Path('runtime/rhyven-linux-x86_64').read_bytes()).hexdigest() == hashes[0]
+          CHECK
+          chmod +x runtime/rhyven-linux-x86_64
+          test "$(runtime/rhyven-linux-x86_64 --version)" = "rhyven $version"
+      - name: Build app image from reviewed source
+        run: |
+          version=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "apps/$APP/app.json")
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/$APP:$version"
+          docker build --label "org.opencontainers.image.source=https://github.com/rhyven-ai/apps" --iidfile image.id -t "$image" "apps/$APP"
+          printf '%s\n' "$image" > image-name.txt
+      - name: Test app behavior and runtime integration
+        run: |
+          python3 -m unittest discover -s "apps/$APP/tests" -v
+          if [ "$APP" = repo-documentation-tool ]; then
+            python3 apps/repo-documentation-tool/tests/integration.py runtime/rhyven-linux-x86_64 image.id
+          else
+            python3 qa/official_apps_check.py runtime/rhyven-linux-x86_64 image.id
+          fi
+      - name: Require container security gate before publication
+        run: bash scripts/scan-built-image.sh "$(cat image-name.txt)" "$APP" dist/image-security
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: release-image-security-${{ matrix.app }}
+          path: dist/image-security/
+          if-no-files-found: warn
+      - name: Push tested image and package its immutable digest
+        run: |
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          image=$(cat image-name.txt)
+          docker push "$image"
+          reference=$(docker inspect --format '{{index .RepoDigests 0}}' "$image")
+          runtime/rhyven-linux-x86_64 --home "$RUNNER_TEMP/package-state" app package "apps/$APP" --image "$reference" --out "$APP.rhyven.json"
+          gh release upload "$RELEASE_TAG" "$APP.rhyven.json" --repo "$GITHUB_REPOSITORY"
+          printf 'Built and tested %s\n' "$reference"

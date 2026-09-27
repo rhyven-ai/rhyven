@@ -1,0 +1,159 @@
+{
+  "format": 2,
+  "name": "official/project-knowledge",
+  "version": "0.3.0",
+  "publisher": "official",
+  "description": "Small immutable notes, decisions, pitfalls, summaries and corrections.",
+  "hosting": {
+    "mode": "local"
+  },
+  "permissions": [
+    "state.read",
+    "state.write"
+  ],
+  "objects": {
+    "note": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "note",
+              "decision",
+              "pitfall",
+              "summary",
+              "correction"
+            ],
+            "default": "note"
+          },
+          "topic": {
+            "type": "string",
+            "default": ""
+          },
+          "source": {
+            "type": "string",
+            "default": ""
+          },
+          "supersedes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "immutable": true,
+      "relationships": {
+        "supersedes": {
+          "object": "note"
+        }
+      }
+    },
+    "summary": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "topic",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "immutable": true
+    }
+  },
+  "actions": {
+    "remember": {
+      "description": "Append a durable finding",
+      "input": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1
+          },
+          "topic": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "object": "note",
+      "operation": "create",
+      "set": {
+        "title": {
+          "$arg": "title"
+        },
+        "body": {
+          "$arg": "body"
+        },
+        "topic": {
+          "$arg": "topic"
+        }
+      }
+    }
+  },
+  "guide": "Read by topic with query. Append small findings and source links. Correct by creating another note with supersedes pointing to the old note. Existing knowledge cannot be rewritten. Summaries are immutable snapshots.",
+  "tests": [
+    {
+      "operation": "execute",
+      "args": {
+        "action": "remember",
+        "args": {
+          "title": "Atomicity",
+          "body": "Actions commit state and audit together.",
+          "topic": "runtime"
+        }
+      },
+      "expect": {
+        "data.kind": "note"
+      }
+    },
+    {
+      "operation": "update",
+      "args": {
+        "object": "note",
+        "id": {
+          "$result": "0.id"
+        },
+        "expected_revision": 1,
+        "patch": {
+          "body": "rewrite"
+        }
+      },
+      "error": "immutable"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "registry": "rhyven-ai/registry",
+  "apps": {
+    "rhyven/ci-management": "0.3.0",
+    "rhyven/error-management": "0.3.0",
+    "rhyven/inventory": "0.3.0",
+    "rhyven/project-knowledge": "0.4.0",
+    "rhyven/work-management": "0.4.0",
+    "rhyven/messaging": "0.1.0",
+    "rhyven/repo-documentation-tool": "0.1.0"
+  }
+}

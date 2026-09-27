@@ -1,0 +1,54 @@
+# Install as .github/workflows/release-binaries.yml in the source repository.
+name: Installer release binaries
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: macos-14
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal --component clippy,rustfmt
+          rustup target add --toolchain 1.90.0 "$TARGET"
+          if [ "$(uname -s)" = Linux ]; then sudo apt-get update && sudo apt-get install -y musl-tools; fi
+      - name: Validate source
+        run: |
+          cargo +1.90.0 fmt --all --check
+          cargo +1.90.0 clippy --workspace --all-targets --locked -- -D warnings
+          cargo +1.90.0 test --workspace --locked
+      - name: Build portable native binary
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          if [ "$(uname -s)" = Linux ]; then export CC=musl-gcc; fi
+          export RUSTFLAGS="--remap-path-prefix=$GITHUB_WORKSPACE=/src --remap-path-prefix=$HOME/.cargo=/cargo --remap-path-prefix=$HOME/.rustup=/rustup"
+          cargo +1.90.0 build --release --locked --target "$TARGET" --bin rhyven
+          python3 qa/connection_check.py "target/$TARGET/release/rhyven"
+          python3 qa/installer_check.py "target/$TARGET/release/rhyven"
+          python3 qa/container_host_check.py "target/$TARGET/release/rhyven"
+          bash scripts/package-release.sh "target/$TARGET/release/rhyven" dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: installer-${{ matrix.target }}
+          path: dist/
+          if-no-files-found: error

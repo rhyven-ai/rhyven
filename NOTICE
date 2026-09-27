@@ -1,0 +1,13 @@
+Rhyven
+Copyright 2026 Rhyven contributors
+
+Rhyven's engine, CLI, terminal marketplace, protocol adapters, apps and
+documentation are licensed under the Apache License, Version 2.0.
+
+Third-party components retain their own copyrights, licenses and notices.
+See THIRD_PARTY.md and third-party-notices/ in source distributions, or
+THIRD_PARTY_NOTICES.txt in binary distributions. The executable also exposes
+these notices through `rhyven license --third-party`.
+
+The Apache license does not grant general rights to use Rhyven's trademarks
+or to imply endorsement of modified distributions.

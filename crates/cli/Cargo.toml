@@ -1,0 +1,23 @@
+[package]
+name = "rhyven"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "rhyven"
+path = "src/main.rs"
+
+[dependencies]
+agent-market-core.workspace = true
+agent-market-mcp.workspace = true
+agent-market-tui.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+tempfile.workspace = true
+toml_edit = "0.22"
+
+[dev-dependencies]
+tempfile.workspace = true

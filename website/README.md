@@ -5,6 +5,11 @@ Docs and Skills. No framework, build step, npm install, credentials or runtime s
 required to view it. All fonts, imagery and data are served locally. There are no
 analytics or external requests.
 
+The deployment sends `Cache-Control: public, no-cache, no-transform` to prevent
+the hosting proxy from injecting analytics or rewriting page content. Versioned
+downloads retain immutable caching and also use `no-transform`. Keep these
+directives and the Content Security Policy when changing hosts.
+
 From the repository root:
 
 ```sh

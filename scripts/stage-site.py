@@ -25,6 +25,41 @@ policy = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(policy)
 
 
+def fingerprint_scripts(tree):
+    renamed = {}
+    for name in ('docs.js', 'skills.js', 'app.js'):
+        source = (tree / name).read_text()
+        for dependency, target in renamed.items():
+            source = source.replace(f"'./{dependency}'", f"'./{target}'")
+        data = source.encode()
+        target = f'{Path(name).stem}.{hashlib.sha256(data).hexdigest()[:16]}.js'
+        (tree / target).write_bytes(data)
+        (tree / name).unlink()
+        renamed[name] = target
+    index = tree / 'index.html'
+    html = index.read_text()
+    if html.count('src="app.js"') != 1:
+        raise ValueError('Expected one website module entry point')
+    index.write_text(html.replace('src="app.js"', f'src="{renamed["app.js"]}"'))
+    return set(renamed.values())
+
+
+def deployment_headers(tree, scripts):
+    headers = dict(policy.HEADERS, **{'Strict-Transport-Security': 'max-age=31536000'})
+    blocks = ['/*\n' + ''.join(f'  {k}: {v}\n' for k, v in headers.items()) +
+              '  Cache-Control: no-transform\n']
+    # Pages combines matching headers. Keep mutually exclusive cache directives
+    # on disjoint paths so immutable releases never inherit no-cache/no-store.
+    for name in ['/', '/404', *(f'/{p.relative_to(tree)}' for p in sorted(tree.rglob('*'))
+                                if p.is_file() and 'releases' not in p.relative_to(tree).parts)]:
+        caching = 'public, max-age=31536000, immutable' if name[1:] in scripts else 'no-store'
+        blocks.append(f'{name}\n  Cache-Control: {caching}\n')
+    blocks.append('/releases/*\n  Cache-Control: public, max-age=31536000, immutable\n')
+    blocks.append('/*.sh\n  Content-Type: text/plain; charset=utf-8\n')
+    blocks.append('/skills/*\n  Content-Type: text/plain; charset=utf-8\n')
+    return ''.join(blocks)
+
+
 def stage(downloads, output):
     if output.exists():
         raise ValueError('Output already exists')
@@ -71,9 +106,8 @@ def stage(downloads, output):
                 dst = tree / name
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src, dst)
-        headers = dict(policy.HEADERS, **{'Strict-Transport-Security': 'max-age=31536000'})
-        (tree / '_headers').write_text('/*\n' + ''.join(f'  {k}: {v}\n' for k, v in headers.items()) +
-            '  Cache-Control: public, no-cache, no-transform\n/releases/*\n  Cache-Control: public, max-age=31536000, immutable, no-transform\n')
+        scripts = fingerprint_scripts(tree)
+        (tree / '_headers').write_text(deployment_headers(tree, scripts))
         tree.rename(output)
     return version
 

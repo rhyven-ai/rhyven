@@ -5,10 +5,14 @@ Docs and Skills. No framework, build step, npm install, credentials or runtime s
 required to view it. All fonts, imagery and data are served locally. There are no
 analytics or external requests.
 
-The deployment sends `Cache-Control: public, no-cache, no-transform` to prevent
-the hosting proxy from injecting analytics or rewriting page content. Versioned
-downloads retain immutable caching and also use `no-transform`. Keep these
-directives and the Content Security Policy when changing hosts.
+The deployment sends `Cache-Control: no-transform` to prevent the hosting proxy
+from injecting analytics or rewriting page content. Mutable pages, catalog data
+and the root installer also use `no-store`. Staging gives JavaScript modules
+content-hashed filenames, rewrites their imports and caches them immutably, as it
+does versioned downloads. This prevents an older cached script from delaying a
+security correction. Keep these policies and the Content Security Policy when
+changing hosts. Catalog app IDs and registry paths are validated before they can
+be used in copyable shell commands.
 
 From the repository root:
 
@@ -64,8 +68,7 @@ source/distribution status when releasing a new build.
 The engine and website source are Apache-2.0 at `rhyven-ai/rhyven`. Customer installation downloads prebuilt
 binaries directly from `https://rhyvenai.com`; it requires no GitHub account.
 Getting started shows that command followed by `rhyven`. The signed 0.4.0-rc.8
-installer supports Linux x86-64/ARM64 and macOS Intel/Apple Silicon; macOS is a
-feedback preview. Earlier Linux x86-64 preview binaries and all
+website advertises Linux x86-64/ARM64 support only. Earlier Linux x86-64 preview binaries and all
 seven app packages are available in the public `rhyven-ai/registry`. The earlier public
 container images passed anonymous fresh-host installation; the newer container
 versions shown in this source catalog are still pending publication.
@@ -109,12 +112,16 @@ this project if desired; they are not website runtime dependencies:
 npm install --ignore-scripts --prefix /tmp/rhyven-website-check playwright @axe-core/playwright
 /tmp/rhyven-website-check/node_modules/.bin/playwright install chromium
 NODE_PATH=/tmp/rhyven-website-check/node_modules node qa/website_check.cjs
+NODE_PATH=/tmp/rhyven-website-check/node_modules node qa/website_security_check.cjs
 ```
 
 Run the local server first. The browser check covers navigation, filters, search,
 accordion/detail behavior, clipboard, docs links, skill downloads/copy/line limits,
 loading failures and retry, mobile overflow and accessibility.
-Screenshots are written to `/tmp/rhyven-website-screenshots`.
+The security check exercises malicious catalog/search/Markdown content, rejects
+unsafe shell arguments, checks skill routing and verifies browser policies. It
+never executes copied commands. Screenshots from the functional check are written
+to `/tmp/rhyven-website-screenshots`.
 
 Verified on 2026-09-27 in headless Chromium at 390, 768 and 1440 pixels:
 all five pages, the five skills and usage rule, the seven-app catalog, app details, search/filter/accordion controls, clipboard,

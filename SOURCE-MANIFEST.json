@@ -3,7 +3,7 @@
   "license": "Apache-2.0",
   "files": {
     ".github/workflows/app-images.yml": "2ad739c13994687fcbfe29b0f5a34416633e4088e9ab31a2059510f1afbc150f",
-    ".github/workflows/public-app-acceptance.yml": "4b651677efeece5fbc0666a63c0ebae610f11aefc611256a951c93da58c8b324",
+    ".github/workflows/public-app-acceptance.yml": "da55a1a50ac063ff66f1ee2191178a511a887dce23c90ecf0930146c952ba602",
     ".github/workflows/release-binaries.yml": "2c6c373a95f627d74e37c74599c2fb9c0b7bc00e17bbe3b5c31f2a55bb3569b4",
     ".github/workflows/release-gate.yml": "d630a9d6fcd97bfa3b06a098ffd295a7b4e26bf176a8b4cdac036411c51d178c",
     ".github/workflows/security-audit.yml": "5d0aa92bdac44055aef2369596329c28bffda552ef84877c16b4d531eda08759",
@@ -136,7 +136,7 @@
     "examples/remote-inventory.rhyven.json": "ee243a0357db137b54473192915ad9ec3edc3e67a3f09c1ca2119e61476a8b6e",
     "packaging/app-images.yml": "2ad739c13994687fcbfe29b0f5a34416633e4088e9ab31a2059510f1afbc150f",
     "packaging/current-validator.sha256": "420915c96752497ffefd10a687cdc1a75efcf86c6fbaaf3598120bfc14ee8115",
-    "packaging/public-app-acceptance.yml": "4b651677efeece5fbc0666a63c0ebae610f11aefc611256a951c93da58c8b324",
+    "packaging/public-app-acceptance.yml": "da55a1a50ac063ff66f1ee2191178a511a887dce23c90ecf0930146c952ba602",
     "packaging/public-source-files.json": "b3bf81ae7584fac8d13ac7b10e67b9347634e955013e8f4c929243180d003db3",
     "packaging/release-binaries.yml": "2c6c373a95f627d74e37c74599c2fb9c0b7bc00e17bbe3b5c31f2a55bb3569b4",
     "packaging/release-gate.yml": "d630a9d6fcd97bfa3b06a098ffd295a7b4e26bf176a8b4cdac036411c51d178c",

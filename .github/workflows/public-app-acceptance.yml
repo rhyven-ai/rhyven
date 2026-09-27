@@ -10,9 +10,26 @@ on:
 permissions:
   contents: read
 jobs:
+  website-ready:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - name: Wait for the published download origin
+        run: |
+          for attempt in $(seq 1 80); do
+            if test "$(curl -fsSL --max-time 10 https://rhyvenai.com/VERSION 2>/dev/null)" = '0.4.0-rc.8'; then
+              exit 0
+            fi
+            echo "Waiting for rhyvenai.com to serve rc.8 ($attempt/80)"
+            sleep 15
+          done
+          echo 'The website download origin is not ready; check DNS and the deployment.' >&2
+          exit 1
   website-vm:
+    needs: website-ready
     uses: ./.github/workflows/website-install-acceptance.yml
   public-install:
+    needs: website-ready
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:

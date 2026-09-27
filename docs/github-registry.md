@@ -4,7 +4,7 @@ Container packages add optional `execution` metadata to each index entry. It mus
 exactly match the manifest, including its distributable image digest and secret
 names. Registry validation checks these disclosures without running container
 tests or pulling images. User installation pulls the image only after consent.
-The public registry uses the matching `0.4.0-rc.6` validator binary. See [release status](release-status.md) before using newer source features.
+The public registry uses the matching `0.4.0-rc.8` validator binary. See [release status](release-status.md) before using newer source features.
 
 The public registry is `rhyven-ai/registry`. Its `rhyven` publisher namespace is
 owned by `rhyven-ai`. It contains only distribution metadata, app packages and
@@ -120,6 +120,5 @@ explicit eager-download CLI/TUI flow. See [agent marketplace](agent-marketplace.
 `registry-entry` now includes optional `hosting_details` for remote entries.
 Local legacy entries remain supported; remote entries need these disclosures
 before an agent can prepare download approval. The package format is unchanged.
-The deployed registry validator must be rebuilt and repinned before publishing
-remote entries with this new field; this local implementation does not automatically
-replace the previously published validator release/workflow.
+The deployed 0.4.0-rc.8 registry validator supports these disclosures. Future
+format changes must keep the distributed runtime and pinned validator aligned.

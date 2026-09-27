@@ -7,14 +7,45 @@ on:
         description: Public registry branch or commit to test
         type: string
         default: main
+      download_origin:
+        description: Published download origin
+        type: choice
+        default: https://rhyvenai.com
+        options:
+          - https://rhyvenai.com
+          - https://rhyven.pages.dev
 permissions:
   contents: read
 jobs:
+  website-ready:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - name: Wait for the published download origin
+        env:
+          RHYVEN_TEST_DOWNLOAD_ORIGIN: ${{ inputs.download_origin || 'https://rhyvenai.com' }}
+        run: |
+          for attempt in $(seq 1 80); do
+            if test "$(curl -fsSL --max-time 10 "$RHYVEN_TEST_DOWNLOAD_ORIGIN/VERSION" 2>/dev/null)" = '0.4.0-rc.8'; then
+              exit 0
+            fi
+            echo "Waiting for the download origin to serve rc.8 ($attempt/80)"
+            sleep 15
+          done
+          echo 'The website download origin is not ready; check DNS and the deployment.' >&2
+          exit 1
+  website-vm:
+    needs: website-ready
+    uses: ./.github/workflows/website-install-acceptance.yml
+    with:
+      download_origin: ${{ inputs.download_origin || 'https://rhyvenai.com' }}
   public-install:
+    needs: website-ready
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       RHYVEN_TEST_REGISTRY_REF: ${{ inputs.registry_ref }}
+      RHYVEN_TEST_DOWNLOAD_ORIGIN: ${{ inputs.download_origin || 'https://rhyvenai.com' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -23,10 +54,10 @@ jobs:
         run: |
           mkdir runtime
           curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
-            https://github.com/rhyven-ai/registry/releases/download/v0.4.0-rc.6/rhyven-linux-x86_64 \
+            "$RHYVEN_TEST_DOWNLOAD_ORIGIN/releases/v0.4.0-rc.8/rhyven-linux-x86_64" \
             --output runtime/rhyven-linux-x86_64
           sha256sum --check packaging/current-validator.sha256
           chmod +x runtime/rhyven-linux-x86_64
-          test "$(runtime/rhyven-linux-x86_64 --version)" = 'rhyven 0.4.0-rc.6'
+          test "$(runtime/rhyven-linux-x86_64 --version)" = 'rhyven 0.4.0-rc.8'
       - name: Install and use published container apps anonymously
         run: python3 qa/public_container_check.py runtime/rhyven-linux-x86_64

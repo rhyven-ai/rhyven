@@ -22,7 +22,7 @@ website directory. Stop with Ctrl+C; use `--port 5174` if needed.
 - Copyable install examples and an interactive three-step interoperability example.
 - Corvid harness page marked in progress, with a generated pixel-art murder of crows.
 - Razorback coming-soon emblem and construction tape.
-- Thirteen documentation topics with text search, copyable code and the planned one-line binary installer at `rhyvenai.com/install.sh`.
+- Thirteen documentation topics with text search, copyable code and the one-line binary installer at `rhyvenai.com/install.sh`.
   **Declarative features** (`#docs/declarative-features`) covers schemas, actions,
   every expression/query operator, relationships, state, tests and recovery,
   with examples and explicit limits.
@@ -58,8 +58,9 @@ source/distribution status when releasing a new build.
 
 The engine and website source are Apache-2.0 at `rhyven-ai/rhyven`. Customer installation downloads prebuilt
 binaries directly from `https://rhyvenai.com`; it requires no GitHub account.
-Getting started shows that command followed by `rhyven`, and clearly marks the
-domain installer as not yet deployed. The Linux x86-64 preview binary and all
+Getting started shows that command followed by `rhyven`. The signed 0.4.0-rc.8
+installer supports Linux x86-64/ARM64 and macOS Intel/Apple Silicon; macOS is a
+feedback preview. Earlier Linux x86-64 preview binaries and all
 seven app packages are available in the public `rhyven-ai/registry`. The earlier public
 container images passed anonymous fresh-host installation; the newer container
 versions shown in this source catalog are still pending publication.
@@ -73,8 +74,7 @@ python3 scripts/stage-downloads.py --signing-key PRIVATE_KEY_PATH --base-url htt
 See [the distribution guide](../docs/installation.md#release-building-and-verification)
 for full commands and deployment order. This does not upload anything. Serve that
 directory alongside this website at the domain root; no source checkout or GitHub
-API is needed by customers. Remove the pending-download notice only after the
-hosted installation is verified.
+API is needed by customers. Verify the hosted installer, signatures and binary version after deployment.
 
 ## Files
 

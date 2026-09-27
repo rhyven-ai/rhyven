@@ -55,10 +55,10 @@ and TUI browsing, run `rhyven registry-sync rhyven-ai/registry --anonymous` to
 explicitly download app manifests into the package cache. Sync does not install
 apps or pull container images.
 
-A Linux x86-64 preview binary is also available in the public registry’s
-[`v0.4.0-rc.6` release](https://github.com/rhyven-ai/registry/releases/tag/v0.4.0-rc.6).
-Verify `SHA256SUMS` before use. The website’s one-command installer still awaits
-domain deployment. See [release status](release-status.md) for source and binary versions.
+The website serves signed `0.4.0-rc.8` binaries for Linux x86-64/ARM64 and
+macOS Intel/Apple Silicon. The installer checks the signed manifest and selected
+binary before replacing an existing installation. See [release status](release-status.md)
+for platform support and release boundaries.
 
 ### Build from source
 

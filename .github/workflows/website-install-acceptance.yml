@@ -1,0 +1,48 @@
+name: Website installation in a fresh VM
+on:
+  workflow_dispatch:
+    inputs:
+      download_origin:
+        description: Published download origin
+        type: choice
+        default: https://rhyvenai.com
+        options:
+          - https://rhyvenai.com
+          - https://rhyven.pages.dev
+  workflow_call:
+    inputs:
+      download_origin:
+        type: string
+        default: https://rhyvenai.com
+permissions:
+  contents: read
+jobs:
+  ubuntu-vm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Prepare disposable VM tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils cloud-image-utils
+          if test -e /dev/kvm; then sudo chmod a+rw /dev/kvm; fi
+          mkdir release
+          python3 -c 'import pathlib,tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])' > release/VERSION
+      - name: Install from the public website and use apps
+        env:
+          RHYVEN_VM_REPORT_DIR: vm-report
+          RHYVEN_TEST_DOWNLOAD_ORIGIN: ${{ inputs.download_origin || 'https://rhyvenai.com' }}
+        run: |
+          set -o pipefail
+          mkdir -p vm-report
+          bash qa/fresh_machine_vm.sh release . "$RHYVEN_TEST_DOWNLOAD_ORIGIN" 2>&1 | tee vm-report/acceptance.log
+      - name: Keep acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: website-vm-acceptance
+          path: vm-report/
+          if-no-files-found: warn

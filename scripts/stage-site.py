@@ -11,7 +11,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = (
-    'index.html', 'app.js', 'docs.js', 'skills.js', 'styles.css', 'data/catalog.json',
+    'index.html', '404.html', 'app.js', 'docs.js', 'skills.js', 'styles.css', 'data/catalog.json',
     'skills/use-rhyven/SKILL.md', 'skills/use-rhyven/RULE.md',
     'skills/publish-rhyven-app/SKILL.md',
     'skills/build-rhyven-declarative-app/SKILL.md',

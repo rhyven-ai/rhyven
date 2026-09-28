@@ -1,4 +1,4 @@
-import {docs, escapeHTML as esc, icon, codeBlock} from './docs.js';
+import {docs, escapeHTML as esc, icon, codeBlock, installCommand} from './docs.js';
 import {renderSkill} from './skills.js';
 
 const $ = selector => document.querySelector(selector);
@@ -238,6 +238,8 @@ document.addEventListener('keydown',event=> {
     if (field) { event.preventDefault(); field.focus(); field.scrollIntoView({block:'center'}); }
   }
 });
+$('#home-install').innerHTML = codeBlock(`${installCommand}\n~/.local/bin/rhyven`, 'INSTALL AND OPEN');
+$('#home-install [data-copy-code]').setAttribute('aria-label', 'Copy install and launch commands');
 renderWorkflow(0);
 route({initial:true});
 loadCatalog();

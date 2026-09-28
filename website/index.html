@@ -34,7 +34,13 @@
           <div class="hero-copy">
             <div class="eyebrow"><span class="status-dot"></span> THE AGENT-NATIVE APP PLATFORM</div>
             <h1 id="marketplace-title"><span class="accent">Agent first apps</span> for a user first experience</h1>
-            <p class="hero-description">Install apps for tasks, knowledge, messaging and code analysis. Your agent uses them through one interface, with app data stored in your environment. The engine and Rhyven apps are open source under Apache-2.0.</p>
+            <p class="hero-description">Install apps for tasks, knowledge, messaging and code analysis. Connect your agent through one interface and keep app data in your own environment.</p>
+            <section class="quick-start" aria-labelledby="quick-start-heading">
+              <h2 id="quick-start-heading">Install Rhyven</h2>
+              <div id="home-install"></div>
+              <p class="agent-connection"><a href="#docs/connect-an-agent">Connect Codex, Claude, Cline, Cursor, or another MCP-compatible agent. <svg class="icon small" aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
+              <p class="install-note">Linux x86-64 and ARM64. Setup asks before installing Docker. After setup, use <code>rhyven</code> in a new terminal to open the marketplace.</p>
+            </section>
             <div class="hero-actions"><a class="button button-primary" href="#marketplace/apps">Browse apps <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a><a class="text-link" href="#docs/build-an-app">Build an app <svg class="icon" aria-hidden="true"><use href="#i-arrow-up"/></svg></a></div>
             <div class="hero-assurance"><span><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg> Local-first</span><span><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg> No required UI</span><span><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg> Your data</span></div>
           </div>
@@ -54,11 +60,11 @@
         <div class="value-strip"><div><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg><span>Installable apps<strong>Local execution</strong></span></div><div><svg class="icon" aria-hidden="true"><use href="#i-connect"/></svg><span>Shared schema<strong>MCP and REST access</strong></span></div><div><svg class="icon" aria-hidden="true"><use href="#i-sliders"/></svg><span>Custom apps<strong>Declarative or container</strong></span></div></div>
 
         <section class="market-section" id="app-library" aria-labelledby="library-heading">
-          <div class="section-heading"><div><div class="eyebrow">THE MARKETPLACE</div><h2 id="library-heading">Available apps</h2><p>Browse by execution type, search by function, or open an app to see its details.</p></div><span class="outline-badge">LOCAL CATALOG PREVIEW</span></div>
+          <div class="section-heading"><div><h2 id="library-heading">Rhyven Marketplace</h2><p>Browse installable agent-native apps.</p></div></div>
           <div class="catalog-toolbar"><div class="filter-list" role="group" aria-label="Filter by execution type"><button type="button" class="filter active" data-filter="all" aria-pressed="true">All apps <span id="app-count">7</span></button><button type="button" class="filter" data-filter="declarative" aria-pressed="false">Declarative</button><button type="button" class="filter" data-filter="container" aria-pressed="false">Containers</button><button type="button" class="filter" data-filter="service" aria-pressed="false">Services</button></div><label class="search-field"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><span class="sr-only">Search apps</span><input id="app-search" type="search" placeholder="Search apps…" autocomplete="off"><kbd aria-hidden="true">/</kbd></label></div>
           <p class="sr-only" id="catalog-status" role="status"></p>
-          <div id="app-groups"><p class="loading-state">Loading the local app catalog…</p></div>
-          <div class="catalog-note"><svg class="icon small" aria-hidden="true"><use href="#i-info"/></svg><p>These are the apps in this source checkout. Open an app for its contract and setup instructions. Installation stays in your local runtime.</p></div>
+          <div id="app-groups"><p class="loading-state">Loading apps…</p></div>
+          <div class="catalog-note"><svg class="icon small" aria-hidden="true"><use href="#i-info"/></svg><p>Open an app to see its features, permissions and installation instructions. Apps run in your environment.</p></div>
         </section>
 
         <section class="cooperation-section" aria-labelledby="cooperation-heading">

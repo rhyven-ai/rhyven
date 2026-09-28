@@ -78,3 +78,20 @@
   .skill-actions .text-link { margin-left: 0; }
   .skill-source { padding: 14px; font-size: 10px; max-height: 400px; }
 }
+
+.quick-start { margin: 24px 0 26px; }
+.quick-start h2 { font-size: 19px; letter-spacing: -.3px; margin: 0; }
+.quick-start .code-block { margin: 12px 0; border-color: #387483; }
+.quick-start .code-block-bar { padding: 10px 13px; }
+.quick-start .copy-button { background: var(--cyan); color: #07151b; border-color: var(--cyan); padding: 6px 10px; }
+.quick-start .copy-button:hover { background: #79edff; }
+.quick-start pre { margin: 0; padding: 16px; font: 12px/1.9 var(--mono); color: #d3deea; white-space: pre-wrap; overflow-wrap: anywhere; }
+.quick-start .agent-connection { margin: 0 0 10px; font-size: 14px; line-height: 1.65; }
+.quick-start .agent-connection a { color: #9deaf6; }
+.quick-start .agent-connection a:hover { color: var(--cyan); text-decoration: underline; }
+.quick-start .agent-connection .icon { vertical-align: middle; margin-left: 3px; }
+.quick-start .install-note { margin: 0; color: #98acbc; font-size: 11px; line-height: 1.75; }
+@media (max-width: 480px) {
+  .quick-start pre { padding: 14px; font-size: 11px; }
+  .quick-start .agent-connection { font-size: 13px; }
+}

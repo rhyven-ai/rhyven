@@ -6,7 +6,7 @@ export function codeBlock(code, language='SHELL') {
 const note = (title, body) => `<div class="doc-callout"><strong>${title}</strong>${body}</div>`;
 const table = (headers, rows) => `<div class="doc-table-wrap" tabindex="0" role="region" aria-label="${escapeHTML(headers.join(', '))} reference table"><table><thead><tr>${headers.map(x=>`<th scope="col">${x}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 
-const installCommand = 'curl -fsSL https://rhyvenai.com/install.sh | bash -s -- --containers';
+export const installCommand = 'curl -fsSL https://rhyvenai.com/install.sh | bash -s -- --containers';
 
 export const docs = [
   {

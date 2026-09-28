@@ -1,4 +1,4 @@
-name: Website installation in a fresh VM
+name: Public installer acceptance in a fresh VM
 on:
   workflow_dispatch:
     inputs:
@@ -31,7 +31,7 @@ jobs:
           if test -e /dev/kvm; then sudo chmod a+rw /dev/kvm; fi
           mkdir release
           python3 -c 'import pathlib,tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text())["workspace"]["package"]["version"])' > release/VERSION
-      - name: Install from the public website and use apps
+      - name: Install the public runtime and use apps
         env:
           RHYVEN_VM_REPORT_DIR: vm-report
           RHYVEN_TEST_DOWNLOAD_ORIGIN: ${{ inputs.download_origin || 'https://rhyvenai.com' }}
@@ -43,6 +43,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: website-vm-acceptance
+          name: installer-vm-acceptance
           path: vm-report/
           if-no-files-found: warn

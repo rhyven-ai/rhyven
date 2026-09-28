@@ -72,8 +72,8 @@ return function names, argument schemas, permissions and agent guidance. REST
 exposes the same contract; local MCP can call the core directly or bridge to a
 shared REST server. [Architecture](docs/architecture.md).
 
-Give your agent the [usage skill](website/skills/use-rhyven/SKILL.md) or merge the
-shorter [usage rule](website/skills/use-rhyven/RULE.md) into its project instructions.
+Give your agent the [usage skill](skills/use-rhyven/SKILL.md) or merge the
+shorter [usage rule](skills/use-rhyven/RULE.md) into its project instructions.
 
 ## Find and install apps
 
@@ -132,16 +132,6 @@ rhyven restore project.rhyven --collection recovered-project
 Restore requires a new collection; container backups require permission review.
 Updates migrate and validate staged state before activation. See
 [backup, migrations and recovery](docs/recovery-and-updates.md).
-
-## Local website
-
-```sh
-python3 website/serve.py
-```
-
-Open http://localhost:5173 for the marketplace catalog, documentation and
-copyable skills. Corvid is in progress as a separate agent harness; Razorback
-is coming soon. [Website development](website/README.md).
 
 ## License and security
 

@@ -33,7 +33,8 @@ class EngineExportTests(unittest.TestCase):
 
     def test_paths_symlinks_and_credentials_fail_before_export(self):
         for destination, source in [('../escape', 'README.md'), ('state.sqlite3', 'README.md'),
-                                    ('README.md', '../outside'), ('.git/config', 'README.md')]:
+                                    ('README.md', '../outside'), ('.git/config', 'README.md'),
+                                    ('website/index.html', 'README.md'), ('.wrangler/state.json', 'README.md')]:
             with self.assertRaises(ValueError):
                 exporter.export(self.source, self.output, {destination: source})
             self.assertFalse(self.output.exists())

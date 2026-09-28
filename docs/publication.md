@@ -1,89 +1,59 @@
-# Publishing the website and release binaries
+# Publishing runtime releases and app packages
 
-The engine and website source are Apache-2.0 in
-[`rhyven-ai/rhyven`](https://github.com/rhyven-ai/rhyven). Rhyven app source is
-also published in [`rhyven-ai/apps`](https://github.com/rhyven-ai/apps), and
-[`rhyven-ai/registry`](https://github.com/rhyven-ai/registry) distributes app
-packages and metadata. Customer workloads and state remain on customer infrastructure.
+The engine is Apache-2.0 in [rhyven-ai/rhyven](https://github.com/rhyven-ai/rhyven).
+App source lives in [rhyven-ai/apps](https://github.com/rhyven-ai/apps), and
+[rhyven-ai/registry](https://github.com/rhyven-ai/registry) distributes app metadata
+and packages. Customer workloads and state stay on customer infrastructure.
 
-Source publication and binary promotion are separate steps. The rc.8 source
-includes the open-source license and embedded notices. The public runtime and
-registry validator are still rc.6; do not advertise new candidate features as
-available in that binary. See [release status](release-status.md).
+## Runtime releases
 
-## Prepare a release
+1. Run workspace tests, transport/installer checks, the source export tests and
+   `python3 scripts/security-scan.py`. Review app container reports separately.
+2. Build a distinct version with Rust 1.90, `--locked`, the release profile and
+   path remapping. `packaging/release-binaries.yml` defines the build matrix.
+3. Package each accepted platform with `scripts/package-release.sh`. Intermediate
+   artifacts include the executable, installer, version, Apache license, notices
+   and third-party license text.
+4. Sign the accepted artifacts using an owner-controlled private key:
 
-1. Run workspace tests, transport/installer checks, browser checks and
-   `python3 scripts/security-scan.py`. Review container image reports separately;
-   a Rust dependency scan does not cover Docker images.
-2. Tag the reviewed source with a distinct version. Build with Rust 1.90,
-   `--locked`, the release profile and path remapping for the checkout, Cargo home
-   and Rustup home. `.github/workflows/release-binaries.yml` defines the build matrix.
-3. Produce intermediate artifacts with `scripts/package-release.sh`. The package
-   contains the executable, installer, version, Apache `LICENSE`, `NOTICE` and
-   `THIRD_PARTY_NOTICES.txt`. The binary also exposes these through `rhyven license`.
-4. Sign and stage downloads and the website using an owner-controlled signing key:
-
-   ```bash
+   ```sh
    python3 scripts/stage-downloads.py --base-url https://rhyvenai.com \
      --signing-key /secure/path/release-key.pem \
      --out dist/public-downloads-rc8 dist/linux-x86_64-rc8
-   python3 scripts/stage-site.py --downloads dist/public-downloads-rc8 --out dist/site-rc8
    ```
 
-   Both commands refuse to overwrite existing output. Include only platform
-   artifacts that passed acceptance. macOS remains a feedback preview.
-5. Review the exact output, signatures, license notices, links and product claims.
-   Deploy only the staged site, never the checkout or all of `dist/`. App state,
-   credentials, signing keys, development archives and raw audit reports must stay
-   out of public artifacts. Open source does not make those files public.
+5. Deliver only that signed download tree through the separately maintained
+   deployment process. Do not upload source checkouts, customer state, credentials
+   or signing keys. Never overwrite a published version directory.
+6. Verify hosted signatures and checksums before updating the public registry's
+   pinned validator. Runtime and registry validation must accept the same app
+   contract. See [release status](release-status.md) for the promoted versions.
 
-## Container packages and registry compatibility
+The installer verifies its embedded public key. Initial delivery still trusts
+HTTPS and the download origin. Publish the key fingerprint through a separately
+trusted channel and retain a known-good key for independent verification. Keep
+private keys offline, access-restricted and excluded from Git and build logs.
 
-The app-image workflow defaults to building, testing and scanning without publishing.
-Image publication requires an explicit maintainer dispatch with `audit_only=false`.
-It builds the runtime from the checked-out source, tests behavior and scans the
-image before pushing. Each package pins an immutable image digest.
+## App packages
 
-Promote compatible versions of the runtime and registry validator together.
-Update the public registry's pinned validator hash and acceptance workflow when
-promoting a new binary. Only then list packages requiring newer schema features.
-Add new app versions rather than overwriting existing releases. Complete anonymous
-installation acceptance, update `website/data/availability.json`, regenerate its
-catalog and stage the final website. A new Dockerfile does not fix an old image
-already published under a different digest.
+Image publication requires explicit maintainer dispatch with `audit_only=false`.
+The image workflow builds the matching runtime, tests app behavior and scans the
+image before a push. Packages pin immutable image digests.
 
-## Host configuration
+Promote compatible runtime/validator versions before accepting new schema
+features. Release new app versions instead of replacing published packages or
+image digests. A changed Dockerfile does not repair an already published image.
+Complete anonymous installation acceptance against the exact packages and images.
 
-Use static HTTPS hosting with automatic certificate renewal and account MFA.
-The staged `_headers` file specifies CSP, HSTS, frame protection, MIME protection,
-referrer policy and restricted browser capabilities. Configure equivalent response
-headers if the chosen host ignores that file.
+## Acceptance
 
-Serve JavaScript as JavaScript, CSS as `text/css`, JSON as `application/json`,
-`.sh` and skill `.md` files as `text/plain`, and binaries/signatures as
-`application/octet-stream`. Disable directory listings. Missing downloads must
-return 404, not an HTML fallback. Root `install.sh`, `VERSION`, HTML, JavaScript
-and catalog files must revalidate caches. Immutable versioned release folders can
-be cached for one year and must never be replaced. Upload the versioned release
-before updating the root installer and `VERSION` together.
+- `qa/direct_download_check.py` tests signed installation, tampering rejection and
+  retained state using temporary local HTTPS hosting.
+- `packaging/installer-vm-acceptance.yml` tests the public installer in a fresh VM.
+- `packaging/public-app-acceptance.yml` verifies registry packages and container
+  execution using the published runtime.
+- Exercise connection verification, permission review, installation, discovery,
+  app operations, updates, backup/restore and retained state after reinstall.
 
-Do not expose the local preview server or runtime REST port as the public website.
-The site needs no backend, cookies, analytics or customer credentials.
-
-## Acceptance on the actual domain
-
-- Check TLS, security headers, license downloads and real 404 responses.
-- Verify that `/.git/config`, local state paths and development archives are absent.
-- Install on a fresh supported Linux system. Verify the version, dependency prompts,
-  agent connection and selected collection.
-- Search the registry; review permissions; approve, install and use an app. Exercise
-  updates, backup/restore and retained state after removal/reinstallation.
-- Repeat the container journey with the exact image digests being published.
-- Check all five skills, the usage rule, source links, copy buttons and downloads.
-- Confirm private vulnerability reporting works in the engine repository.
-
-The installer trusts its embedded public key. Initial delivery of that key still
-trusts the HTTPS origin. Publish its fingerprint through a separate trusted channel
-and retain a known-good key for independent verification. Keep private signing keys
-offline, access-restricted and excluded from Git, CI logs and release output.
+Website source, branding assets and browser tests are maintained separately from
+this engine repository. Agent usage and authoring instructions remain in `skills/`.

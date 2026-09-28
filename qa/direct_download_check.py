@@ -152,26 +152,6 @@ else: raise SystemExit(91)
         run(install + ['--version', '../invalid'], env=env, success=False)
         assert not forbidden.exists(), 'Installer tried GitHub, Git or privileged system changes'
 
-        # Only the signed allowlist can enter the deployable website tree.
-        shutil.copyfile(binary, release / asset)
-        site_spec = importlib.util.spec_from_file_location('site_stage', ROOT / 'scripts/stage-site.py')
-        site_stage = importlib.util.module_from_spec(site_spec)
-        site_spec.loader.exec_module(site_stage)
-        deployed = root / 'deployable'
-        assert site_stage.stage(output, deployed) == version
-        assert not (deployed / 'serve.py').exists()
-        assert not (deployed / '.git').exists()
-        assert 'Content-Security-Policy' in (deployed / '_headers').read_text()
-        assert 'frame-ancestors' in (deployed / '_headers').read_text()
-        (release / 'source.tar.gz').write_text('private source')
-        try:
-            site_stage.stage(output, root / 'must-not-deploy')
-        except ValueError as error:
-            assert 'Unexpected' in str(error)
-        else:
-            raise AssertionError('Private source accepted into publication tree')
-        (release / 'source.tar.gz').unlink()
-
         def reject(artifacts_list, destination, origin, error):
             try:
                 downloads.stage(artifacts_list, destination, origin, key)

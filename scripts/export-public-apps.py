@@ -47,8 +47,8 @@ def selected_files():
             relative = directory + '/' + name
             result[relative] = relative
     for skill in SKILLS:
-        result[f'skills/{skill}/SKILL.md'] = f'website/skills/{skill}/SKILL.md'
-    result['skills/use-rhyven/RULE.md'] = 'website/skills/use-rhyven/RULE.md'
+        result[f'skills/{skill}/SKILL.md'] = f'skills/{skill}/SKILL.md'
+    result['skills/use-rhyven/RULE.md'] = 'skills/use-rhyven/RULE.md'
     return result
 
 

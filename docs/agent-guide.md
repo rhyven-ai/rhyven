@@ -1,8 +1,8 @@
 # Rhyven agent quick guide
 
 For reusable agent instructions, use the
-[Use Rhyven skill](../website/skills/use-rhyven/SKILL.md) or the shorter
-[project rule](../website/skills/use-rhyven/RULE.md). Both can be copied or
+[Use Rhyven skill](../skills/use-rhyven/SKILL.md) or the shorter
+[project rule](../skills/use-rhyven/RULE.md). Both can be copied or
 downloaded from the website's **Skills → Use Rhyven** page. Save the skill in
 your agent's supported skills folder, or merge the rule into its project
 instructions without replacing existing content. Neither installs the MCP

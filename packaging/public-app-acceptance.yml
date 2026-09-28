@@ -17,7 +17,7 @@ on:
 permissions:
   contents: read
 jobs:
-  website-ready:
+  download-ready:
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     steps:
@@ -32,15 +32,15 @@ jobs:
             echo "Waiting for the download origin to serve rc.8 ($attempt/80)"
             sleep 15
           done
-          echo 'The website download origin is not ready; check DNS and the deployment.' >&2
+          echo 'The runtime download origin is not ready; check DNS and the deployment.' >&2
           exit 1
-  website-vm:
-    needs: website-ready
-    uses: ./.github/workflows/website-install-acceptance.yml
+  installer-vm:
+    needs: download-ready
+    uses: ./.github/workflows/installer-vm-acceptance.yml
     with:
       download_origin: ${{ inputs.download_origin || 'https://rhyvenai.com' }}
   public-install:
-    needs: website-ready
+    needs: download-ready
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:

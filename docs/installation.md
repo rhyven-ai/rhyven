@@ -248,10 +248,6 @@ Keep the private key outside release folders, restricted to its OS owner, backed
 offline and excluded from Git and CI. Only public keys enter deployment output.
 Do not overwrite published version directories. Include `THIRD_PARTY_NOTICES.txt`.
 
-Prepare the full site without exposing the source checkout:
-
-```bash
-python3 scripts/stage-site.py --downloads dist/public-downloads-rc8 --out dist/site-rc8
-```
-
-See [publication runbook](publication.md) for hosting and final acceptance.
+Publish only the signed download tree through the release hosting process.
+Website source and deployment tooling are maintained separately.
+See the [release publication runbook](publication.md) for distribution checks.

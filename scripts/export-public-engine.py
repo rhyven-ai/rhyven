@@ -20,7 +20,7 @@ def relative_file(name):
     path = PurePosixPath(name)
     if path.is_absolute() or '..' in path.parts or '\\' in name or not path.parts:
         raise ValueError('Invalid source inventory path')
-    if any(part in {'.git', '.release-signing', '.rhyven', 'target', 'dist', '.env'} for part in path.parts):
+    if any(part in {'.git', '.release-signing', '.rhyven', '.wrangler', 'website', 'target', 'dist', '.env'} for part in path.parts):
         raise ValueError('Local state is not source')
     if path.suffix in {'.pem', '.key', '.sqlite3', '.db', '.zip'}:
         raise ValueError('Unexpected source file type')

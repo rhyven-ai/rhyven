@@ -15,7 +15,6 @@ python3 qa/shared_runtime_check.py target/release/rhyven
 
 Python checks use temporary state. Docker integration checks require a compatible
 Docker engine and can execute fixture code; read the script before running it.
-Website checks use Playwright and axe; see [website/README.md](website/README.md).
 
 Keep behavior generic: a conforming new app should not need a runtime source
 change. MCP and REST must use the same validation and execution rules. Preserve

@@ -28,7 +28,9 @@ website directory. Stop with Ctrl+C; use `--port 5174` if needed.
 - Hash-based navigation, browser back/forward and direct documentation links.
 - Marketplace search, type filters, expandable engine sections and app details.
 - Real local manifest descriptions, versions, permissions, objects and actions.
-- Copyable install examples and an interactive three-step interoperability example.
+- A homepage install-and-launch command with a copy button, agent connection guidance,
+  and an interactive three-step interoperability example. The first launch uses
+  the installed executable path so it works before the shell reloads PATH.
 - Corvid harness page marked in progress, with a generated pixel-art murder of crows.
 - Razorback coming-soon emblem and construction tape.
 - Thirteen documentation topics with text search, copyable code and the one-line binary installer at `rhyvenai.com/install.sh`.

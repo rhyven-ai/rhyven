@@ -675,8 +675,8 @@
     "third-party-notices/zerovec-derive-0.11.6/LICENSE": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
     "third-party-notices/zmij-1.0.23/LICENSE-MIT": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
     "website/404.html": "196582bd28772c68aa0354869dfac035ed083f60e2590ad1cfeb8f3569cb4803",
-    "website/README.md": "8cc046aebad34319c38fc42efd60242f0e1d64fc600679f1fca28ec3726451da",
-    "website/app.js": "d9ee4f2b8e40cc11aa7cd88c42b49d82e9b594b2db8cb2a23cf4f1a2a3e8f461",
+    "website/README.md": "73ff94ce9f8dc9d64419a4ce98d2092683af714177b925b29f721be082e5415a",
+    "website/app.js": "adcd5ba490a5a6885afce35935e6a34a6f3b694492e99d1ab75cd15426769815",
     "website/assets/ASSETS.md": "b6358ef2d3a6c8a92737856a18570ea4bcb50f7a8f91e43de95dc5ccc998b949",
     "website/assets/corvid-crows-pixel.png": "55b285b31b68f20122bab0f1524da23049784d3285f0b138365486ac96829614",
     "website/assets/corvid-ravens.png": "8faaffb3311fe08bef7ca5dfd2b28d0228c1febdaa0e4bc813dbc5c2dc2929b0",
@@ -687,8 +687,8 @@
     "website/assets/rhyven-brand.png": "377cd0f0dc7db102cf97fab701e0af9325feef62254f4b623c19cb81b19e1e98",
     "website/data/availability.json": "fe214946640fb85bc0aae93fb88b9d4877f96a33cde60a12801150c629469573",
     "website/data/catalog.json": "6ebbb6022abbe6c063c9f3586682748015d9e82e1c83d4de8bb00021c9a38b7e",
-    "website/docs.js": "564348f95a28123ba85bd3aefff835b5ebb8f47658911e7710249eba53913791",
-    "website/index.html": "d74dbabaca4e1c778c8f5164f2e80bef3b968c111efa6961d0e9cd2fc3af3324",
+    "website/docs.js": "9aab26858502b30947481558417730b3eb971aa39ebc2faa510b94fcb4a9ac6b",
+    "website/index.html": "552468f26ac33a3454c741f60e3996f299e81b921ff9038fc729f286419af350",
     "website/scripts/sync-catalog.py": "72907291d98795dc2b2fa87e47897c4ad267cbef847a79d51b478e258c52b11f",
     "website/security_headers.py": "553af0481fabe8fd1db9fdeadde18335714e355cb402a2be873c0c561b4622a9",
     "website/serve.py": "7af34955bafa2720be69421294c73f394c4424b20f51ff54ce4e38920b231d1d",
@@ -699,6 +699,6 @@
     "website/skills/publish-rhyven-app/SKILL.md": "8f9915337c6d51d3cd1153d2783f85ac02f54d29342a747848cd85c7e125201e",
     "website/skills/use-rhyven/RULE.md": "34c356a89255c1069089c5cf1f8b91949d2105f2a650087a9fd37790af63283c",
     "website/skills/use-rhyven/SKILL.md": "acbbe5922fdfdfed4452f9b6ce1840ee04fb1f84d64a8793bc87ebfaa911fa04",
-    "website/styles.css": "f65646a2da0c22c6f44b2123e40417017b9e1098dda227594870dde7517e820e"
+    "website/styles.css": "004ac6d4af40f0b84806f68ba9ce4b74eaedf4905d291c2c8afebe2c6f7ffe9b"
   }
 }

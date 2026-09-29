@@ -42,7 +42,7 @@ enum AppCommand {
         name: String,
         #[arg(long)]
         dir: PathBuf,
-        #[arg(long, default_value="declarative", value_parser=["declarative", "container", "service"])]
+        #[arg(long, default_value="declarative", value_parser=["declarative", "container", "service", "python", "javascript"])]
         runtime: String,
     },
     /// Validate the app contract.
@@ -52,6 +52,9 @@ enum AppCommand {
         path: PathBuf,
         #[arg(long)]
         allow_container: bool,
+        /// Allow unsandboxed script tests with the current OS user's access.
+        #[arg(long)]
+        allow_host: bool,
     },
     /// Validate, test and package an app.
     Package {
@@ -79,9 +82,11 @@ impl From<AppCommand> for Command {
             AppCommand::Test {
                 path,
                 allow_container,
+                allow_host,
             } => Self::Test {
                 path,
                 allow_container,
+                allow_host,
             },
             AppCommand::Package { path, out, image } => Self::Package { path, out, image },
             AppCommand::Publish { path } => Self::Publish { path },
@@ -267,7 +272,7 @@ enum Command {
         name: String,
         #[arg(long)]
         dir: PathBuf,
-        #[arg(long, default_value="declarative", value_parser=["declarative", "container", "service"])]
+        #[arg(long, default_value="declarative", value_parser=["declarative", "container", "service", "python", "javascript"])]
         runtime: String,
     },
     #[command(hide = true)]
@@ -279,6 +284,9 @@ enum Command {
         path: PathBuf,
         #[arg(long)]
         allow_container: bool,
+        /// Allow unsandboxed script tests with the current OS user's access.
+        #[arg(long)]
+        allow_host: bool,
     },
     #[command(hide = true)]
     Package {
@@ -649,7 +657,11 @@ fn run() -> Result<()> {
                 "package",
                 "Use publisher/app-name",
             )?;
-            let mut p = if driver == "service" {
+            let mut p = if driver == "python" {
+                serde_json::from_str(include_str!("../../../examples/script-python/app.json"))?
+            } else if driver == "javascript" {
+                serde_json::from_str(include_str!("../../../examples/script-javascript/app.json"))?
+            } else if driver == "service" {
                 serde_json::from_str(include_str!(
                     "../../../examples/container-service-python/app.json"
                 ))?
@@ -674,7 +686,21 @@ fn run() -> Result<()> {
                 include_str!("../../../catalog/LICENSE"),
             )?;
             std::fs::write(dir.join("NOTICE"), include_str!("../../../catalog/NOTICE"))?;
-            if driver == "service" {
+            if driver == "python" || driver == "javascript" {
+                let (name, content) = if driver == "python" {
+                    (
+                        "main.py",
+                        include_str!("../../../examples/script-python/main.py"),
+                    )
+                } else {
+                    (
+                        "main.mjs",
+                        include_str!("../../../examples/script-javascript/main.mjs"),
+                    )
+                };
+                std::fs::write(dir.join(name), content)?;
+                std::fs::write(dir.join("README.md"), "# Script app\n\nReview host.execute: this app runs unsandboxed as your OS user. Run `rhyven app validate .`, `rhyven app test . --allow-host`, then `rhyven app package . --out ../app.rhyven.json`. Rhyven requires Python 3.10+ or Node 20+ on PATH and manages app dependencies.\n")?;
+            } else if driver == "service" {
                 std::fs::write(
                     dir.join("main.py"),
                     include_str!("../../../examples/container-service-python/main.py"),
@@ -713,7 +739,10 @@ fn run() -> Result<()> {
         Command::Test {
             path,
             allow_container,
-        } => conformance::run_with_execution(&catalog::read(&path)?, allow_container)?,
+            allow_host,
+        } => {
+            conformance::run_with_permissions(&catalog::read(&path)?, allow_container, allow_host)?
+        }
         Command::Package { path, out, image } => {
             let mut p = catalog::read(&path)?;
             if let Some(image) = image {
@@ -726,7 +755,7 @@ fn run() -> Result<()> {
                 catalog::validate(&p)?;
             }
             let tested =
-                p["hosting"]["mode"] == "local" && !agent_market_core::container::enabled(&p);
+                p["hosting"]["mode"] == "local" && !agent_market_core::execution::enabled(&p);
             if tested {
                 conformance::run(&p)?;
             }

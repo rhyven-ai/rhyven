@@ -30,6 +30,7 @@ pub fn check(s: &Value, depth: usize) -> Result<()> {
         "maxItems",
         "description",
         "format",
+        "anyOf",
     ];
     for key in object.keys() {
         ensure(
@@ -37,6 +38,48 @@ pub fn check(s: &Value, depth: usize) -> Result<()> {
             "unsupported_schema",
             format!("Unsupported keyword {key}"),
         )?;
+    }
+    if let Some(branches) = s.get("anyOf") {
+        ensure(
+            object.keys().all(|k| k == "anyOf" || k == "description"),
+            "invalid_schema",
+            "anyOf cannot mix with other constraints",
+        )?;
+        let branches = branches
+            .as_array()
+            .ok_or_else(|| Error::new("invalid_schema", "anyOf requires an array"))?;
+        ensure(
+            !branches.is_empty() && branches.len() <= 16,
+            "invalid_schema",
+            "anyOf requires 1..16 alternatives",
+        )?;
+        for branch in branches {
+            check(branch, depth + 1)?;
+        }
+        return Ok(());
+    }
+    if let Some(types) = s["type"].as_array() {
+        ensure(
+            !types.is_empty() && types.len() <= 7,
+            "invalid_schema",
+            "type requires 1..7 alternatives",
+        )?;
+        let mut seen = std::collections::BTreeSet::new();
+        for typ in types {
+            ensure(
+                typ.is_string() && seen.insert(typ.as_str().unwrap()),
+                "invalid_schema",
+                "Types must be unique strings",
+            )?;
+            let mut branch = s.clone();
+            branch["type"] = typ.clone();
+            branch.as_object_mut().unwrap().remove("default");
+            check(&branch, depth + 1)?;
+        }
+        if let Some(value) = s.get("default") {
+            validate(value.clone(), s)?;
+        }
+        return Ok(());
     }
     let typ = s["type"].as_str().unwrap_or("");
     if let Some(format) = s.get("format") {
@@ -47,7 +90,10 @@ pub fn check(s: &Value, depth: usize) -> Result<()> {
         )?;
     }
     ensure(
-        ["object", "array", "string", "integer", "number", "boolean"].contains(&typ),
+        [
+            "object", "array", "string", "integer", "number", "boolean", "null",
+        ]
+        .contains(&typ),
         "invalid_schema",
         "Unsupported or missing type",
     )?;
@@ -115,6 +161,24 @@ pub fn check(s: &Value, depth: usize) -> Result<()> {
 }
 
 pub fn validate(mut value: Value, s: &Value) -> Result<Value> {
+    if let Some(branches) = s["anyOf"].as_array() {
+        return branches
+            .iter()
+            .find_map(|branch| validate(value.clone(), branch).ok())
+            .ok_or_else(|| {
+                Error::new("validation", "Value does not match any allowed alternative")
+            });
+    }
+    if let Some(types) = s["type"].as_array() {
+        return types
+            .iter()
+            .find_map(|typ| {
+                let mut branch = s.clone();
+                branch["type"] = typ.clone();
+                validate(value.clone(), &branch).ok()
+            })
+            .ok_or_else(|| Error::new("validation", "Value does not match any allowed type"));
+    }
     let typ = s["type"].as_str().unwrap_or("");
     let valid = match typ {
         "object" => value.is_object(),
@@ -123,6 +187,7 @@ pub fn validate(mut value: Value, s: &Value) -> Result<Value> {
         "integer" => value.as_i64().is_some() || value.as_u64().is_some(),
         "number" => value.is_number(),
         "boolean" => value.is_boolean(),
+        "null" => value.is_null(),
         _ => false,
     };
     ensure(valid, "validation", format!("Expected {typ}"))?;

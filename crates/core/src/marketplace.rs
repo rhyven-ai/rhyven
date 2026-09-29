@@ -41,9 +41,9 @@ pub fn describe() -> Value {
         json!({"mode":string,"endpoint":long_text,"auth_env":string,"auth":long_text,"privacy":long_text,"account":long_text,"billing":long_text,"domains":{"type":"array","items":string}}),
         &["mode"],
     );
-    let mut request_fields = json!({"request_id":string,"operation":string,"app":string,"version":string,"publisher":string,"publisher_label":string,"display_name":string,"repository":string,"stars":{"type":"integer"},"stars_status":long_text,"stars_checked_at":{"type":"integer"},"permissions":{"type":"array","items":string},"hosting":hosting,"trust":string,"sha256":string,"target_workspace":long_text,"target_collection":string,"expires_at":{"type":"integer"},"data_retained":{"type":"boolean"},"approval_instructions":long_text,"status":string,"review_digest":string});
+    let mut request_fields = json!({"request_id":string,"operation":string,"app":string,"version":string,"publisher":string,"publisher_label":string,"display_name":string,"repository":string,"stars":{"type":"integer"},"stars_status":long_text,"stars_checked_at":{"type":"integer"},"permissions":{"type":"array","items":string},"hosting":hosting,"trust":string,"sha256":string,"target_workspace":long_text,"target_collection":string,"expires_at":{"type":"integer"},"data_retained":{"type":"boolean"},"approval_instructions":long_text,"status":string,"review_digest":string,"execution_warning":long_text});
     request_fields["execution"] = input(
-        json!({"driver":string,"image":long_text,"protocol":string,"timeout_seconds":{"type":"integer"},"memory_mb":{"type":"integer"},"cpus":{"type":"integer"},"secrets":{"type":"array","items":string}}),
+        json!({"driver":string,"language":string,"entrypoint":string,"environment":string,"python_version":string,"node_version":string,"dependencies":input(json!({"pip":string,"npm":string}), &[]),"image":long_text,"protocol":string,"timeout_seconds":{"type":"integer"},"memory_mb":{"type":"integer"},"cpus":{"type":"integer"},"secrets":{"type":"array","items":string}}),
         &["driver"],
     );
     let fields = json!({"name":string,"version":string,"description":long_text,"publisher":string,"publisher_label":string,"display_name":string,"repository":string,"installed_version":string,"update_available":{"type":"boolean"},"trust":string,"permissions":{"type":"array","items":string},"hosting":string,"stars":{"type":"integer","minimum":0},"stars_status":string,"stars_checked_at":{"type":"integer"},"metadata_checked_at":{"type":"integer"},"metadata_stale":{"type":"boolean"}});
@@ -260,6 +260,9 @@ fn prepare(r: &Runtime, operation: &str, args: &Value) -> Result<Value> {
         .get("execution")
         .cloned()
         .unwrap_or(json!({"driver":"declarative"}));
+    if crate::script::enabled(p) {
+        view["execution_warning"] = json!("host.execute runs unsandboxed code as your OS user, including filesystem, network and process access. Environments isolate dependencies only.");
+    }
     if let Some(name) = crate::collections::scope(&r.root)?["collection"].as_str() {
         view["target_collection"] = json!(name);
     }

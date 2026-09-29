@@ -232,7 +232,9 @@ pub fn manifest(package: &Value) -> Value {
         let output = if t.operation=="execute" {package["actions"][t.fixed["action"].as_str().unwrap()].get("output").cloned().unwrap_or(json!({"type":"object"}))} else {json!({"type":"object"})};
         json!({"name":t.definition["name"],"description":t.definition["description"],"inputSchema":input,"outputSchema":output})
     }).collect();
-    json!({"category":package["name"],"version":package["version"],"description":package["description"],"functions":functions,"guidance_markdown":package["guide"],"contract":package})
+    let mut contract = package.clone();
+    contract.as_object_mut().unwrap().remove("files");
+    json!({"category":package["name"],"version":package["version"],"description":package["description"],"functions":functions,"guidance_markdown":package["guide"],"contract":contract})
 }
 pub fn invoke(runtime: &Runtime, args: Value) -> Result<Value> {
     crate::catalog::keys(&args, &["category", "function", "args"])?;

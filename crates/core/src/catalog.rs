@@ -62,12 +62,23 @@ pub fn validate(p: &Value) -> Result<()> {
             "execution",
             "migrations",
             "health_action",
+            "files",
         ],
     )?;
     ensure(p["format"] == 2, "package", "Expected package format 2")?;
-    crate::container::validate_execution(p)?;
+    crate::execution::validate(p)?;
+    if crate::script::enabled(p) {
+        crate::script::validate_files(p)?;
+    } else {
+        ensure(
+            p.get("files").is_none(),
+            "package",
+            "Embedded files require script execution",
+        )?;
+    }
     crate::updates::validate(p)?;
     let container = crate::container::enabled(p);
+    let executable = crate::execution::enabled(p);
     ensure(
         app_name(p["name"].as_str().unwrap_or("")),
         "package",
@@ -110,6 +121,7 @@ pub fn validate(p: &Value) -> Result<()> {
         "state.write",
         "network.connect",
         "container.execute",
+        "host.execute",
         "secrets.read",
         "service.run",
         "app.call",
@@ -146,11 +158,16 @@ pub fn validate(p: &Value) -> Result<()> {
         "permission",
         "Secrets require container execution",
     )?;
-    if container {
+    ensure(
+        permissions.contains(&json!("host.execute")) == crate::script::enabled(p),
+        "permission",
+        "Script apps require host.execute (unsandboxed access as your OS user)",
+    )?;
+    if executable {
         ensure(
             mode == "local",
             "package",
-            "Container execution requires local hosting; use serve for shared access",
+            "Executable apps require local hosting; use serve for shared access",
         )?;
         let secrets = p["execution"]["secrets"]
             .as_array()
@@ -219,7 +236,7 @@ pub fn validate(p: &Value) -> Result<()> {
         }
     } else {
         ensure(
-            container || !permissions.contains(&json!("network.connect")),
+            executable || !permissions.contains(&json!("network.connect")),
             "permission",
             "Local declarative apps cannot use network",
         )?;
@@ -233,7 +250,7 @@ pub fn validate(p: &Value) -> Result<()> {
         .as_object()
         .ok_or_else(|| Error::new("package", "objects required"))?;
     ensure(
-        (container || !objects.is_empty()) && objects.len() <= 32,
+        (executable || !objects.is_empty()) && objects.len() <= 32,
         "package",
         "Provide 1..32 objects",
     )?;
@@ -340,13 +357,13 @@ pub fn validate(p: &Value) -> Result<()> {
         .as_object()
         .ok_or_else(|| Error::new("package", "actions required"))?;
     ensure(
-        !container || !actions.is_empty(),
+        !executable || !actions.is_empty(),
         "package",
-        "Container apps require at least one action",
+        "Executable apps require at least one action",
     )?;
     for (name, action) in actions {
         ensure(schema::name(name), "package", "Invalid action name")?;
-        if container {
+        if executable {
             keys(action, &["description", "input", "output"])?;
             ensure(
                 action["description"]
@@ -360,7 +377,7 @@ pub fn validate(p: &Value) -> Result<()> {
                 ensure(
                     action[field]["type"] == "object",
                     "package",
-                    "Container inputs and outputs must be objects",
+                    "Executable action inputs and outputs must be objects",
                 )?;
             }
             continue;
@@ -486,6 +503,7 @@ pub fn validate(p: &Value) -> Result<()> {
     Ok(())
 }
 pub fn read(path: &Path) -> Result<Value> {
+    let directory = path.is_dir().then(|| path.to_owned());
     let path = if path.is_dir() {
         path.join("app.json")
     } else {
@@ -496,7 +514,12 @@ pub fn read(path: &Path) -> Result<Value> {
         "package",
         "Package exceeds 1 MiB",
     )?;
-    let value = serde_json::from_slice(&std::fs::read(path)?)?;
+    let mut value = serde_json::from_slice(&std::fs::read(path)?)?;
+    if crate::script::enabled(&value) {
+        if let Some(directory) = directory {
+            crate::script::bundle(&directory, &mut value)?;
+        }
+    }
     validate(&value)?;
     Ok(value)
 }

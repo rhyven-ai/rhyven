@@ -76,7 +76,7 @@ pub fn validate(p: &Value) -> Result<()> {
 }
 pub fn migration<'a>(old: &Value, new: &'a Value) -> Result<Option<&'a Value>> {
     ensure(
-        crate::container::enabled(old) == crate::container::enabled(new)
+        crate::execution::driver(old) == crate::execution::driver(new)
             && crate::services::enabled(old) == crate::services::enabled(new)
             && old["hosting"] == new["hosting"],
         "migration_required",
@@ -265,6 +265,9 @@ pub fn install(r: &Runtime, p: &Value, accepted: bool) -> Result<Value> {
     )?;
     let old = collections::load(&r.root, &serde_json::from_str(&old_raw)?)?;
     let migration = migration(&old, p)?;
+    if crate::script::enabled(p) {
+        crate::script::prepare(&r.root, p)?;
+    }
     let state = collections::state_dir(&r.root)?;
     let backups = state.join("recovery");
     std::fs::create_dir_all(&backups)?;

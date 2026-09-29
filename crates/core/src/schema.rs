@@ -73,7 +73,11 @@ pub fn check(s: &Value, depth: usize) -> Result<()> {
             )?;
             let mut branch = s.clone();
             branch["type"] = typ.clone();
+            branch.as_object_mut().unwrap().remove("default");
             check(&branch, depth + 1)?;
+        }
+        if let Some(value) = s.get("default") {
+            validate(value.clone(), s)?;
         }
         return Ok(());
     }

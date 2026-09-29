@@ -33,6 +33,11 @@ fn nullable_values_and_schema_bounds_are_checked() {
     assert!(schema::validate(json!("yes"), &schema).is_ok());
     assert!(schema::validate(json!("long"), &schema).is_err());
     assert!(schema::validate(json!(3), &schema).is_err());
+    let mut with_default = schema.clone();
+    with_default["default"] = json!(null);
+    schema::check(&with_default, 0).unwrap();
+    with_default["default"] = json!(9);
+    assert!(schema::check(&with_default, 0).is_err());
     for invalid in [
         json!({"anyOf":[]}),
         json!({"anyOf":[{"type":"string"}],"enum":["x"]}),

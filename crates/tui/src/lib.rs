@@ -887,11 +887,14 @@ fn render_details(frame: &mut Frame, model: &Model, area: Rect) {
             if operation == Operation::Remove {
                 (" Review removal — y accept / n cancel ", format!("Remove {} v{}?\n\nThe app will disappear from agent discovery. Its records and compatibility contract are retained for reinstallation.\n\nPress y to remove, n to cancel.", p["name"], p["version"]))
             } else {
-                let effect = if operation == Operation::Update {
+                let mut effect = if operation == Operation::Update {
                     format!("{UPDATE_HELP}\n\n{}", model.permission_changes(&p))
                 } else {
                     "Install this app into the selected collection so connected agents can discover and use it.".into()
                 };
+                if agent_market_core::script::enabled(&p) {
+                    effect.push_str("\n\nHOST EXECUTION: unsandboxed code with your OS user’s filesystem, network and process access. A dependency environment is not a sandbox.");
+                }
                 (if operation == Operation::Update { " Review app update — y accept / n cancel " } else { " Review installation — y accept / n cancel " },
                  format!("{} @ {}\n\n{}\n\n{effect}\n\nRequested permissions: {}\n\nHosting disclosures:\n{}\n\nCertification: Unverified.\n\nSHA-256: {}\n\nPress y to accept these permissions and proceed, n to cancel.", p["name"], p["version"], p["description"], p["permissions"], serde_json::to_string_pretty(&p["hosting"]).unwrap(), agent_market_core::store::hash(&p)))
             }

@@ -120,8 +120,8 @@ impl Runtime {
         )?;
         catalog::validate(p)?;
         ensure(accepted, "permission_review_required", format!("Review package, hosting disclosures and permissions; explicitly accept to install: {}", p["permissions"]))?;
-        let _instance_lock = if crate::container::enabled(p) {
-            Some(crate::container::lock(
+        let _instance_lock = if crate::execution::enabled(p) {
+            Some(crate::execution::lock(
                 &self.root,
                 p["name"].as_str().unwrap(),
             )?)
@@ -139,7 +139,7 @@ impl Runtime {
         {
             let old = collections::load(&self.root, &serde_json::from_str(&old)?)?;
             if old == *p {
-                crate::container::prepare(p)?;
+                crate::execution::prepare(&self.root, p)?;
                 tx.execute("UPDATE apps SET active=1 WHERE name=?1", [name])?;
                 tx.commit()?;
                 return Ok(summary(p));
@@ -165,7 +165,7 @@ impl Runtime {
         } else {
             ensure(!update, "not_installed", "Install app first")?;
         }
-        crate::container::prepare(p)?;
+        crate::execution::prepare(&self.root, p)?;
         let reference = collections::save(&self.root, p)?;
         tx.execute("INSERT INTO apps(name,package,digest) VALUES(?1,?2,?3) ON CONFLICT(name) DO UPDATE SET package=excluded.package,digest=excluded.digest,active=1", params![name,reference.to_string(),store::hash(p)])?;
         tx.execute("INSERT INTO events(app,event) VALUES(?1,?2)", params![name,json!({"operation":if update {"upgrade"} else {"install"},"actor":self.actor,"time":now(),"package_sha256":store::hash(p),"version":p["version"],"granted":p["permissions"]}).to_string()])?;
@@ -182,9 +182,9 @@ impl Runtime {
         crate::services::disable(self, name)?;
         let _instance_lock = if self
             .describe(name)
-            .is_ok_and(|p| crate::container::enabled(&p))
+            .is_ok_and(|p| crate::execution::enabled(&p))
         {
-            Some(crate::container::lock(&self.root, name)?)
+            Some(crate::execution::lock(&self.root, name)?)
         } else {
             None
         };
@@ -292,13 +292,13 @@ impl Runtime {
             "validation",
             "Rich queries currently require local hosting",
         )?;
-        if operation == "execute" && crate::container::enabled(&p) {
+        if operation == "execute" && crate::execution::enabled(&p) {
             drop(tx);
             if crate::services::enabled(&p) {
                 drop(_maintenance);
                 return crate::services::call(self, &p, &args);
             }
-            return crate::container::call(&self.root, &p, &self.actor, &args);
+            return crate::execution::call(&self.root, &p, &self.actor, &args);
         }
         let mut actual_op = operation.to_owned();
         let mut actual = args.clone();
@@ -699,7 +699,7 @@ fn substitute(template: &Value, input: &Value) -> Result<Value> {
 }
 fn compatible(old: &Value, new: &Value) -> Result<()> {
     ensure(
-        crate::container::enabled(old) == crate::container::enabled(new),
+        crate::execution::driver(old) == crate::execution::driver(new),
         "migration_required",
         "Changing execution driver requires a separate installation and explicit state migration",
     )?;

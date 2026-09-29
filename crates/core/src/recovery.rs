@@ -158,6 +158,10 @@ fn restore_inner(
                 ensure(accept_permissions, "permission_review_required", "Container restore requires --accept-permissions after reviewing the backup's packages")?;
                 crate::container::prepare(&p)?;
             }
+            if crate::script::enabled(&p) {
+                ensure(accept_permissions, "permission_review_required", "Script restore requires --accept-permissions; host.execute grants unsandboxed host access")?;
+                crate::script::prepare_home(&home, &p)?;
+            }
             if crate::services::enabled(&p) {
                 // Never replay background work from a restored collection, even
                 // when the package normally starts on its first action call.

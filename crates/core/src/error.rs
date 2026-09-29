@@ -65,11 +65,17 @@ fn kind(code: &str) -> &'static str {
         | "approval_required"
         | "approval_expired"
         | "approval_stale" => "PERMISSION_DENIED",
-        "container_timeout" | "service_timeout" => "TIMEOUT",
-        "container_unavailable" | "service_unavailable" | "network" | "io" | "database" => {
-            "UNAVAILABLE"
-        }
+        "container_timeout" | "service_timeout" | "script_timeout" => "TIMEOUT",
+        "container_unavailable"
+        | "script_unavailable"
+        | "service_unavailable"
+        | "network"
+        | "io"
+        | "database" => "UNAVAILABLE",
         "app_error"
+        | "script_failed"
+        | "script_protocol"
+        | "script_incomplete"
         | "container_failed"
         | "container_protocol"
         | "container_incomplete"

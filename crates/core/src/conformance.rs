@@ -5,8 +5,16 @@ pub fn run(package: &Value) -> Result<Value> {
     run_with_execution(package, false)
 }
 pub fn run_with_execution(package: &Value, allow_container: bool) -> Result<Value> {
+    run_with_permissions(package, allow_container, false)
+}
+pub fn run_with_permissions(
+    package: &Value,
+    allow_container: bool,
+    allow_host: bool,
+) -> Result<Value> {
     catalog::validate(package)?;
     ensure(!crate::container::enabled(package) || allow_container, "permission_review_required", "Container tests execute publisher code. Review the package and use app test --allow-container")?;
+    ensure(!crate::script::enabled(package) || allow_host, "permission_review_required", "Script tests run unsandboxed publisher code. Review the package and use app test --allow-host")?;
     ensure(
         package["hosting"]["mode"] == "local",
         "conformance",

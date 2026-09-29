@@ -130,8 +130,18 @@ pub fn validate(index: &Index, base: Option<&Index>) -> Result<()> {
         )?;
         let contract =
             json!({"execution":e.execution.clone().unwrap_or(json!({"driver":"declarative"}))});
-        crate::container::validate_execution(&contract)?;
+        crate::execution::validate(&contract)?;
         let container = crate::container::enabled(&contract);
+        ensure(
+            crate::script::enabled(&contract) == e.permissions.iter().any(|s| s == "host.execute"),
+            "registry",
+            "Script execution must disclose host.execute",
+        )?;
+        ensure(
+            !crate::script::enabled(&contract) || e.hosting == "local",
+            "registry",
+            "Script apps require local hosting",
+        )?;
         ensure(
             crate::services::enabled(&contract) == e.permissions.iter().any(|s| s == "service.run"),
             "registry",
@@ -376,7 +386,7 @@ pub fn check(path: &Path, base: Option<&Path>, anonymous: bool) -> Result<Value>
     let client = Github::new(anonymous)?;
     for e in &index.apps {
         let p = client.package(e)?;
-        if e.hosting == "local" && !crate::container::enabled(&p) {
+        if e.hosting == "local" && !crate::execution::enabled(&p) {
             conformance::run(&p)?;
         }
     }

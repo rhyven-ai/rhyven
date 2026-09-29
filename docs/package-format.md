@@ -9,6 +9,11 @@ declarative driver unless stated otherwise.
 
 Required top-level fields: `format: 2`, `name: "publisher/app"`, numeric `version: "major.minor.patch"`, `publisher`, `description`, `hosting`, `permissions`, `objects`, `actions`, `guide`, `tests`. Optional `source` is a repository reference; optional `execution` selects the driver. Unknown fields are rejected. Publisher and source are metadata, not verified identity.
 
+Script packages on the experimental source branch additionally embed a `files`
+map and select `execution.driver: script`. See [script deployment](deploy-script.md).
+Their action schemas follow the executable contract; older rc.8 validators reject
+this extension.
+
 ## Objects and relationships
 
 Each named object has `schema`, optional `immutable`, `relationships`, `protected_fields`, `transitions`, `search_fields`, and `supersession_field`. Names begin with a lowercase letter, contain lowercase letters/digits/underscores/hyphens, and are at most 64 characters. There may be 1–32 objects. Example:
@@ -31,7 +36,7 @@ Each named object has `schema`, optional `immutable`, `relationships`, `protecte
 }
 ```
 
-Supported schema types: object, array, string, integer, number, boolean. Supported keywords: properties, required, additionalProperties=false, items, enum, default, minLength, maxLength, minimum, maximum, maxItems, description, format=date. `$ref`, unions, regex patterns and other JSON Schema features are not supported. Nesting is capped at eight levels, packages and requests at 1 MiB, arrays at 1,000 by default and strings at 100,000 characters by default.
+Supported schema types: object, array, string, integer, number, boolean, null. Supported keywords: properties, required, additionalProperties=false, items, enum, default, minLength, maxLength, minimum, maximum, maxItems, description, format=date. `anyOf` accepts up to 16 schema alternatives; `type` can list alternatives, such as `["string", "null"]`. Alternatives cannot bypass unknown-field checks. `$ref`, regex patterns and other JSON Schema features are not supported. Nesting is capped at eight levels, packages and requests at 1 MiB, arrays at 1,000 by default and strings at 100,000 characters by default.
 
 Defaults are materialized on creation. Patches only replace explicitly supplied top-level fields; nested objects are whole-field replacements, not JSON Merge Patch. Unknown fields and wrong types fail. Protected fields need defaults and cannot change via ordinary create/update. Immutable objects reject every update. Transitions restrict changes from each previous state; missing outgoing edges allow no state change.
 

@@ -15,6 +15,8 @@ apps and scope; this rule grants no additional authorization.
   available apps with `object_listing_query` and inspect `object_listing_get`.
   Show description, version, publisher/source, permissions, hosting, trust and
   GitHub stars. Label unavailable/stale stars accurately; stars are not trust.
+- Public marketplace submissions currently require public source and an
+  open-source license. This does not certify safety or apply to private local apps.
 - Use metadata-only `action_refresh` for configured registry updates. Do not
   use eager downloads or `registry-sync` to bypass installation consent.
 - Prepare install/update/remove with `action_prepare_install`,
@@ -36,6 +38,10 @@ apps and scope; this rule grants no additional authorization.
   `rhyven --agent` returns connection instructions; interactive `rhyven` opens
   the TUI. A shared REST server selects the collection;
   `connect --server URL` supplies the MCP bridge. Keep credentials out of prompts.
+- Native scripts need rc.9+, compatible Python/Node and declared dependencies.
+  Explain that `host.execute` runs as the OS user without sandboxing. Environments
+  isolate dependency versions only. Missing imports are errors, not permission
+  to install packages or rewrite locks. Containers still require Docker.
 - Use `action_doctor` or `rhyven doctor` for capability failures. Host repair
   requires user authorization; preserve runtime restrictions. For services,
   check readiness rather than assuming an installed app is running.

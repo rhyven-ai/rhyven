@@ -92,6 +92,7 @@
   "crates/core/tests/official_apps.rs": "crates/core/tests/official_apps.rs",
   "crates/core/tests/platform.rs": "crates/core/tests/platform.rs",
   "crates/core/tests/recovery.rs": "crates/core/tests/recovery.rs",
+  "crates/core/tests/schema_alternatives.rs": "crates/core/tests/schema_alternatives.rs",
   "crates/core/tests/script_contract.rs": "crates/core/tests/script_contract.rs",
   "crates/mcp/Cargo.toml": "crates/mcp/Cargo.toml",
   "crates/mcp/src/lib.rs": "crates/mcp/src/lib.rs",
@@ -204,6 +205,7 @@
   "scripts/stage-downloads.py": "scripts/stage-downloads.py",
   "skills/build-rhyven-container-app/SKILL.md": "skills/build-rhyven-container-app/SKILL.md",
   "skills/build-rhyven-declarative-app/SKILL.md": "skills/build-rhyven-declarative-app/SKILL.md",
+  "skills/build-rhyven-script-app/SKILL.md": "skills/build-rhyven-script-app/SKILL.md",
   "skills/build-rhyven-service-app/SKILL.md": "skills/build-rhyven-service-app/SKILL.md",
   "skills/publish-rhyven-app/SKILL.md": "skills/publish-rhyven-app/SKILL.md",
   "skills/use-rhyven/RULE.md": "skills/use-rhyven/RULE.md",
@@ -687,6 +689,5 @@
   "third-party-notices/zerotrie-0.2.5/LICENSE": "third-party-notices/zerotrie-0.2.5/LICENSE",
   "third-party-notices/zerovec-0.11.8/LICENSE": "third-party-notices/zerovec-0.11.8/LICENSE",
   "third-party-notices/zerovec-derive-0.11.6/LICENSE": "third-party-notices/zerovec-derive-0.11.6/LICENSE",
-  "third-party-notices/zmij-1.0.23/LICENSE-MIT": "third-party-notices/zmij-1.0.23/LICENSE-MIT",
-  "crates/core/tests/schema_alternatives.rs": "crates/core/tests/schema_alternatives.rs"
+  "third-party-notices/zmij-1.0.23/LICENSE-MIT": "third-party-notices/zmij-1.0.23/LICENSE-MIT"
 }

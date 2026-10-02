@@ -5,11 +5,29 @@ description: Build a persistent Rhyven container service with a Dockerfile, supe
 
 # Build a persistent Rhyven service
 
-Target: Rhyven 0.4.0-rc.7, app format 2, protocol `rhyven.service/1`.
+Target: Rhyven 0.4.0-rc.9, app format 2, protocol `rhyven.service/1`.
 Use a service when work must continue after an action returns or an agent
 disconnects. Rhyven supervises one instance per app and collection. The image
 contains the program and its dependencies; no host Python or venv is needed.
 An ordinary web server image needs a Rhyven protocol adapter before it is usable.
+
+## Marketplace source requirement
+
+For now, apps submitted to the public Rhyven marketplace must be open source.
+Provide a publicly accessible source repository with an OSI-approved license in
+LICENSE. Publish the source corresponding to the submitted release, including
+app logic, manifests and container build files when applicable; a public binary
+or image alone is insufficient. Community apps do not have to use Apache-2.0.
+This is a marketplace submission policy, not a restriction on private local apps.
+Do not publish a private repository or relicense code without user authorization.
+
+## Choose this backend
+
+Use a service for work that must continue between calls, long-lived connections
+or resident workers. Persistence of data alone does not require a service:
+declarative apps, native scripts and on-demand containers all retain app state.
+Native scripts run once per action and cannot replace the supervised service
+backend. Neither service mode nor Docker makes business logic deterministic.
 
 ## Scaffold and inspect
 

@@ -14,6 +14,16 @@ The image contains the language runtime and dependencies. Recipients need a
 compatible local Docker Engine, not Python or a host virtual environment.
 Advertise tested platforms only: the current Rhyven preview supports Linux.
 
+## Marketplace source requirement
+
+For now, apps submitted to the public Rhyven marketplace must be open source.
+Provide a publicly accessible source repository with an OSI-approved license in
+LICENSE. Publish the source corresponding to the submitted release, including
+app logic, manifests and container build files when applicable; a public binary
+or image alone is insufficient. Community apps do not have to use Apache-2.0.
+This is a marketplace submission policy, not a restriction on private local apps.
+Do not publish a private repository or relicense code without user authorization.
+
 ## Choose this backend
 
 Use a container for system packages, compiled dependencies, another language,

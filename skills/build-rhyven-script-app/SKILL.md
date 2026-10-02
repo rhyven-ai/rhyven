@@ -9,6 +9,16 @@ Target: Rhyven 0.4.0-rc.9+, app format 2, protocol `rhyven.action/1`.
 Linux is the tested platform. Native Windows execution is unsupported.
 Use the installed runtime's `--help` and generated scaffold as the contract.
 
+## Marketplace source requirement
+
+For now, apps submitted to the public Rhyven marketplace must be open source.
+Provide a publicly accessible source repository with an OSI-approved license in
+LICENSE. Publish the source corresponding to the submitted release, including
+app logic, manifests and container build files when applicable; a public binary
+or image alone is insufficient. Community apps do not have to use Apache-2.0.
+This is a marketplace submission policy, not a restriction on private local apps.
+Do not publish a private repository or relicense code without user authorization.
+
 ## Choose the execution model
 
 Use declarative operations for records, expressions and rules they already cover.

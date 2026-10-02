@@ -11,6 +11,16 @@ disconnects. Rhyven supervises one instance per app and collection. The image
 contains the program and its dependencies; no host Python or venv is needed.
 An ordinary web server image needs a Rhyven protocol adapter before it is usable.
 
+## Marketplace source requirement
+
+For now, apps submitted to the public Rhyven marketplace must be open source.
+Provide a publicly accessible source repository with an OSI-approved license in
+LICENSE. Publish the source corresponding to the submitted release, including
+app logic, manifests and container build files when applicable; a public binary
+or image alone is insufficient. Community apps do not have to use Apache-2.0.
+This is a marketplace submission policy, not a restriction on private local apps.
+Do not publish a private repository or relicense code without user authorization.
+
 ## Choose this backend
 
 Use a service for work that must continue between calls, long-lived connections

@@ -149,6 +149,10 @@ timeout or interrupted executable action, inspect state before retrying: externa
 side effects may have completed even if no success response arrived. Do not
 claim that recording CI state executed a build.
 
+Marketplace submissions currently require public source and an open-source
+license. Inspect the linked source/license when reviewing a listing; source
+availability is not certification or a sandbox. Private local apps are separate.
+
 ## Diagnose and report
 
 Use marketplace `action_doctor` or `rhyven doctor` for host capability reports.

@@ -15,6 +15,8 @@ apps and scope; this rule grants no additional authorization.
   available apps with `object_listing_query` and inspect `object_listing_get`.
   Show description, version, publisher/source, permissions, hosting, trust and
   GitHub stars. Label unavailable/stale stars accurately; stars are not trust.
+- Public marketplace submissions currently require public source and an
+  open-source license. This does not certify safety or apply to private local apps.
 - Use metadata-only `action_refresh` for configured registry updates. Do not
   use eager downloads or `registry-sync` to bypass installation consent.
 - Prepare install/update/remove with `action_prepare_install`,

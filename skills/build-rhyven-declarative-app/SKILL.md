@@ -9,6 +9,16 @@ Target: Rhyven 0.4.0-rc.9, app format 2. The distributable app is a JSON manifes
 Rhyven interprets its operations and stores records in collection-scoped SQLite.
 Authors do not compile a binary, create a Dockerfile, or write a custom MCP server.
 
+## Marketplace source requirement
+
+For now, apps submitted to the public Rhyven marketplace must be open source.
+Provide a publicly accessible source repository with an OSI-approved license in
+LICENSE. Publish the source corresponding to the submitted release, including
+app logic, manifests and container build files when applicable; a public binary
+or image alone is insufficient. Community apps do not have to use Apache-2.0.
+This is a marketplace submission policy, not a restriction on private local apps.
+Do not publish a private repository or relicense code without user authorization.
+
 ## Choose the execution model
 
 Use declarative apps for records, relationships, search, controlled state

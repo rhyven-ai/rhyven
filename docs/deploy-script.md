@@ -142,3 +142,10 @@ times out or fails. Deliberately detached processes and hard runtime crashes are
 outside that cleanup guarantee. CPU/memory quotas, filesystem/network sandboxes,
 systemd supervision, background services and scheduled jobs are not implemented
 by this backend. Container isolation remains available for those requirements.
+
+## Marketplace publication
+
+For now, public marketplace apps must provide the release source in a public
+repository with an OSI-approved license. Include the manifest, app logic and
+build files. A downloadable binary alone is insufficient. This submission policy
+does not restrict private local apps; it is not an automated license audit.

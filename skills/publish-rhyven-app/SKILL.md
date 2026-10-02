@@ -5,7 +5,7 @@ description: Prepare, test, package, and submit a Rhyven app to the GitHub-backe
 
 # Publish a Rhyven app
 
-Target: Rhyven 0.4.0-rc.7, app format 2. Use the installed CLI's `--help`
+Target: Rhyven 0.4.0-rc.9, app format 2. Use the installed CLI's `--help`
 to resolve version differences. This workflow needs Rhyven, Git, and authenticated
 GitHub CLI access to the publisher's repository. Container apps also need Docker.
 
@@ -38,6 +38,25 @@ rhyven app package ./my-app --out ./my-app.rhyven.json
 ```
 
 The commands above are for a declarative app. Packaging runs its behavior tests.
+For native Python/JavaScript apps, use rc.9 or newer. Include source and lockfiles
+in the manifest's `files` list; package the directory so Rhyven embeds those files.
+Review `host.execute`: tests run unsandboxed as the OS user. Execute tests only
+within the user's authorized scope, in disposable app state:
+
+```sh
+rhyven app test ./my-app --allow-host
+rhyven app package ./my-app --out ./my-app.rhyven.json
+rhyven app validate ./my-app.rhyven.json
+rhyven app test ./my-app.rhyven.json --allow-host
+```
+
+Native validation/packaging does not run code or install dependencies. Confirm
+compatible Python/Node and venv/pip or npm support. Pin and hash all dependencies;
+pip accepts wheels only and npm install scripts are disabled. Report host test
+results separately from schema validation. No Docker image is uploaded for a
+native app. Do not convert a published container app to script as an in-place
+update; plan a separate installation and explicit state migration.
+
 For containers/services, build and test the image explicitly, then publish that
 image to a registry recipients can access. The image includes executable code;
 the JSON package references it rather than embedding the build directory.
@@ -121,6 +140,6 @@ For a persistent service, start the daemon with the same home before starting
 the app. Follow its service skill for readiness, stop, and restart checks.
 
 Registry validation checks schemas, metadata, byte hashes, and declarative tests;
-it does not execute container code. Report Docker execution tests separately.
+it does not execute publisher code. Report native and Docker execution tests separately.
 Deliver the package, image digest if used, registry entry, release/PR links,
 validation results, and any remaining installation or review blockers.

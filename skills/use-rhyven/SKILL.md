@@ -145,14 +145,21 @@ instead of pretending the workflow was atomic. Another agent can continue by
 reading the persisted records in the same collection.
 
 Reuse a mutation `request_id` only for an identical retry. After an execution
-timeout or interrupted container action, inspect state before retrying: external
+timeout or interrupted executable action, inspect state before retrying: external
 side effects may have completed even if no success response arrived. Do not
 claim that recording CI state executed a build.
 
 ## Diagnose and report
 
 Use marketplace `action_doctor` or `rhyven doctor` for host capability reports.
-Container apps need a compatible Docker host; declarative apps do not. For a
+Declarative apps need no interpreter or Docker. Native scripts require rc.9+,
+Python 3.10+ or Node 20+ and any declared runtime tools. `host.execute` permits
+unsandboxed OS-user execution; dependency environments are not a sandbox.
+Dependencies are prepared after installation approval. Missing imports are not
+auto-installed: inspect declared locks and report the missing dependency to the
+author. Setup failures may require venv/pip or npm support; do not repair the
+host or change locks without authorization. Containers need compatible Docker.
+For a
 persistent service, inspect its service status and readiness; installation alone
 does not prove the service is running. Starting a daemon/service should be part
 of the requested operation, not an unrelated setup change.

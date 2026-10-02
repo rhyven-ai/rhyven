@@ -5,7 +5,7 @@ description: Build a Rhyven on-demand container app with arbitrary Python or oth
 
 # Build an on-demand container app
 
-Target: Rhyven 0.4.0-rc.7, app format 2, protocol `rhyven.container/1`.
+Target: Rhyven 0.4.0-rc.9, app format 2, protocol `rhyven.container/1`.
 Use this mode for custom calculations, parsers, code analysis, and API clients.
 Rhyven starts a container for an action, sends JSON on stdin, validates its
 response, and retains `/data` between calls. Use service mode for background work.
@@ -13,6 +13,15 @@ response, and retains `/data` between calls. Use service mode for background wor
 The image contains the language runtime and dependencies. Recipients need a
 compatible local Docker Engine, not Python or a host virtual environment.
 Advertise tested platforms only: the current Rhyven preview supports Linux.
+
+## Choose this backend
+
+Use a container for system packages, compiled dependencies, another language,
+a pinned OS environment or container-enforced access/resource restrictions.
+For Python/JavaScript with supported locked dependencies and approved host
+access, native scripts avoid Docker. Declarative operations need neither.
+An on-demand container exits after each action but can retain data in `/data`.
+Choose a persistent service only when the process must remain running.
 
 ## Scaffold the complete contract
 

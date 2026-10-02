@@ -36,6 +36,10 @@ apps and scope; this rule grants no additional authorization.
   `rhyven --agent` returns connection instructions; interactive `rhyven` opens
   the TUI. A shared REST server selects the collection;
   `connect --server URL` supplies the MCP bridge. Keep credentials out of prompts.
+- Native scripts need rc.9+, compatible Python/Node and declared dependencies.
+  Explain that `host.execute` runs as the OS user without sandboxing. Environments
+  isolate dependency versions only. Missing imports are errors, not permission
+  to install packages or rewrite locks. Containers still require Docker.
 - Use `action_doctor` or `rhyven doctor` for capability failures. Host repair
   requires user authorization; preserve runtime restrictions. For services,
   check readiness rather than assuming an installed app is running.

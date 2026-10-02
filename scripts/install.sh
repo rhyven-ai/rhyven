@@ -118,7 +118,22 @@ set -- "$bin_dir/rhyven" setup
 if [ "$containers" = 1 ]; then set -- "$@" --containers; fi
 if [ "$yes" = 1 ]; then set -- "$@" --yes; fi
 "$@"
-echo "Rhyven installed at $bin_dir/rhyven. Open a new terminal for PATH changes."
-echo 'Open the terminal marketplace: rhyven'
-echo 'If setup reports pending, follow its instructions and run rhyven setup --containers to resume.'
-echo 'Connect an agent: rhyven connect --client codex (or claude, cursor, vscode). Use rhyven --agent for generic instructions.'
+printf '\nRhyven installed at %s/rhyven\n' "$bin_dir"
+printf '\nOpen the terminal marketplace (TUI):\n  %s/rhyven\n' "'$quoted'"
+printf '\nOr connect an agent (choose your client):\n'
+printf '  %s/rhyven connect --client codex\n' "'$quoted'"
+printf '  %s/rhyven connect --client claude\n' "'$quoted'"
+printf '  %s/rhyven connect --client cursor\n' "'$quoted'"
+printf '  %s/rhyven connect --client vscode\n' "'$quoted'"
+printf '\nFor other MCP clients, print connection instructions:\n  %s/rhyven --agent\n' "'$quoted'"
+printf '\nAfter connecting, reload your agent client and ask:\n'
+printf '  "Use Rhyven to search the marketplace. Show me an app and its permissions before installing it."\n'
+printf '\nVerify the connection:\n  %s/rhyven connect --check\n' "'$quoted'"
+if [ "$modify_path" = 1 ]; then
+  printf '\nOpen a new terminal to use the shorter command: rhyven\n'
+else
+  printf '\nPATH was not changed. Use the full commands above or add the install directory to PATH.\n'
+fi
+if [ "$containers" = 1 ]; then
+  printf '\nIf Docker setup reports pending, follow its instructions and resume with:\n  %s/rhyven setup --containers\n' "'$quoted'"
+fi

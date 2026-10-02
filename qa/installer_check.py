@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import platform
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -57,7 +58,15 @@ else: sys.exit(2)
         p=subprocess.run(install+list(extra),env=env,text=True,capture_output=True,timeout=45)
         assert (p.returncode==0)==success,(p.stdout,p.stderr)
         return p
-    bootstrap()
+    first = bootstrap()
+    # Commands must remain copyable even with spaces and quotes in the install path.
+    next_steps = [shlex.split(line.strip()) for line in first.stdout.splitlines() if line.startswith("  '")]
+    assert next_steps and all(command[0] == str(root/"bin space ' quote/rhyven") for command in next_steps)
+    agent_command = next(command for command in next_steps if command[1:] == ["--agent"])
+    instructions = subprocess.run(agent_command, env=env, capture_output=True, text=True, timeout=30)
+    assert instructions.returncode == 0, instructions.stderr
+    assert isinstance(json.loads(instructions.stdout), dict)
+    assert "PATH was not changed" in first.stdout
     cli("collection","use","my-project")
     marker=home/"collections/my-project/keep.txt"; marker.write_text("retain me")
     bootstrap()

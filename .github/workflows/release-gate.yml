@@ -25,6 +25,7 @@ jobs:
           python3 qa/universal_market_check.py target/release/rhyven
           python3 qa/shared_runtime_check.py target/release/rhyven
           python3 qa/collections_check.py target/release/rhyven
+          python3 qa/knowledge_merge_check.py target/release/rhyven
       - name: Distribution and source exports
         run: |
           python3 -m unittest discover -s qa -p 'test_*.py' -v

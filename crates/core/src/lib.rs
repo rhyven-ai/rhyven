@@ -9,6 +9,7 @@ pub mod expressions;
 pub mod http;
 pub mod maintenance;
 pub mod marketplace;
+pub mod merge;
 pub mod query;
 pub mod recovery;
 mod recovery_archive;

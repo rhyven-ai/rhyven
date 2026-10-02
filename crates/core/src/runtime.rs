@@ -240,6 +240,9 @@ impl Runtime {
                 catalog::keys(&args, &["app"])?;
                 return self.describe(string(&args, "app")?);
             }
+            "export_records" | "merge_preview" | "merge_apply" => {
+                return crate::merge::call(self, operation, args);
+            }
             "query" => catalog::keys(
                 &args,
                 &[
@@ -247,6 +250,8 @@ impl Runtime {
                     "object",
                     "filters",
                     "where",
+                    "any_of",
+                    "select",
                     "order_by",
                     "limit",
                     "offset",
@@ -273,9 +278,17 @@ impl Runtime {
         }
         if args["app"] == crate::marketplace::APP {
             ensure(
-                ["where", "order_by", "search", "current_only", "metadata"]
-                    .iter()
-                    .all(|k| args.get(k).is_none()),
+                [
+                    "where",
+                    "any_of",
+                    "select",
+                    "order_by",
+                    "search",
+                    "current_only",
+                    "metadata",
+                ]
+                .iter()
+                .all(|k| args.get(k).is_none()),
                 "validation",
                 "Marketplace queries use listing filters",
             )?;
@@ -286,9 +299,17 @@ impl Runtime {
         let p = package(&self.root, &tx, string(&args, "app")?)?;
         ensure(
             p["hosting"]["mode"] == "local"
-                || ["where", "order_by", "search", "current_only", "metadata"]
-                    .iter()
-                    .all(|k| args.get(k).is_none()),
+                || [
+                    "where",
+                    "any_of",
+                    "select",
+                    "order_by",
+                    "search",
+                    "current_only",
+                    "metadata",
+                ]
+                .iter()
+                .all(|k| args.get(k).is_none()),
             "validation",
             "Rich queries currently require local hosting",
         )?;
@@ -569,7 +590,7 @@ impl Runtime {
         Ok(result)
     }
 }
-fn now() -> u64 {
+pub(crate) fn now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -583,7 +604,7 @@ pub fn string<'a>(v: &'a Value, key: &str) -> Result<&'a str> {
 fn summary(p: &Value) -> Value {
     json!({"name":p["name"],"display_name":catalog::display_name(p),"version":p["version"],"description":p["description"],"hosting":p["hosting"],"execution":p.get("execution").cloned().unwrap_or(json!({"driver":"declarative"})),"permissions":p["permissions"],"trust":"Unverified","publisher":p["publisher"],"publisher_label":catalog::publisher_label(p),"sha256":store::hash(p)})
 }
-fn package(root: &Path, db: &Connection, name: &str) -> Result<Value> {
+pub(crate) fn package(root: &Path, db: &Connection, name: &str) -> Result<Value> {
     let (raw, digest): (String, String) = db
         .query_row(
             "SELECT package,digest FROM apps WHERE name=?1 AND active=1",
@@ -635,7 +656,7 @@ fn validate_filters(args: &Value, object: &Value) -> Result<()> {
     }
     Ok(())
 }
-fn query(db: &Connection, args: &Value, object: &Value) -> Result<Value> {
+pub(crate) fn query(db: &Connection, args: &Value, object: &Value) -> Result<Value> {
     validate_filters(args, object)?;
     let mut stmt =
         db.prepare("SELECT record FROM records WHERE app=?1 AND object=?2 ORDER BY id")?;
@@ -658,6 +679,7 @@ fn query(db: &Connection, args: &Value, object: &Value) -> Result<Value> {
             .flatten()
             .all(|(key, value)| v["data"][key] == *value)
             && crate::query::matches(&v["data"], &args["where"])?
+            && crate::query::any_matches(&v["data"], &args["any_of"])?
             && crate::query::matches(&v, &args["metadata"])?
             && crate::query::search_matches(&v["data"], &args["search"], object)
         {
@@ -671,6 +693,14 @@ fn query(db: &Connection, args: &Value, object: &Value) -> Result<Value> {
     let total = matches.len();
     let offset = args["offset"].as_u64().unwrap_or(0) as usize;
     let limit = args["limit"].as_u64().unwrap_or(100) as usize;
+    if let Some(fields) = args["select"].as_array() {
+        for record in &mut matches {
+            record["data"]
+                .as_object_mut()
+                .unwrap()
+                .retain(|key, _| fields.contains(&json!(key)));
+        }
+    }
     Ok(
         json!({"items":matches.into_iter().skip(offset).take(limit).collect::<Vec<_>>(),"total":total,"offset":offset,"limit":limit}),
     )

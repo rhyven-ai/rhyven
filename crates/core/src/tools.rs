@@ -35,7 +35,7 @@ fn string() -> Value {
 fn free() -> Value {
     json!({"type":"object","additionalProperties":true})
 }
-fn tool(
+pub(crate) fn tool(
     name: &str,
     description: &str,
     properties: Value,
@@ -83,6 +83,9 @@ fn contract_tools(p: &Value) -> Vec<Tool> {
         if p["platform"] != true || name == "listing" {
             tools.push(tool(&format!("object_{name}_query"),"Query equality filters; use limit/offset for pages",json!({"filters":free(),"limit":{"type":"integer","minimum":0,"maximum":1000},"offset":{"type":"integer","minimum":0}}),&[],"query",fixed.clone()));
         }
+        if crate::merge::supported(p, name, object) {
+            tools.extend(crate::merge::tools(app, name, object));
+        }
         if object["immutable"] != true {
             let mut partial = object["schema"].clone();
             partial["required"] = json!([]);
@@ -105,7 +108,7 @@ fn contract_tools(p: &Value) -> Vec<Tool> {
                             .unwrap()
                             .clone(),
                     );
-                tool.definition["description"] = json!("Query equality filters, typed where comparisons and metadata timestamps (AND). Optional search/current_only are available when declared by the object. order_by supports data fields and $created_at/$updated_at before limit/offset pagination. Missing fields never match where and sort last.");
+                tool.definition["description"] = json!("Query equality filters, typed where comparisons, any_of OR branches and metadata timestamps. select limits returned data fields. Optional search/current_only are available when declared by the object. order_by supports data fields and $created_at/$updated_at before limit/offset pagination. Missing fields match exists:false and sort last.");
             }
         }
     }

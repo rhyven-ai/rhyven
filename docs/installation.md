@@ -71,6 +71,23 @@ The website serves signed `0.5.0` binaries for Linux x86-64/ARM64. The installer
 binary before replacing an existing installation. See [release status](release-status.md)
 for platform support and release boundaries.
 
+### Command not found after installation
+
+The default executable is `~/.local/bin/rhyven`. Start it by that full path
+immediately, or open a new terminal for the installed PATH configuration.
+For the current Bash/Zsh terminal, run:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+rhyven
+```
+
+A `curl | bash` installer cannot change its parent terminal's environment.
+It prints the activation command for the selected install directory. Bash
+interactive and existing login profiles are configured; custom Zsh `ZDOTDIR`
+is respected when exported. If the executable itself is missing, rerun the
+installer. A binary built inside a source checkout is not a user installation.
+
 ### Build from source
 
 With Rust 1.90 or newer and a C compiler installed:

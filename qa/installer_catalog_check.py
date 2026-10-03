@@ -54,4 +54,35 @@ else: sys.exit(2)
         if case == 'failure':
             assert 'bundled apps remain available' in result.stderr
             assert 'update Rhyven' in result.stderr
-print('PASS: initial catalog sync, offline fallback, failure recovery and no duplicate sync with newer setup')
+    for profile_name in ('.profile', '.bash_profile', '.bash_login'):
+        test_home = root / ('home-' + profile_name.removeprefix('.'))
+        test_home.mkdir()
+        profile = test_home / profile_name
+        profile.write_text('# Existing user settings\nexport RHYVEN_PROFILE_PRESERVED=yes\n')
+        (test_home / '.bashrc').write_text('# Existing interactive settings\n')
+        bin_dir = test_home / "tools with spaces and 'quote" / 'bin'
+        environment = dict(os.environ, HOME=str(test_home), SHELL='/bin/bash',
+                           RHYVEN_HOME=str(test_home / 'state'), MODERN='1')
+        environment.pop('RHYVEN_SETUP_OFFLINE', None)
+        command = ['bash', str(repo/'scripts/install.sh'), '--from-dir', str(release),
+                   '--public-key', str(public), '--bin-dir', str(bin_dir)]
+        installed = subprocess.run(command, env=environment, text=True, capture_output=True, timeout=20)
+        assert installed.returncode == 0, installed.stderr
+        # Execute the actual startup lines in clean child shells from HOME.
+        for startup in (profile, test_home/'.bashrc'):
+            result = subprocess.run(['bash', '--noprofile', '--norc', '-c',
+                                     '. "$1"; cd "$2"; rhyven --version',
+                                     'profile-test', str(startup), str(test_home)],
+                                    env=environment, capture_output=True, text=True, timeout=10)
+            assert result.returncode == 0, result.stderr
+            assert result.stdout.strip() == 'rhyven 0.4.0-rc.9'
+        before = {p: p.read_bytes() for p in (profile, test_home/'.bashrc')}
+        subprocess.run(command, env=environment, check=True, capture_output=True, timeout=20)
+        assert all(p.read_bytes() == data for p, data in before.items()), 'Reinstall duplicated PATH lines'
+        assert 'RHYVEN_PROFILE_PRESERVED=yes' in profile.read_text()
+        activation = installed.stdout.split('To use rhyven in this terminal now, run:\n', 1)[1].splitlines()[0].strip()
+        result = subprocess.run(['bash', '--noprofile', '--norc', '-c', activation+'\ncd "$1"\nrhyven --version',
+                                 'activation-test', str(test_home)], env=environment,
+                                capture_output=True, text=True, timeout=10)
+        assert result.returncode == 0 and result.stdout.strip() == 'rhyven 0.4.0-rc.9', result.stderr
+print('PASS: catalog sync/fallback; Bash startup and current-terminal activation; quoted paths; repeat installs preserve settings')

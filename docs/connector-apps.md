@@ -69,7 +69,7 @@ after discovering the contract with `rhyven_describe`. No extra agent-side MCP c
 
 ## Package contract
 
-Format 2 gains an optional `connector` declaration. Existing app formats keep their behavior. Older runtimes that do not support this field reject the package; do not publish these packages until the matching runtime and registry validator are released.
+Rhyven 0.5.0 extends format 2 with an optional `connector` declaration. Existing app formats keep their behavior. Older runtimes that do not support this field reject the package; do not publish these packages until the matching runtime and registry validator are released.
 
 ```json
 {
@@ -108,3 +108,10 @@ Input schemas use Rhyven's supported subset. Local schema references are resolve
 ## Reference test and token benchmark
 
 See [connector benchmark](connector-benchmark.md) for the official Everything MCP reference server test, complete input-token methodology and measured results. A small stable tool surface does not guarantee lower total input tokens once discovery and guides are included.
+
+Connector calls release the collection maintenance lock after recording their start.
+Unrelated local reads and writes can continue while the endpoint responds. Each call
+uses the package captured at dispatch; updates/removal do not cancel an in-flight
+external request. Completion reacquires the lock before recording its outcome.
+A backup taken during the request may contain only its start event. Restoring it
+cannot roll back the external service; inspect external state before retrying.

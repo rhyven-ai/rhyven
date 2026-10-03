@@ -357,7 +357,11 @@ impl Runtime {
                 Ok(())
             };
             event("started")?;
+            // The external service owns its state. Keep the captured package contract,
+            // but allow unrelated local work while waiting on the network.
+            drop(_maintenance);
             let result = crate::connector::call(&p, &args);
+            let _completion = crate::maintenance::lock(&self.root)?;
             event(if result.is_ok() { "completed" } else { "failed_or_unknown" }).map_err(|_| Error::new("connector_app", "Connector call finished but audit completion failed; inspect upstream state before retrying"))?;
             return result;
         }

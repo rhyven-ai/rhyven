@@ -143,3 +143,21 @@ fn discovery_search_index_hash_and_batch() {
     p["actions"][&action]["keywords"] = json!([17]);
     assert!(catalog::validate(&p).is_err());
 }
+
+#[test]
+fn discovery_annotations_do_not_approve_execution() {
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = Runtime::new(dir.path(), "test").unwrap();
+    let session = tools::AgentSession::new(runtime, &[]).unwrap();
+    let definitions = session.definitions();
+    for name in ["rhyven_categories", "rhyven_describe"] {
+        let tool = definitions.iter().find(|t| t["name"] == name).unwrap();
+        assert_eq!(tool["annotations"]["readOnlyHint"], true);
+        assert_eq!(tool["annotations"]["destructiveHint"], false);
+    }
+    let call = definitions
+        .iter()
+        .find(|t| t["name"] == "rhyven_call")
+        .unwrap();
+    assert_ne!(call["annotations"]["readOnlyHint"], true);
+}

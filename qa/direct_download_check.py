@@ -107,8 +107,20 @@ else: raise SystemExit(91)
         pipeline = ['bash', '-o', 'pipefail', '-c',
                     'curl -fsSL "$1/install.sh" | bash -s -- --containers --bin-dir "$2" --no-modify-path',
                     'download-test', base, str(bin_dir)]
+        prior = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else None
+        record = None
+        if prior:
+            assert '0.4.0-rc.10' in run([str(prior),'--version']).stdout
+            bin_dir.mkdir(parents=True,exist_ok=True)
+            shutil.copyfile(prior,bin_dir/'rhyven');(bin_dir/'rhyven').chmod(0o755)
+            fixture=ROOT/'crates/core/tests/fixtures/work-management-0.3.0.json'
+            run(['rhyven','install',str(fixture),'--accept-permissions'],env=env)
+            record=json.loads(run(['rhyven','call','create',json.dumps({'app':'official/work-management','object':'task','data':{'title':'Preserve across 0.5 upgrade'}})],env=env).stdout)
         run(pipeline, env=env)
         installed = bin_dir / 'rhyven'
+        if record:
+            recovered=json.loads(run(['rhyven','call','get',json.dumps({'app':'official/work-management','object':'task','id':record['id']})],env=env).stdout)
+            assert recovered==record, (recovered,record)
         assert run(['rhyven', '--version'], env=env).stdout.strip() == f'rhyven {version}'
         assert json.loads((home / 'setup-state.json').read_text())['status'] == 'ready'
         # A non-TTY invocation of the same launch command returns agent connection instructions.

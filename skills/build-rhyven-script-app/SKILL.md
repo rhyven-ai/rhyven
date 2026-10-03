@@ -5,7 +5,7 @@ description: Build and test a native Python or JavaScript Rhyven app without Doc
 
 # Build a native script app
 
-Target: Rhyven 0.4.0-rc.9+, app format 2, protocol `rhyven.action/1`.
+Target: Rhyven 0.5.0, app format 2, protocol `rhyven.action/1`.
 Linux is the tested platform. Native Windows execution is unsupported.
 Use the installed runtime's `--help` and generated scaffold as the contract.
 
@@ -143,3 +143,6 @@ Removal retains app data; backup/restore covers the app data directory and
 rebuilds environments. Container-to-script conversion is not an in-place update:
 use a separate installation and explicit migration. Native migration/health
 hooks are unsupported; declarative SQLite migrations remain available.
+
+In 0.5+, actions may include optional `keywords` (up to 16 strings, each 1–64
+bytes) to improve discovery without changing execution. Use the 0.5 validator.

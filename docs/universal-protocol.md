@@ -122,3 +122,19 @@ not bypass runtime validation. No cross-session cache or new database is require
 Actions may declare up to 16 `keywords`, each a nonempty string of at most 64
 bytes, for example `"keywords":["add","arithmetic"]`. This is optional metadata
 for declarative, executable and connector actions; it does not alter execution.
+
+
+### 0.5 client migration and approval hints
+
+Existing packages and the three tool names remain supported. Clients that read
+`apps[*].hosting`, `trust`, `publisher_label` or `display_name` from
+`rhyven_categories` must use `GET /apps` (or the `list_apps` compatibility
+operation) for those fields. Clients that inspect duplicate schemas under
+`contract.actions` or `contract.objects` must request `full:true`; callable
+schemas remain in `functions`. Collection/workspace identity is unchanged.
+
+Discovery tools declare MCP readOnlyHint, non-destructive, idempotent and
+closed-world hints. These describe discovery only; they are not authorization.
+`rhyven_call` is not declared read-only. Client policy and Rhyven's installation
+consent remain in force. Codex unattended discovery has been tested without
+approval overrides; other clients may apply their own policies.

@@ -5,7 +5,7 @@ description: Build a persistent Rhyven container service with a Dockerfile, supe
 
 # Build a persistent Rhyven service
 
-Target: Rhyven 0.4.0-rc.9, app format 2, protocol `rhyven.service/1`.
+Target: Rhyven 0.5.0, app format 2, protocol `rhyven.service/1`.
 Use a service when work must continue after an action returns or an agent
 disconnects. Rhyven supervises one instance per app and collection. The image
 contains the program and its dependencies; no host Python or venv is needed.
@@ -161,3 +161,6 @@ Agents use the same three tools as other apps. Service lifecycle functions live
 under `rhyven/runtime`; app actions use the installed app ID as their category.
 Deliver implementation, manifest, Dockerfile, tests, package and lifecycle results.
 For distribution, use a pullable immutable image digest and the publishing skill.
+
+In 0.5+, actions may include optional `keywords` (up to 16 strings, each 1–64
+bytes) to improve discovery without changing execution. Use the 0.5 validator.

@@ -25,9 +25,11 @@ else: sys.exit(22)
         assert (p.returncode == 0) == ok,(p.stdout,p.stderr)
         return json.loads(p.stdout) if ok else p
     assert cli('upgrade','--check')['update_available'] is False
-    env['LATEST']='0.4.0-rc.11'
+    version=subprocess.check_output([str(binary),'--version'],text=True).strip().split()[-1]
+    major,minor,patch=map(int,version.split('-')[0].split('.'))
+    env['LATEST']=f'{major}.{minor}.{patch+1}-rc.1'
     assert cli('upgrade','--check')['update_available'] is True
-    env['LATEST']='0.4.0'
+    env['LATEST']=f'{major}.{minor}.{patch+1}'
     assert cli('upgrade','--check')['update_available'] is True
     env['LATEST']='9.0.0'
     cli('upgrade',ok=False)

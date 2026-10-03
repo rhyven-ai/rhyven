@@ -11,7 +11,7 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
-The source version is **0.4.0-rc.10**, an open-source preview. Linux is the
+The source version is **0.5.0**, prepared for release. Linux is the
 supported preview platform. macOS builds are feedback targets; full container
 acceptance on macOS is pending. Native Windows is not supported.
 

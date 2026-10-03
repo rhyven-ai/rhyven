@@ -17,6 +17,9 @@ seen = []
 tool = {"name": "echo", "description": "Echo a message", "inputSchema": {
     "type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]}}
 
+slow_started=threading.Event()
+slow_release=threading.Event()
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_): pass
     def reply(self, status, value=None, **headers):
@@ -62,6 +65,9 @@ class Handler(BaseHTTPRequestHandler):
         elif method == 'tools/call':
             assert data['params']['name'] == 'echo'
             msg = data['params']['arguments']['message']
+            if msg == 'slow':
+                slow_started.set()
+                assert slow_release.wait(10), 'Test failed to release upstream'
             result = {'content':[{'type':'text','text':msg}], 'isError':msg == 'fail'}
         else: self.reply(400); return
         reply = {'jsonrpc':'2.0','id':data['id'],'result':result}
@@ -123,6 +129,24 @@ with tempfile.TemporaryDirectory(prefix='rhyven-connectors-') as d:
         result=client.tool('rhyven_call',{'category':'test/http','function':'action_create_item','args':{'body':{'name':'test'}}})
         assert result=={'status':200,'body':{'created':{'name':'test'}}}
     finally: client.close()
+    # An in-flight external call must not hold the collection maintenance gate.
+    from concurrent.futures import ThreadPoolExecutor
+    run('install',Path(__file__).resolve().parents[1]/'crates/core/tests/fixtures/work-management-0.3.0.json','--accept-permissions')
+    slow=Client(root/'home',env=env)
+    fast=Client(root/'home',env=env)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            pending=pool.submit(slow.tool,'rhyven_call',{'category':'test/mcp','function':'action_echo','args':{'message':'slow'}})
+            try:
+                assert slow_started.wait(5), 'Upstream call did not start'
+                discovery=pool.submit(fast.tool,'rhyven_categories',{})
+                assert discovery.result(timeout=3)['apps']
+                write=pool.submit(fast.tool,'rhyven_call',{'category':'official/work-management','function':'object_task_create','args':{'data':{'title':'Write while upstream waits'}}})
+                assert write.result(timeout=3)['id']
+            finally:slow_release.set()
+            assert pending.result(timeout=5)['content'][0]['text']=='slow'
+    finally:
+        slow.close();fast.close()
     # Real shared REST dispatch uses the same connector path as local MCP.
     import socket,time
     with socket.socket() as sock: sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]

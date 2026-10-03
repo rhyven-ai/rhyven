@@ -43,8 +43,15 @@ pub(crate) fn tool(
     operation: &str,
     fixed: Value,
 ) -> Tool {
+    let mut definition = json!({"name":name,"description":description,"inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false}});
+    if matches!(
+        operation,
+        "rhyven_categories" | "rhyven_describe" | "describe_app"
+    ) {
+        definition["annotations"] = json!({"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false});
+    }
     Tool {
-        definition: json!({"name":name,"description":description,"inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false}}),
+        definition,
         operation: operation.into(),
         fixed,
     }

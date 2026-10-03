@@ -26,7 +26,13 @@ rhyven_call(category, function, args)
 3. Describe the relevant category. Read `functions`, each `inputSchema`, the
    contract's permissions/hosting, and `guidance_markdown`. Call only functions
    supported by this installed version; examples below are not substitutes for
-   discovery. Re-describe after an update or a contract mismatch.
+   discovery. In 0.5+, batch independent lookups with `requests:[{category,search}]`.
+   Reuse known schemas within the same collection/session. Descriptions include
+   `contract_hash`; `if_hash` checks freshness without resending unchanged schemas.
+   Re-describe after an update or a contract mismatch. `index:true` lists names,
+   not argument schemas: fetch a selected schema before using an unfamiliar function.
+   Compact category entries omit hosting/trust details; read the description and
+   installation review for those. Never infer approval from read-only MCP annotations.
 
 Connections pin a home and collection at startup. `global` is a separate
 collection; projects do not inherit its apps or data. Changing the CLI default

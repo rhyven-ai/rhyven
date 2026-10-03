@@ -5,7 +5,7 @@ description: Prepare, test, package, and submit a Rhyven app to the GitHub-backe
 
 # Publish a Rhyven app
 
-Target: Rhyven 0.4.0-rc.9, app format 2. Use the installed CLI's `--help`
+Target: Rhyven 0.5.0, app format 2. Use the installed CLI's `--help`
 to resolve version differences. This workflow needs Rhyven, Git, and authenticated
 GitHub CLI access to the publisher's repository. Container apps also need Docker.
 
@@ -153,3 +153,16 @@ Registry validation checks schemas, metadata, byte hashes, and declarative tests
 it does not execute publisher code. Report native and Docker execution tests separately.
 Deliver the package, image digest if used, registry entry, release/PR links,
 validation results, and any remaining installation or review blockers.
+
+## Connector packages (0.5+)
+
+Use `rhyven app import-mcp` or `rhyven app import-openapi` with an explicit tool/
+operation allowlist; inspect `--help` and docs/connector-apps.md for supported inputs.
+Provide the upstream service separately. Review imported schemas, Markdown guidance,
+endpoint, permissions and credential variable name. Never embed credentials.
+Keep the public package source open source under the current marketplace policy.
+`app test` validates the contract, not remote behavior: test against a disposable
+service before submission. Upstream code/behavior is not pinned by package hashes.
+Do not publish connector packages before the matching 0.5 runtime and registry
+validator are released. Auth is currently configured bearer-token environment
+variables; stdio launching, OAuth login and arbitrary OpenAPI schemas are not provided.

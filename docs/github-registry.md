@@ -4,7 +4,7 @@ Container packages add optional `execution` metadata to each index entry. It mus
 exactly match the manifest, including its distributable image digest and secret
 names. Registry validation checks these disclosures without running container
 tests or pulling images. User installation pulls the image only after consent.
-The public registry uses the matching `0.4.0-rc.9` validator binary. See [release status](release-status.md) before using newer source features.
+The published registry uses the `0.4.0-rc.10` validator. The staged 0.5.0 registry update must ship with the 0.5.0 runtime. See [release status](release-status.md) before using newer source features.
 
 The public registry is `rhyven-ai/registry`. Its `rhyven` publisher namespace is
 owned by `rhyven-ai`. It contains only distribution metadata, app packages and
@@ -120,7 +120,7 @@ explicit eager-download CLI/TUI flow. See [agent marketplace](agent-marketplace.
 `registry-entry` now includes optional `hosting_details` for remote entries.
 Local legacy entries remain supported; remote entries need these disclosures
 before an agent can prepare download approval. The package format is unchanged.
-The deployed 0.4.0-rc.9 registry validator supports these disclosures. Future
+The deployed 0.4.0-rc.10 registry validator supports these disclosures; connectors and action keywords require 0.5.0. Future
 format changes must keep the distributed runtime and pinned validator aligned.
 
 Script packages disclose host.execute and embed source files and lockfiles in the

@@ -67,7 +67,7 @@ jobs:
         run: |
           version=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "apps/$APP/app.json")
           image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/$APP:$version"
-          docker build --label "org.opencontainers.image.source=https://github.com/rhyven-ai/apps" --iidfile image.id -t "$image" "apps/$APP"
+          docker build --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --iidfile image.id -t "$image" "apps/$APP"
           printf '%s\n' "$image" > image-name.txt
       - name: Test app behavior and runtime integration
         run: |

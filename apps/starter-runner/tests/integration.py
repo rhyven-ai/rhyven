@@ -83,7 +83,7 @@ def main():
             identity = run['run_id']
             run = wait(identity, 'waiting')
             question = call('rhyven/user-questions', 'object_question_get', {'id': run['question_id']})
-            assert question['data']['asked_by'].startswith('service:')
+            assert question['data']['asked_by'].startswith('_rhyven_service_')
             before = ModelFixture.calls
             time.sleep(.5)
             assert ModelFixture.calls == before, 'Waiting must not poll the model'

@@ -46,7 +46,7 @@ elif args[0]=="info":
 else: sys.exit(2)
 ''')
     executable("sudo", "raise SystemExit('Unexpected privileged operation in installer test')\n")
-    env = dict(os.environ, RHYVEN_HOME=str(home), PATH=str(mock)+os.pathsep+os.environ["PATH"])
+    env = dict(os.environ, RHYVEN_HOME=str(home), RHYVEN_SETUP_OFFLINE="1", PATH=str(mock)+os.pathsep+os.environ["PATH"])
     env.pop("DOCKER_HOST", None); env.pop("DOCKER_CONTEXT", None)
     def cli(*args):
         p=subprocess.run([str(binary),*args],env=env,text=True,capture_output=True,timeout=30)

@@ -15,7 +15,13 @@ pub fn run(home: &Path, containers: bool, yes: bool, plan: bool) -> Result<Value
             "approval":"System changes require confirmation or --yes; Docker Desktop terms are accepted by the user", "resume":"rhyven setup --containers"}),
         );
     }
-    Runtime::collection(home, "global", "setup")?.init()?;
+    let runtime = Runtime::collection(home, "global", "setup")?;
+    runtime.init()?;
+    let marketplace = catalog_setup(
+        &runtime.root,
+        std::env::var_os("RHYVEN_SETUP_OFFLINE").is_some_and(|v| v == "1"),
+        || agent_market_core::registry::sync(&runtime.root, "rhyven-ai/registry", "main", true),
+    );
     let mut setup_exit = None;
     if containers && before["container"]["ready"] != true {
         if cfg!(windows) {
@@ -45,7 +51,7 @@ pub fn run(home: &Path, containers: bool, yes: bool, plan: bool) -> Result<Value
     };
     let ready = !containers || diagnosis["container"]["ready"] == true;
     let value = json!({"status":if ready {"ready"} else {"pending"},
-        "home":home,"containers_requested":containers,"setup_exit":setup_exit,
+        "home":home,"containers_requested":containers,"setup_exit":setup_exit,"marketplace":marketplace,
         "diagnosis":diagnosis,"resume":if ready {Value::Null} else {json!("rhyven setup --containers")},
         "agent_connection":{"instructions":"rhyven --agent","setup":"rhyven connect --client CLIENT","clients":["codex","claude","cursor","vscode","cline","generic"],"verify":"rhyven connect --check"}});
     let mut state = tempfile::NamedTempFile::new_in(home)?;
@@ -55,4 +61,57 @@ pub fn run(home: &Path, containers: bool, yes: bool, plan: bool) -> Result<Value
         .persist(home.join("setup-state.json"))
         .map_err(|e| Error::new("io", e.to_string()))?;
     Ok(value)
+}
+
+/// Preserve an existing registry selection and never make network availability a setup requirement.
+fn catalog_setup(root: &Path, offline: bool, sync: impl FnOnce() -> Result<Value>) -> Value {
+    let retry = "rhyven registry-sync rhyven-ai/registry --anonymous";
+    match agent_market_core::collections::registry_dir(root) {
+        Ok(dir) if dir.join("github-registry.json").exists() => {
+            return json!({"status":"cached","message":"Existing catalog retained; no registry selection changed"})
+        }
+        Err(error) => return json!({"status":"unavailable","error":error,"retry":retry}),
+        _ => (),
+    }
+    if offline {
+        return json!({"status":"offline","message":"Using bundled apps; catalog download skipped","retry":retry});
+    }
+    match sync() {
+        Ok(result) => json!({"status":"synced","result":result}),
+        Err(error) => {
+            json!({"status":"offline","message":"Catalog unavailable; bundled apps remain usable","error":error,"retry":retry})
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn initial_catalog_success_offline_failure_and_existing_registry() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path();
+        assert_eq!(
+            catalog_setup(root, false, || Ok(json!({"packages":9})))["status"],
+            "synced"
+        );
+        assert_eq!(
+            catalog_setup(root, true, || panic!("offline setup contacted network"))["status"],
+            "offline"
+        );
+        let failure = catalog_setup(root, false, || Err(Error::new("network", "unreachable")));
+        assert_eq!(failure["status"], "offline");
+        assert!(failure["retry"].as_str().unwrap().contains("registry-sync"));
+        let dir = agent_market_core::collections::registry_dir(root).unwrap();
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("github-registry.json"),
+            b"existing private registry",
+        )
+        .unwrap();
+        assert_eq!(
+            catalog_setup(root, false, || panic!("existing registry must be retained"))["status"],
+            "cached"
+        );
+    }
 }

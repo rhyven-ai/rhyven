@@ -29,6 +29,7 @@ jobs:
         run: |
           python3 -m unittest discover -s qa -p 'test_*.py' -v
           python3 qa/direct_download_check.py target/release/rhyven
+          python3 qa/installer_catalog_check.py
           python3 qa/script_execution_check.py target/release/rhyven
       - name: Build trusted test fixtures
         run: |

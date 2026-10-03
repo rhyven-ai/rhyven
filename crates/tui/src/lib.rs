@@ -14,12 +14,11 @@ use ratatui::{
 use serde_json::Value;
 use std::cell::Cell;
 use std::io::IsTerminal;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-const REFRESH_INTERVAL: Duration = Duration::from_secs(2);
 const INPUT_POLL_INTERVAL: Duration = Duration::from_millis(200);
 const UPDATE_HELP: &str = "Update app upgrades only the selected installed app in this collection. It does not update the Rhyven program or other collections.\n\nAfter you confirm, Rhyven saves a recovery backup, stages the new version, applies its declared migrations and validates the result before activation. Failed staging leaves the current app and state in place.\n\nPersistent services in this collection pause during maintenance and previously enabled services resume afterward. Backups remain in the collection's recovery directory.";
-const REFRESH_HELP: &str = "Auto-refresh reloads local state every 2 seconds. Press r to sync the configured marketplace (the public registry by default) in the background. It fetches app manifests and stars, but never installs apps, pulls images or applies updates. The current catalog remains usable if the network fails. Approval screens stay fixed.";
+const REFRESH_HELP: &str = "Press r to reload local state and sync the configured marketplace (the public registry by default) in the background. It fetches app manifests and stars, but never installs apps, pulls images or applies updates. The current catalog remains usable if the network fails. Approval screens stay fixed.";
 
 #[derive(Clone, Copy, PartialEq)]
 enum Operation {
@@ -49,7 +48,6 @@ pub struct Model {
     star_labels: std::collections::BTreeMap<String, String>,
     pending: Option<(Operation, Value)>,
     service_output: String,
-    last_refresh: Instant,
     refresh_error: Option<String>,
     catalog_job: Option<std::sync::mpsc::Receiver<Result<Value>>>,
     catalog_status: Value,
@@ -65,7 +63,7 @@ impl Model {
             scroll: 0, pane: 0, searching: false, installed_only: false, installed: vec![],
             installed_packages: vec![],
             star_labels: std::collections::BTreeMap::new(), pending: None, service_output: String::new(),
-            last_refresh: Instant::now(), refresh_error: None, catalog_job: None, catalog_status: Value::Null, requirements_job: None, requirements: Default::default() };
+            refresh_error: None, catalog_job: None, catalog_status: Value::Null, requirements_job: None, requirements: Default::default() };
         model.reload(runtime);
         Ok(model)
     }
@@ -133,9 +131,8 @@ impl Model {
         if let Err(error) = self.refresh(runtime) {
             self.refresh_error = Some(error.to_string());
         }
-        self.last_refresh = Instant::now();
     }
-    fn tick(&mut self, runtime: &Runtime, now: Instant) {
+    fn tick(&mut self, runtime: &Runtime) {
         if let Some(result) = self
             .catalog_job
             .as_ref()
@@ -184,11 +181,6 @@ impl Model {
                 }
             }
         }
-
-        // The package and installed version shown for consent remain fixed.
-        if !self.review && now.duration_since(self.last_refresh) >= REFRESH_INTERVAL {
-            self.reload(runtime);
-        }
     }
     fn start_sync_with(&mut self, work: impl FnOnce() -> Result<Value> + Send + 'static) {
         if self.catalog_job.is_some() {
@@ -206,15 +198,11 @@ impl Model {
         if self.catalog_job.is_some() {
             return "Marketplace: refreshing…".into();
         }
-        let last = self.catalog_status["last_success"]
-            .as_u64()
-            .map(|at| {
-                format!(
-                    "{}s ago",
-                    agent_market_core::marketplace::now().saturating_sub(at)
-                )
-            })
-            .unwrap_or_else(|| "not synced with r yet".into());
+        let last = if self.catalog_status["last_success"].as_u64().is_some() {
+            "synced"
+        } else {
+            "not synced with r yet"
+        };
         let error = self.catalog_status["error"]["message"]
             .as_str()
             .map(|e| format!(" · {e}"))
@@ -503,7 +491,7 @@ impl Model {
                     {
                         self.message = "Update app upgrades an installed app. Press i to review installation first.".into();
                     } else {
-                        self.message = "No newer app version in the local catalog. registry-sync fetches packages; this view refreshes automatically. ? explains updates.".into();
+                        self.message = "No newer app version in the local catalog. press r to fetch current listings. ? explains updates.".into();
                     }
                 } else {
                     self.message = "Select an installed app to review an update. ? explains refresh and updates.".into();
@@ -698,11 +686,11 @@ pub fn render(frame: &mut Frame, model: &Model, _installed: &[String]) {
             " {} · {}",
             model.scope,
             if model.review {
-                "Auto-refresh paused for review"
+                "Review permissions"
             } else if model.refresh_error.is_some() {
                 "Refresh delayed · ? details"
             } else {
-                "Auto-refresh 2s"
+                "r refresh marketplace"
             }
         ))
         .style(Style::default().fg(MUTED)),
@@ -1053,7 +1041,7 @@ pub fn run(runtime: Runtime) -> Result<()> {
     let result = (|| -> Result<()> {
         crossterm::execute!(std::io::stdout(), EnableMouseCapture)?;
         loop {
-            model.tick(&runtime, Instant::now());
+            model.tick(&runtime);
             terminal.draw(|frame| render(frame, &model, &model.installed))?;
             if !event::poll(INPUT_POLL_INTERVAL)? {
                 continue;
@@ -1077,14 +1065,12 @@ pub fn run(runtime: Runtime) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
     fn inventory() -> Value {
         catalog::bundled()
             .into_iter()
             .find(|p| p["name"] == "rhyven/inventory")
             .unwrap()
-    }
-    fn tick(model: &mut Model, runtime: &Runtime) {
-        model.tick(runtime, model.last_refresh + REFRESH_INTERVAL);
     }
     fn screen(model: &Model) -> String {
         let mut terminal =
@@ -1116,7 +1102,7 @@ mod tests {
         assert_eq!(model.packages, before);
         release.send(()).unwrap();
         for _ in 0..100 {
-            model.tick(&runtime, Instant::now());
+            model.tick(&runtime);
             if model.catalog_job.is_none() {
                 break;
             }
@@ -1127,7 +1113,7 @@ mod tests {
         assert_eq!(model.packages, before);
     }
     #[test]
-    fn automatic_refresh_tracks_other_clients_and_preserves_browsing() {
+    fn manual_refresh_tracks_other_clients_and_preserves_browsing() {
         let dir = tempfile::tempdir().unwrap();
         let runtime = Runtime::new(dir.path(), "human").unwrap();
         let other = Runtime::new(dir.path(), "other-agent").unwrap();
@@ -1145,7 +1131,10 @@ mod tests {
         let mut update = package.clone();
         update["version"] = serde_json::json!("0.4.0");
         catalog::publish(&other.root, &update).unwrap();
-        tick(&mut model, &runtime);
+        model.tick(&runtime);
+        assert!(model.installed.is_empty());
+        assert!(model.update_for("rhyven/inventory").is_none());
+        model.reload(&runtime);
         assert_eq!(model.current().unwrap()["name"], "rhyven/inventory");
         assert_eq!(model.selected, 1); // An earlier sorted app must not steal selection.
         assert_eq!(model.query, "inventory");
@@ -1162,7 +1151,7 @@ mod tests {
         model.installed_only = true;
         model.selected = 0;
         other.uninstall("rhyven/inventory").unwrap();
-        tick(&mut model, &runtime);
+        model.reload(&runtime);
         assert!(model.visible().is_empty());
         assert_eq!(model.pane, 0);
     }
@@ -1178,14 +1167,14 @@ mod tests {
         std::fs::create_dir_all(&cache).unwrap();
         std::fs::write(cache.join("broken.json"), "{broken").unwrap();
         runtime.install(&inventory(), true, false).unwrap();
-        tick(&mut model, &runtime);
+        model.reload(&runtime);
         assert_eq!(model.packages, before);
         assert!(model.installed.is_empty());
         assert!(model.refresh_error.is_some());
         assert!(screen(&model).contains("Refresh delayed"));
         model.reload(&runtime);
         std::fs::remove_file(cache.join("broken.json")).unwrap();
-        tick(&mut model, &runtime);
+        model.reload(&runtime);
         assert!(model.refresh_error.is_none());
         assert_eq!(model.installed, vec!["rhyven/inventory"]);
     }
@@ -1204,14 +1193,14 @@ mod tests {
         });
         ready_rx.recv().unwrap();
         let started = Instant::now();
-        tick(&mut model, &runtime);
+        model.reload(&runtime);
         let elapsed = started.elapsed();
         let delayed = model.refresh_error.is_some();
         let _ = release_tx.send(());
         worker.join().unwrap();
         assert!(elapsed < Duration::from_millis(500));
         assert!(delayed);
-        tick(&mut model, &runtime);
+        model.reload(&runtime);
         assert!(model.refresh_error.is_none());
     }
     #[test]
@@ -1227,7 +1216,7 @@ mod tests {
         let reviewed = model.pending.as_ref().unwrap().1.clone();
         package["version"] = serde_json::json!("0.4.0");
         other.install(&package, true, true).unwrap();
-        tick(&mut model, &runtime);
+        model.tick(&runtime);
         assert!(model.review);
         assert_eq!(model.pending.as_ref().unwrap().1, reviewed);
         assert_eq!(model.installed_packages[0]["version"], reviewed["version"]);
@@ -1249,7 +1238,8 @@ mod tests {
         model.key(KeyCode::Char('?'), &runtime).unwrap();
         let help = screen(&model);
         assert!(help.contains("Refresh and app updates"));
-        assert!(help.contains("Press r to sync"));
+        assert!(help.contains("Press r to reload local state and sync"));
+        assert!(!help.contains("Auto-refresh"));
         assert!(help.contains("does not update the Rhyven program"));
         model.key(KeyCode::Esc, &runtime).unwrap();
         model.key(KeyCode::Tab, &runtime).unwrap();
@@ -1259,7 +1249,7 @@ mod tests {
         runtime.install(&package, true, false).unwrap();
         package["version"] = serde_json::json!("0.4.0");
         catalog::publish(&runtime.root, &package).unwrap();
-        tick(&mut model, &runtime);
+        model.reload(&runtime);
         model.query = "inventory".into();
         model.selected = 0;
         model.key(KeyCode::Char('u'), &runtime).unwrap();

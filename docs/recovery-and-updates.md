@@ -85,10 +85,9 @@ then confirm with `y` or cancel with `n`/`Esc`. `?` explains the operation. This
 updates the selected app in the current collection, not the Rhyven executable or
 copies installed in other collections.
 
-The TUI refreshes local state and the cached catalog every two seconds; `r` retries
-immediately. Refreshing never installs an update or contacts GitHub. Run
-`registry-sync OWNER/REPO` explicitly to fetch packages; cache changes then appear
-automatically. Approval screens remain fixed, and confirmation rejects an app
+Press `r` in the TUI to reload local state and fetch marketplace listings in the
+background. There is no automatic refresh timer. Refreshing never installs an
+app or applies an update. Approval screens remain fixed, and confirmation rejects an app
 whose installed contract changed while the review was open.
 
 Updates preserve the live version until a staged copy has migrated and passed

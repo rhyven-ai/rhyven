@@ -11,10 +11,10 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
-Version **0.5.0** supports Linux x86-64 and ARM64. Native Windows and macOS
+Version **0.5.2** supports Linux x86-64 and ARM64. Native Windows and macOS
 are not supported release targets. Individual app images may support fewer architectures.
 
-The signed **0.5.0** installer and platform binaries are available at
+The signed **0.5.2** installer and platform binaries are available at
 [rhyvenai.com](https://rhyvenai.com). App versions and container image digests
 are released independently.
 See [installation](docs/installation.md) and [release status](docs/release-status.md).

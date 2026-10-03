@@ -26,10 +26,10 @@ jobs:
           RHYVEN_TEST_DOWNLOAD_ORIGIN: ${{ inputs.download_origin || 'https://rhyvenai.com' }}
         run: |
           for attempt in $(seq 1 80); do
-            if test "$(curl -fsSL --max-time 10 "$RHYVEN_TEST_DOWNLOAD_ORIGIN/VERSION" 2>/dev/null)" = '0.5.0'; then
+            if test "$(curl -fsSL --max-time 10 "$RHYVEN_TEST_DOWNLOAD_ORIGIN/VERSION" 2>/dev/null)" = '0.5.2'; then
               exit 0
             fi
-            echo "Waiting for the download origin to serve 0.5.0 ($attempt/80)"
+            echo "Waiting for the download origin to serve 0.5.2 ($attempt/80)"
             sleep 15
           done
           echo 'The runtime download origin is not ready; check DNS and the deployment.' >&2
@@ -54,10 +54,10 @@ jobs:
         run: |
           mkdir runtime
           curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
-            "$RHYVEN_TEST_DOWNLOAD_ORIGIN/releases/v0.5.0/rhyven-linux-x86_64" \
+            "$RHYVEN_TEST_DOWNLOAD_ORIGIN/releases/v0.5.2/rhyven-linux-x86_64" \
             --output runtime/rhyven-linux-x86_64
           sha256sum --check packaging/current-validator.sha256
           chmod +x runtime/rhyven-linux-x86_64
-          test "$(runtime/rhyven-linux-x86_64 --version)" = 'rhyven 0.5.0'
+          test "$(runtime/rhyven-linux-x86_64 --version)" = 'rhyven 0.5.2'
       - name: Install and use published container apps anonymously
         run: python3 qa/public_container_check.py runtime/rhyven-linux-x86_64

@@ -108,7 +108,17 @@ export PATH="$bin_dir:$PATH"
 quoted=$(printf '%s' "$bin_dir" | sed "s/'/'\\\\''/g")
 path_line="export PATH='$quoted':\"\$PATH\" # Rhyven installer"
 profiles=("$HOME/.profile")
-case "${SHELL:-}" in */zsh) profiles+=("$HOME/.zshrc") ;; */bash) profiles+=("$HOME/.bashrc") ;; *) echo "Add $bin_dir to your shell's PATH if it does not read ~/.profile." >&2 ;; esac
+case "${SHELL:-}" in
+  */zsh) profiles+=("${ZDOTDIR:-$HOME}/.zshrc") ;;
+  */bash)
+    profiles+=("$HOME/.bashrc")
+    # Bash reads only the first existing login profile; it can skip .profile.
+    for login_profile in "$HOME/.bash_profile" "$HOME/.bash_login"; do
+      if [ -f "$login_profile" ]; then profiles+=("$login_profile"); break; fi
+    done
+    ;;
+  *) echo "Add $bin_dir to your shell's PATH if it does not read ~/.profile." >&2 ;;
+esac
 if [ "$modify_path" = 1 ]; then
 for profile in "${profiles[@]}"; do
   if ! grep -Fqx "$path_line" "$profile" 2>/dev/null; then printf '\n%s\n' "$path_line" >> "$profile"; fi
@@ -145,7 +155,9 @@ printf '\nAfter connecting, reload your agent client and ask:\n'
 printf '  "Use Rhyven to search the marketplace. Show me an app and its permissions before installing it."\n'
 printf '\nVerify the connection:\n  %s/rhyven connect --check\n' "'$quoted'"
 if [ "$modify_path" = 1 ]; then
-  printf '\nOpen a new terminal to use the shorter command: rhyven\n'
+  printf '\nTo use rhyven in this terminal now, run:\n  %s\n  rhyven\n' "$path_line"
+  printf '\nOr open a new terminal, then run: rhyven\n'
+  printf 'The installer cannot change PATH in the terminal that launched it.\n'
 else
   printf '\nPATH was not changed. Use the full commands above or add the install directory to PATH.\n'
 fi

@@ -41,8 +41,8 @@ returns connection instructions. See [agent connection](harnesses.md).
 The website installer fetches the public marketplace catalog automatically. It
 only downloads manifests: apps, dependencies and container images still require
 an explicit installation. If the network is unavailable, installation succeeds
-with the five bundled apps and prints a retry command. TUI auto-refresh reloads
-this local cache; it does not poll GitHub.
+with the five bundled apps and prints a retry command. Press `r` in the TUI to reload local state and fetch current listings. There is
+no automatic refresh timer.
 
 `--from-dir` installation stays offline. Set `RHYVEN_SETUP_OFFLINE=1` to skip
 catalog discovery while downloading a binary online. Current source builds also
@@ -67,7 +67,7 @@ and TUI browsing, run `rhyven registry-sync rhyven-ai/registry --anonymous` to
 explicitly download app manifests into the package cache. Sync does not install
 apps or pull container images.
 
-The website serves signed `0.5.0` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
+The website serves signed `0.5.2` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
 binary before replacing an existing installation. See [release status](release-status.md)
 for platform support and release boundaries.
 
@@ -291,7 +291,7 @@ state are unchanged. Downgrades are not automatic.
 
 Press `r` in the TUI to sync the configured registry in the background. The public
 registry is the default. Repeated presses do not start parallel downloads; cached
-apps remain visible during a failure. Two-second auto-refresh stays local-only.
+apps remain visible during a failure. Local state reloads when you press `r` or complete an app operation.
 Agents use `rhyven_call` with category `rhyven/marketplace`, function
 `action_refresh` and empty args; `action_refresh_status` reports the last successful
 sync time and error. `action_requirements` accepts an `app` ID and checks host

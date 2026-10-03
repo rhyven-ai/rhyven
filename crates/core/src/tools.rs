@@ -169,7 +169,7 @@ impl AgentSession {
                 "rhyven_categories",
                 json!({}),
             ));
-            tools.push(tool("rhyven_describe", "Read callable schemas and guidance. Select function or search to reduce context; full includes the package contract.", json!({"category":string(),"function":string(),"search":string(),"full":{"type":"boolean"}}), &["category"], "rhyven_describe", json!({})));
+            tools.push(tool("rhyven_describe", "Discover schemas once, then reuse them for calls. Use requests to batch descriptions across categories; index lists names only; full includes package details.", json!({"category":string(),"function":string(),"search":string(),"full":{"type":"boolean"},"index":{"type":"boolean"},"if_hash":string(),"requests":{"type":"array","minItems":1,"maxItems":16,"items":{"type":"object","properties":{"category":string(),"function":string(),"search":string(),"index":{"type":"boolean"},"full":{"type":"boolean"},"if_hash":string()},"required":["category"],"additionalProperties":false}}}), &[], "rhyven_describe", json!({})));
             tools.push(tool("rhyven_call", "Call a discovered function with arguments validated against its manifest. Marketplace downloads require user approval", json!({"category":string(),"function":string(),"args":free()}), &["category","function","args"], "rhyven_call", json!({})));
         }
         Ok(Self { backend, tools })
@@ -241,15 +241,64 @@ pub fn manifest(package: &Value) -> Value {
             input["properties"]["filters"]=filters;
         }
         let output = if t.operation=="execute" {package["actions"][t.fixed["action"].as_str().unwrap()].get("output").cloned().unwrap_or(json!({"type":"object"}))} else {json!({"type":"object"})};
-        json!({"name":t.definition["name"],"description":t.definition["description"],"inputSchema":input,"outputSchema":output})
+        let mut function = json!({"name":t.definition["name"],"description":t.definition["description"],"inputSchema":input,"outputSchema":output});
+        if t.operation == "execute" {
+            if let Some(keywords) = package["actions"][t.fixed["action"].as_str().unwrap()].get("keywords") {function["keywords"] = keywords.clone();}
+        }
+        function
     }).collect();
     let mut contract = package.clone();
     contract.as_object_mut().unwrap().remove("files");
     json!({"category":package["name"],"version":package["version"],"description":package["description"],"functions":functions,"guidance_markdown":package["guide"],"contract":contract})
 }
+/// Changes to schemas, guidance or package metadata invalidate cached descriptions.
+pub fn contract_hash(package: &Value) -> String {
+    crate::store::hash(&manifest(package))
+}
+
+fn words(text: &str) -> Vec<String> {
+    text.to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|s| !s.is_empty())
+        .map(|s| {
+            match s {
+                "add" | "sum" | "total" => "sum",
+                "find" | "search" | "lookup" => "search",
+                _ => s,
+            }
+            .to_owned()
+        })
+        .collect()
+}
+
+fn matches(function: &Value, search: &str) -> bool {
+    let text = words(&format!(
+        "{} {} {}",
+        function["name"], function["description"], function["keywords"]
+    ));
+    words(search)
+        .iter()
+        .all(|word| text.iter().any(|candidate| candidate.contains(word)))
+}
+
+fn unknown_function(functions: &[Value], name: &str) -> Error {
+    let mut ranked: Vec<_> = functions.iter().collect();
+    let query = words(name);
+    ranked.sort_by_key(|f| std::cmp::Reverse(query.iter().filter(|w| matches(f, w)).count()));
+    let names: Vec<_> = ranked
+        .into_iter()
+        .take(3)
+        .filter_map(|f| f["name"].as_str())
+        .collect();
+    Error::new("not_found", format!("Function {name:?} is not declared. Available suggestions: {}. Describe the selected function before calling it.", names.join(", ")))
+}
+
 /// Compact discovery leaves the complete contract available explicitly.
 pub fn describe(package: &Value, args: &Value) -> Result<Value> {
-    crate::catalog::keys(args, &["category", "function", "search", "full"])?;
+    crate::catalog::keys(
+        args,
+        &["category", "function", "search", "full", "index", "if_hash"],
+    )?;
     crate::error::ensure(
         args.get("full").is_none_or(Value::is_boolean),
         "validation",
@@ -271,28 +320,41 @@ pub fn describe(package: &Value, args: &Value) -> Result<Value> {
             )?;
         }
     }
+    crate::error::ensure(
+        args.get("index").is_none_or(Value::is_boolean),
+        "validation",
+        "index must be boolean",
+    )?;
+    crate::error::ensure(
+        args.get("if_hash").is_none_or(|v| {
+            v.as_str()
+                .is_some_and(|s| s.len() == 64 && s.bytes().all(|c| c.is_ascii_hexdigit()))
+        }),
+        "validation",
+        "if_hash must be a SHA-256 hex digest",
+    )?;
     let mut result = manifest(package);
+    let hash = crate::store::hash(&result);
+    if args["if_hash"] == hash {
+        return Ok(json!({"category":package["name"],"contract_hash":hash,"unchanged":true}));
+    }
+    result["contract_hash"] = json!(hash);
     let functions = result["functions"].as_array_mut().unwrap();
     let total = functions.len();
     if let Some(name) = args["function"].as_str() {
+        if !functions.iter().any(|f| f["name"] == name) {
+            return Err(unknown_function(functions, name));
+        }
         functions.retain(|f| f["name"] == name);
-        crate::error::ensure(
-            !functions.is_empty(),
-            "not_found",
-            "Function is not declared by this category",
-        )?;
     }
     if let Some(search) = args["search"].as_str() {
-        let search = search.to_lowercase();
-        functions.retain(|f| {
-            let text = format!(
-                "{} {}",
-                f["name"].as_str().unwrap_or(""),
-                f["description"].as_str().unwrap_or("")
-            )
-            .to_lowercase();
-            search.split_whitespace().all(|word| text.contains(word))
-        });
+        functions.retain(|f| matches(f, search));
+    }
+    if args["index"] == true {
+        for function in functions.iter_mut() {
+            function.as_object_mut().unwrap().remove("inputSchema");
+            function.as_object_mut().unwrap().remove("outputSchema");
+        }
     }
     if args.get("function").is_some() || args.get("search").is_some() {
         result["total_functions"] = json!(total);
@@ -333,7 +395,7 @@ pub fn invoke(runtime: &Runtime, args: Value) -> Result<Value> {
         .unwrap()
         .iter()
         .find(|f| f["name"] == function)
-        .ok_or_else(|| Error::new("not_found", "Function is not declared by this category"))?;
+        .ok_or_else(|| unknown_function(manifest["functions"].as_array().unwrap(), function))?;
     let mut input = crate::schema::validate(
         args.get("args").cloned().unwrap_or(json!({})),
         &definition["inputSchema"],

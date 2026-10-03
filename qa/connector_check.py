@@ -137,11 +137,17 @@ with tempfile.TemporaryDirectory(prefix='rhyven-connectors-') as d:
         with urlopen(request,timeout=10) as response:assert json.load(response)['content'][0]['text']=='REST parity'
         remote=Client(root/'home',server=f'http://127.0.0.1:{port}',env=dict(env,RHYVEN_SERVE_TOKEN=token))
         try:
-            for options in [{'function':'action_echo'},{'search':'echo'},{'full':True}]:
+            for options in [{'function':'action_echo'},{'search':'echo'},{'full':True},{'index':True}]:
                 request=Request(f'http://127.0.0.1:{port}/categories/test/mcp/describe',data=json.dumps(options).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+token})
                 with urlopen(request,timeout=10) as response:via_rest=json.load(response)
                 via_mcp=remote.tool('rhyven_describe',dict(category='test/mcp',**options))
                 assert via_rest==via_mcp
+            batch={'requests':[{'category':'test/mcp','search':'echo'},{'category':'test/http','index':True}]}
+            request=Request(f'http://127.0.0.1:{port}/categories/describe',data=json.dumps(batch).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+token})
+            with urlopen(request,timeout=10) as response:via_rest=json.load(response)
+            assert via_rest==remote.tool('rhyven_describe',batch)
+            digest=via_rest['descriptions'][0]['contract_hash']
+            assert remote.tool('rhyven_describe',{'category':'test/mcp','if_hash':digest})['unchanged']
         finally:remote.close()
     finally:shared.terminate();shared.wait(timeout=5)
     # An unsupported constraint fails rather than broadening validation or writing a package.

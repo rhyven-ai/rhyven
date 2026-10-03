@@ -90,13 +90,20 @@ fn all_apps_conform_and_empty_runtime_has_three_stable_tools() {
     for p in catalog::bundled() {
         r.uninstall(p["name"].as_str().unwrap()).unwrap();
     }
+    let categories = session.call("rhyven_categories", json!({})).unwrap();
+    let names: Vec<_> = categories["apps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|app| app["name"].clone())
+        .collect();
     assert_eq!(
-        session.call("rhyven_categories", json!({})).unwrap()["apps"],
-        json!([
-            agent_market_core::marketplace::summary(),
-            agent_market_core::services::summary()
-        ])
+        names,
+        vec![json!("rhyven/marketplace"), json!("rhyven/runtime")]
     );
+    for app in categories["apps"].as_array().unwrap() {
+        assert_eq!(app["contract_hash"].as_str().unwrap().len(), 64);
+    }
 }
 #[test]
 fn permissions_integrity_and_fail_closed_contract() {

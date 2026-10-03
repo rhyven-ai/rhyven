@@ -42,7 +42,7 @@ pub fn validate(p: &Value) -> Result<()> {
         "Provide 1..128 connector actions",
     )?;
     for action in actions.values() {
-        catalog::keys(action, &["description", "input", "target"])?;
+        catalog::keys(action, &["description", "keywords", "input", "target"])?;
         ensure(
             action["description"]
                 .as_str()

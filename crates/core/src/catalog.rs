@@ -366,11 +366,24 @@ pub fn validate(p: &Value) -> Result<()> {
     )?;
     for (name, action) in actions {
         ensure(schema::name(name), "package", "Invalid action name")?;
+        if let Some(keywords) = action.get("keywords") {
+            ensure(
+                keywords.as_array().is_some_and(|v| {
+                    v.len() <= 16
+                        && v.iter().all(|k| {
+                            k.as_str()
+                                .is_some_and(|s| !s.trim().is_empty() && s.len() <= 64)
+                        })
+                }),
+                "package",
+                "Action keywords must be at most 16 nonempty strings of at most 64 bytes",
+            )?;
+        }
         if connector {
             continue;
         }
         if executable {
-            keys(action, &["description", "input", "output"])?;
+            keys(action, &["description", "keywords", "input", "output"])?;
             ensure(
                 action["description"]
                     .as_str()
@@ -392,6 +405,7 @@ pub fn validate(p: &Value) -> Result<()> {
             action,
             &[
                 "description",
+                "keywords",
                 "input",
                 "object",
                 "operation",

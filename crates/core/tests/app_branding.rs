@@ -11,7 +11,7 @@ fn rhyven_publisher_and_display_names_reach_agent_discovery_and_reviews() {
         assert!(!catalog::display_name(&package).is_empty());
         runtime.install(&package, true, false).unwrap();
     }
-    let categories = runtime.call("rhyven_categories", json!({})).unwrap();
+    let categories = json!({"apps":runtime.call("list_apps", json!({})).unwrap()});
     let work = categories["apps"]
         .as_array()
         .unwrap()

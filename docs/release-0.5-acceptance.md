@@ -1,6 +1,7 @@
-# 0.5.0 release preparation
+# 0.5.0 acceptance
 
-Status: prepared locally, not published. Publication remains on hold.
+Publication authorized after acceptance. Linux runtime binaries and the optional
+starter image have passed hosted tests; production delivery is verified separately below.
 
 ## Implemented
 
@@ -36,29 +37,38 @@ Status: prepared locally, not published. Publication remains on hold.
 - Website staging unit tests, JS syntax, desktop/mobile browser checks, automated
   WCAG A/AA checks and security regressions; no external requests, cookies or storage.
 
-## Staged repositories and artifact
+## Hosted and app acceptance
 
-Engine: local feat/connector-wrappers branch. Registry and private website:
-local prepare/0.5.0 branches. Nothing pushed, merged, deployed or released.
+- Linux x86-64 and ARM64 musl builds passed on native hosted runners:
+  [binary build](https://github.com/rhyven-ai/rhyven/actions/runs/37140092816).
+  The runtime sources are from c8559a7; subsequent commits change app/test/docs
+  files, not compiled runtime code.
+- Starter Runner's real Docker test passed using the signed distributed binary:
+  model HTTP, restricted callbacks into Work Management/Project Knowledge/User
+  Questions, waiting without model polling, human answer, service restart,
+  phase completion and backup/restore. The image security scan passed:
+  [image acceptance](https://github.com/rhyven-ai/rhyven/actions/runs/37140619527).
+- Six local runner tests include crash replay after a peer commit, no duplicate
+  notes, budget exhaustion, cancellation and unsupported model operations.
+  User Questions includes two packaged conformance cases; negative tests cover
+  expiry, actor separation, protected fields and stale revisions.
+- Website browser/accessibility and security regressions pass with eleven apps
+  and the optional starter guide. General harness connections remain unchanged.
 
-Artifact directory: `dist/release-0.5.0-linux-x86_64/` (ignored build output).
-The x86-64 binary SHA-256 is
-`bf7c06478f227fc2a27e7b98d5c8ef66067ccb2442214f2ae8d3996ec37e18ba`.
-The registry workflow and engine validator checksum refer to those exact bytes.
-If CI rebuilds the artifact, update both pins to that build's verified digest
-before publishing/merging. Never copy a checksum from a different build.
+The x86-64 distributed binary SHA-256 is
+`5c8cd35f03ae18da2b0448401e79ba0bdf2717b09ab445be0b8988ea38c0c9bc`.
+The registry validator pins these exact bytes. Downloads use the existing
+production release key; private signing material is not in the repository.
 
-## Remaining publication gates
+## Limits
 
-These are not represented as completed by local tests:
+The runner uses a deterministic OpenAI-compatible model fixture in acceptance,
+not paid provider credentials. Its initial image is Linux x86-64 only. Its token
+and time budgets are soft limits, not financial guarantees. It is a planning and
+knowledge starter, not a shell-capable autonomous agent or multiagent harness.
 
-- ARM64 build and execution acceptance on that architecture.
-- Real Docker/container isolation and persistent-service/reboot acceptance on a
-  suitable host. This execution environment has no Docker or VM runner; installer
-  dependency tests use controlled fixtures, not a fresh-machine Docker install.
-- Production signing, uploading both platform artifacts, verifying the public
-  one-command download, then activating the matching validator and website.
-  Signing tests used temporary test keys, not the production release key.
-
-Do not publish the staged website claiming both Linux architectures before the
-ARM64 artifact is available. No publication is authorized by this preparation.
+The hosted tests use fresh Linux runners with Docker already installed. This
+release does not claim a new physical host reboot test or a fresh-machine Docker
+installation test. Existing service lifecycle and installer fixture coverage is
+retained. Production DNS, download integrity and anonymous registry access are
+checked during publication.

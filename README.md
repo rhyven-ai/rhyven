@@ -11,11 +11,10 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
-The source version is **0.5.0**, prepared for release. Linux is the
-supported preview platform. macOS builds are feedback targets; full container
-acceptance on macOS is pending. Native Windows is not supported.
+Version **0.5.0** supports Linux x86-64 and ARM64. Native Windows and macOS
+are not supported release targets. Individual app images may support fewer architectures.
 
-The signed **0.4.0-rc.10** installer and platform binaries are available at
+The signed **0.5.0** installer and platform binaries are available at
 [rhyvenai.com](https://rhyvenai.com). App versions and container image digests
 are released independently.
 See [installation](docs/installation.md) and [release status](docs/release-status.md).
@@ -153,7 +152,7 @@ Shared deployments: [hosting for groups](docs/shared-hosting.md). Knowledge tran
 
 ### External-service connectors (unreleased)
 
-The local connector feature branch can generate apps from selected MCP tools or OpenAPI operations without installing upstream services. See [connector apps](docs/connector-apps.md) and the [token benchmark](docs/connector-benchmark.md). These commands are not in the published rc.10 installer yet.
+Rhyven 0.5 can generate apps from selected MCP tools or OpenAPI operations without installing upstream services. See [connector apps](docs/connector-apps.md) and the [token benchmark](docs/connector-benchmark.md).
 
 ## Optional starter for users without a harness
 

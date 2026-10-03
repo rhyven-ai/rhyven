@@ -272,6 +272,9 @@ fn prepare(r: &Runtime, operation: &str, args: &Value) -> Result<Value> {
         .get("execution")
         .cloned()
         .unwrap_or(json!({"driver":"declarative"}));
+    if crate::connector::enabled(p) {
+        view["execution_warning"] = json!("Connector only: the external service must already exist. Calls may change external state or incur charges. The package hash pins the wrapper, not upstream code. No automatic retries or local backups of upstream data.");
+    }
     if crate::script::enabled(p) {
         view["execution_warning"] = json!("host.execute runs unsandboxed code as your OS user, including filesystem, network and process access. Environments isolate dependencies only.");
     }

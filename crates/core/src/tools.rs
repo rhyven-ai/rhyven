@@ -124,6 +124,14 @@ fn contract_tools(p: &Value) -> Vec<Tool> {
             json!({"app":app,"action":name}),
         ));
     }
+    if crate::connector::enabled(p) {
+        for t in &mut tools {
+            t.definition["inputSchema"]["properties"]
+                .as_object_mut()
+                .unwrap()
+                .remove("request_id");
+        }
+    }
     tools
 }
 
@@ -224,7 +232,7 @@ pub fn manifest(package: &Value) -> Value {
         let mut input=t.definition["inputSchema"].clone();
         if t.operation=="execute" {
             input=package["actions"][t.fixed["action"].as_str().unwrap()]["input"].clone();
-            if package["platform"] != true && input["properties"].get("request_id").is_none() { input["properties"]["request_id"]=string(); }
+            if package["platform"] != true && !crate::connector::enabled(package) && input["properties"].get("request_id").is_none() { input["properties"]["request_id"]=string(); }
         } else if t.operation=="query" {
             let mut filters=package["objects"][t.fixed["object"].as_str().unwrap()]["schema"].clone();
             filters["required"]=json!([]);

@@ -150,3 +150,7 @@ See [Python and JavaScript app deployment](docs/deploy-script.md) for its host-a
 permission model and the native repository documentation tool.
 
 Shared deployments: [hosting for groups](docs/shared-hosting.md). Knowledge transfer: [preview and merge](docs/knowledge-merge.md). Use `rhyven upgrade` for runtime updates; `r` in the TUI refreshes the marketplace catalog.
+
+### External-service connectors (unreleased)
+
+The local connector feature branch can generate apps from selected MCP tools or OpenAPI operations without installing upstream services. See [connector apps](docs/connector-apps.md) and the [token benchmark](docs/connector-benchmark.md). These commands are not in the published rc.10 installer yet.

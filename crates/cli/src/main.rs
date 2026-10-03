@@ -1,4 +1,5 @@
 mod connect;
+mod import;
 mod setup;
 mod upgrade;
 use agent_market_core::{
@@ -38,6 +39,10 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum AppCommand {
+    /// Wrap selected tools from an already-running Streamable HTTP MCP server.
+    ImportMcp(import::Options),
+    /// Wrap selected JSON API operations from a local OpenAPI document.
+    ImportOpenapi(import::OpenapiOptions),
     /// Create a complete app template with a behavior test.
     Init {
         name: String,
@@ -78,6 +83,8 @@ enum AppCommand {
 impl From<AppCommand> for Command {
     fn from(command: AppCommand) -> Self {
         match command {
+            AppCommand::ImportMcp(options) => Self::ImportMcp(options),
+            AppCommand::ImportOpenapi(options) => Self::ImportOpenapi(options),
             AppCommand::Init { name, dir, runtime } => Self::New { name, dir, runtime },
             AppCommand::Validate { path } => Self::Validate { path },
             AppCommand::Test {
@@ -134,6 +141,10 @@ enum DaemonCommand {
 }
 #[derive(Subcommand)]
 enum Command {
+    #[command(hide = true)]
+    ImportMcp(import::Options),
+    #[command(hide = true)]
+    ImportOpenapi(import::OpenapiOptions),
     /// Update the Rhyven executable from signed public releases; leaves apps and data intact.
     Upgrade {
         /// Report the available version without replacing the executable.
@@ -490,6 +501,8 @@ fn run() -> Result<()> {
         command => command,
     };
     let value = match command {
+        Command::ImportMcp(options) => import::mcp(options)?,
+        Command::ImportOpenapi(options) => import::openapi(options)?,
         Command::Connect(options) => connect::run(&runtime, options)?,
         Command::Service { command } => {
             let (op, app) = match &command {

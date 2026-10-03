@@ -2,6 +2,7 @@
 pub mod catalog;
 pub mod collections;
 pub mod conformance;
+pub mod connector;
 pub mod container;
 pub mod error;
 pub mod execution;

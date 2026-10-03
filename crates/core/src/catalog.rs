@@ -62,6 +62,7 @@ pub fn validate(p: &Value) -> Result<()> {
             "execution",
             "migrations",
             "health_action",
+            "connector",
             "files",
         ],
     )?;
@@ -79,6 +80,8 @@ pub fn validate(p: &Value) -> Result<()> {
     crate::updates::validate(p)?;
     let container = crate::container::enabled(p);
     let executable = crate::execution::enabled(p);
+    let connector = crate::connector::enabled(p);
+    crate::connector::validate(p)?;
     ensure(
         app_name(p["name"].as_str().unwrap_or("")),
         "package",
@@ -250,7 +253,7 @@ pub fn validate(p: &Value) -> Result<()> {
         .as_object()
         .ok_or_else(|| Error::new("package", "objects required"))?;
     ensure(
-        (executable || !objects.is_empty()) && objects.len() <= 32,
+        (executable || connector || !objects.is_empty()) && objects.len() <= 32,
         "package",
         "Provide 1..32 objects",
     )?;
@@ -363,6 +366,9 @@ pub fn validate(p: &Value) -> Result<()> {
     )?;
     for (name, action) in actions {
         ensure(schema::name(name), "package", "Invalid action name")?;
+        if connector {
+            continue;
+        }
         if executable {
             keys(action, &["description", "input", "output"])?;
             ensure(

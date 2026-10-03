@@ -5,7 +5,7 @@ description: Build a Rhyven on-demand container app with arbitrary Python or oth
 
 # Build an on-demand container app
 
-Target: Rhyven 0.4.0-rc.9, app format 2, protocol `rhyven.container/1`.
+Target: Rhyven 0.5.0, app format 2, protocol `rhyven.container/1`.
 Use this mode for custom calculations, parsers, code analysis, and API clients.
 Rhyven starts a container for an action, sends JSON on stdin, validates its
 response, and retains `/data` between calls. Use service mode for background work.
@@ -163,3 +163,6 @@ is only suitable for local trials. Test that exact release digest again.
 Deliver app.json, implementation, Dockerfile, guide, tests, package and results.
 Use the publishing skill for release assets and the registry PR. Installation
 alone does not start a server; agents still use discover, describe, and call.
+
+In 0.5+, actions may include optional `keywords` (up to 16 strings, each 1–64
+bytes) to improve discovery without changing execution. Use the 0.5 validator.

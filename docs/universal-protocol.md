@@ -42,3 +42,99 @@ Parity gates: `qa/universal_market_check.py`, `qa/shared_runtime_check.py`,
 `qa/collections_check.py` and `qa/container_check.py`. They cover discovery,
 function manifests, schema errors, revision/idempotency semantics, approvals,
 collection routing, persisted state and direct versus REST-backed MCP.
+
+## Compact and selective discovery (unreleased)
+
+The local connector branch makes `rhyven_describe` compact by default. It returns
+callable input/output schemas and Markdown guidance once. `contract` retains
+hosting, permissions, execution settings, and object rules/relationships; it omits
+repeated descriptions, action definitions, object schemas, tests and package files.
+Execution validation still uses the complete installed package, not this view.
+
+Optional arguments on the same tool:
+
+```json
+{"category":"acme/documents","function":"action_search_documents"}
+```
+
+```json
+{"category":"acme/documents","search":"search documents"}
+```
+
+`function` selects an exact function name. `search` matches all terms, case-insensitively,
+against function names, descriptions, and optional action `keywords`. Separators
+are normalized; add/sum/total and find/search/lookup are recognized aliases. They are
+mutually exclusive and limited to 128 bytes. Results include full callable schemas,
+not just names; no extra detail request is required before calling a match. An
+unknown exact name fails with up to three function suggestions; a search with no matches returns an empty function list.
+Filtered responses include `total_functions` so absence is not mistaken for an
+empty app. App guidance and security disclosures remain present even when filtering.
+
+Use `{"category":"acme/documents","full":true}` when a client needs the complete
+package contract (embedded files are still omitted). Clients that previously
+consumed `contract.actions` or `contract.objects.*.schema` must request `full:true`
+or use the unchanged `GET /apps/{publisher}/{app}` contract endpoint.
+
+REST keeps `GET /categories/{publisher}/{app}` for default compact discovery and
+adds `POST /categories/{publisher}/{app}/describe` with an optional JSON body of
+`function`, `search`, `full`, `index`, and `if_hash`. REST-backed MCP forwards these options. All paths
+use the same runtime filtering and collection scope; permissions and calls are unchanged.
+
+When a category is already known in the active collection, request its relevant
+function directly. Use categories to establish scope when it is unknown. Re-describe
+after package updates or contract mismatches. Search currently scans manifest text;
+there is no separate index or new storage dependency.
+
+
+### Smaller listings, batched discovery, and reuse
+
+`rhyven_categories` retains collection/workspace identity and returns only app
+`name`, `description`, `version`, and `contract_hash`. Full branding, hosting and
+permission metadata remain in `list_apps` / `GET /apps` and package descriptions;
+installation review still exposes permissions and trust before approval.
+
+Use `index:true` to omit argument/output schemas from the function list. The default
+still returns schemas, so small apps do not require an extra lookup. Never invoke
+an unfamiliar function from an index alone: retrieve its schema first.
+
+Batch independent lookups in one tool call (1–16 entries):
+
+```json
+{"requests":[{"category":"acme/files","search":"read"},{"category":"acme/math","search":"add"}]}
+```
+
+The result contains ordered `descriptions`. `requests` cannot be mixed with
+single-description arguments or nested; a failed entry fails the request. REST
+uses `POST /categories/describe` with the same body. No new MCP tools are added.
+
+Descriptions include `contract_hash`, a SHA-256 of the full manifest before
+filtering. It includes guidance and contract metadata, excludes embedded files,
+and does not change when app records change. It is a cache identity, not a package
+signature or proof of trust. Use `if_hash` with a previously returned hash to
+receive `{category, contract_hash, unchanged:true, scope}` when unchanged; a
+mismatch returns the requested description. An unchanged response only confirms
+freshness: it does not provide a schema that the agent has not already read.
+
+Reuse known schemas within the same collection/session. After an app update,
+contract mismatch, or schema error, refresh the description. Discovery caches do
+not bypass runtime validation. No cross-session cache or new database is required.
+
+Actions may declare up to 16 `keywords`, each a nonempty string of at most 64
+bytes, for example `"keywords":["add","arithmetic"]`. This is optional metadata
+for declarative, executable and connector actions; it does not alter execution.
+
+
+### 0.5 client migration and approval hints
+
+Existing packages and the three tool names remain supported. Clients that read
+`apps[*].hosting`, `trust`, `publisher_label` or `display_name` from
+`rhyven_categories` must use `GET /apps` (or the `list_apps` compatibility
+operation) for those fields. Clients that inspect duplicate schemas under
+`contract.actions` or `contract.objects` must request `full:true`; callable
+schemas remain in `functions`. Collection/workspace identity is unchanged.
+
+Discovery tools declare MCP readOnlyHint, non-destructive, idempotent and
+closed-world hints. These describe discovery only; they are not authorization.
+`rhyven_call` is not declared read-only. Client policy and Rhyven's installation
+consent remain in force. Codex unattended discovery has been tested without
+approval overrides; other clients may apply their own policies.

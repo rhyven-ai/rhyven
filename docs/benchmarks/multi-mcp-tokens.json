@@ -1,0 +1,529 @@
+{
+  "method": "Real calls to three distinct official MCP servers, equal results through Rhyven. Exact tokenizer counts for fixed synthetic model-input schedules, including guides and retained history. No model invoked; not billed usage or reasoning/latency measurement.",
+  "reference_package_versions": {
+    "filesystem": "2026.8.31",
+    "memory": "2026.8.31",
+    "everything": "2026.8.31"
+  },
+  "sdk_version": "1.32.0",
+  "upstream_tool_counts": {
+    "filesystem": 14,
+    "memory": 9,
+    "everything": 13
+  },
+  "wrapped_tools": {
+    "filesystem": [
+      "read_text_file",
+      "list_directory"
+    ],
+    "memory": [
+      "search_nodes",
+      "open_nodes"
+    ],
+    "everything": [
+      "echo",
+      "get-sum"
+    ]
+  },
+  "actual_call_order": [
+    {
+      "server": "filesystem",
+      "tool": "read_text_file"
+    },
+    {
+      "server": "memory",
+      "tool": "search_nodes"
+    },
+    {
+      "server": "everything",
+      "tool": "get-sum"
+    }
+  ],
+  "results_match": true,
+  "final_sum": 42,
+  "transport": "Local test-only HTTP-to-stdio gateway using the official SDK; tool schemas, server instructions and results forwarded unchanged.",
+  "tokenizer_version": "0.12.0",
+  "capture_sha256": "b77b848851913d5b6bc6fde269ab0f715d11cd8c9c258fb866a1273d2110035f",
+  "assumptions": [
+    "Sequential dependent calls; one modeled input per decision and one final answer input.",
+    "Direct all loads every tool from all three servers on each modeled turn.",
+    "Direct same-six matches the six imported tools; task-filtered is an optimistic baseline with only required tools and active-server guides.",
+    "Rhyven selects the required function at describe time; function names are assumed known for both filtered baselines and Rhyven. No discovery search errors modeled.",
+    "Repeats retain all prior tool-call history and descriptions; prior final answer text is excluded equally.",
+    "No cache discounts, compaction, batching, hidden harness prompts, generated reasoning or provider-specific tool serialization."
+  ],
+  "encodings": {
+    "o200k_base": {
+      "scenarios": {
+        "single_active_server/direct_all": {
+          "input_tokens_by_turn": [
+            7407,
+            7489
+          ],
+          "cumulative_input_tokens": 14896
+        },
+        "single_active_server/direct_all_repeat": {
+          "input_tokens_by_turn": [
+            7514,
+            7596
+          ],
+          "cumulative_input_tokens": 15110
+        },
+        "single_active_server/direct_same_six_tools": {
+          "input_tokens_by_turn": [
+            1679,
+            1761
+          ],
+          "cumulative_input_tokens": 3440
+        },
+        "single_active_server/direct_same_six_tools_repeat": {
+          "input_tokens_by_turn": [
+            1786,
+            1868
+          ],
+          "cumulative_input_tokens": 3654
+        },
+        "single_active_server/direct_task_filtered": {
+          "input_tokens_by_turn": [
+            303,
+            385
+          ],
+          "cumulative_input_tokens": 688
+        },
+        "single_active_server/direct_task_filtered_repeat": {
+          "input_tokens_by_turn": [
+            410,
+            492
+          ],
+          "cumulative_input_tokens": 902
+        },
+        "single_active_server/rhyven_cold": {
+          "input_tokens_by_turn": [
+            405,
+            1191,
+            1667,
+            1763
+          ],
+          "cumulative_input_tokens": 5026
+        },
+        "single_active_server/rhyven_cold_repeat": {
+          "input_tokens_by_turn": [
+            1788,
+            1884
+          ],
+          "cumulative_input_tokens": 3672
+        },
+        "single_active_server/rhyven_known_categories": {
+          "input_tokens_by_turn": [
+            405,
+            881,
+            977
+          ],
+          "cumulative_input_tokens": 2263
+        },
+        "single_active_server/rhyven_known_categories_repeat": {
+          "input_tokens_by_turn": [
+            1002,
+            1098
+          ],
+          "cumulative_input_tokens": 2100
+        },
+        "cross_server_workflow/direct_all": {
+          "input_tokens_by_turn": [
+            7420,
+            7502,
+            7639,
+            7702
+          ],
+          "cumulative_input_tokens": 30263
+        },
+        "cross_server_workflow/direct_all_repeat": {
+          "input_tokens_by_turn": [
+            7740,
+            7822,
+            7959,
+            8022
+          ],
+          "cumulative_input_tokens": 31543
+        },
+        "cross_server_workflow/direct_same_six_tools": {
+          "input_tokens_by_turn": [
+            1692,
+            1774,
+            1911,
+            1974
+          ],
+          "cumulative_input_tokens": 7351
+        },
+        "cross_server_workflow/direct_same_six_tools_repeat": {
+          "input_tokens_by_turn": [
+            2012,
+            2094,
+            2231,
+            2294
+          ],
+          "cumulative_input_tokens": 8631
+        },
+        "cross_server_workflow/direct_task_filtered": {
+          "input_tokens_by_turn": [
+            1097,
+            1179,
+            1316,
+            1379
+          ],
+          "cumulative_input_tokens": 4971
+        },
+        "cross_server_workflow/direct_task_filtered_repeat": {
+          "input_tokens_by_turn": [
+            1417,
+            1499,
+            1636,
+            1699
+          ],
+          "cumulative_input_tokens": 6251
+        },
+        "cross_server_workflow/rhyven_cold": {
+          "input_tokens_by_turn": [
+            418,
+            1204,
+            1680,
+            1776,
+            2138,
+            2290,
+            2997,
+            3075
+          ],
+          "cumulative_input_tokens": 15578
+        },
+        "cross_server_workflow/rhyven_cold_repeat": {
+          "input_tokens_by_turn": [
+            3113,
+            3209,
+            3361,
+            3439
+          ],
+          "cumulative_input_tokens": 13122
+        },
+        "cross_server_workflow/rhyven_known_categories": {
+          "input_tokens_by_turn": [
+            418,
+            894,
+            990,
+            1352,
+            1504,
+            2211,
+            2289
+          ],
+          "cumulative_input_tokens": 9658
+        },
+        "cross_server_workflow/rhyven_known_categories_repeat": {
+          "input_tokens_by_turn": [
+            2327,
+            2423,
+            2575,
+            2653
+          ],
+          "cumulative_input_tokens": 9978
+        }
+      },
+      "function_schema_only": {
+        "single_active_server/direct_all": {
+          "cumulative_input_tokens": 8290
+        },
+        "single_active_server/direct_all_repeat": {
+          "cumulative_input_tokens": 8504
+        },
+        "single_active_server/direct_same_six_tools": {
+          "cumulative_input_tokens": 1980
+        },
+        "single_active_server/direct_same_six_tools_repeat": {
+          "cumulative_input_tokens": 2194
+        },
+        "single_active_server/direct_task_filtered": {
+          "cumulative_input_tokens": 546
+        },
+        "single_active_server/direct_task_filtered_repeat": {
+          "cumulative_input_tokens": 760
+        },
+        "single_active_server/rhyven_cold": {
+          "cumulative_input_tokens": 5026
+        },
+        "single_active_server/rhyven_cold_repeat": {
+          "cumulative_input_tokens": 3672
+        },
+        "single_active_server/rhyven_known_categories": {
+          "cumulative_input_tokens": 2263
+        },
+        "single_active_server/rhyven_known_categories_repeat": {
+          "cumulative_input_tokens": 2100
+        },
+        "cross_server_workflow/direct_all": {
+          "cumulative_input_tokens": 17051
+        },
+        "cross_server_workflow/direct_all_repeat": {
+          "cumulative_input_tokens": 18331
+        },
+        "cross_server_workflow/direct_same_six_tools": {
+          "cumulative_input_tokens": 4431
+        },
+        "cross_server_workflow/direct_same_six_tools_repeat": {
+          "cumulative_input_tokens": 5711
+        },
+        "cross_server_workflow/direct_task_filtered": {
+          "cumulative_input_tokens": 3507
+        },
+        "cross_server_workflow/direct_task_filtered_repeat": {
+          "cumulative_input_tokens": 4787
+        },
+        "cross_server_workflow/rhyven_cold": {
+          "cumulative_input_tokens": 15578
+        },
+        "cross_server_workflow/rhyven_cold_repeat": {
+          "cumulative_input_tokens": 13122
+        },
+        "cross_server_workflow/rhyven_known_categories": {
+          "cumulative_input_tokens": 9658
+        },
+        "cross_server_workflow/rhyven_known_categories_repeat": {
+          "cumulative_input_tokens": 9978
+        }
+      }
+    },
+    "cl100k_base": {
+      "scenarios": {
+        "single_active_server/direct_all": {
+          "input_tokens_by_turn": [
+            7091,
+            7171
+          ],
+          "cumulative_input_tokens": 14262
+        },
+        "single_active_server/direct_all_repeat": {
+          "input_tokens_by_turn": [
+            7196,
+            7276
+          ],
+          "cumulative_input_tokens": 14472
+        },
+        "single_active_server/direct_same_six_tools": {
+          "input_tokens_by_turn": [
+            1619,
+            1699
+          ],
+          "cumulative_input_tokens": 3318
+        },
+        "single_active_server/direct_same_six_tools_repeat": {
+          "input_tokens_by_turn": [
+            1724,
+            1804
+          ],
+          "cumulative_input_tokens": 3528
+        },
+        "single_active_server/direct_task_filtered": {
+          "input_tokens_by_turn": [
+            293,
+            373
+          ],
+          "cumulative_input_tokens": 666
+        },
+        "single_active_server/direct_task_filtered_repeat": {
+          "input_tokens_by_turn": [
+            398,
+            478
+          ],
+          "cumulative_input_tokens": 876
+        },
+        "single_active_server/rhyven_cold": {
+          "input_tokens_by_turn": [
+            396,
+            1170,
+            1638,
+            1731
+          ],
+          "cumulative_input_tokens": 4935
+        },
+        "single_active_server/rhyven_cold_repeat": {
+          "input_tokens_by_turn": [
+            1756,
+            1849
+          ],
+          "cumulative_input_tokens": 3605
+        },
+        "single_active_server/rhyven_known_categories": {
+          "input_tokens_by_turn": [
+            396,
+            864,
+            957
+          ],
+          "cumulative_input_tokens": 2217
+        },
+        "single_active_server/rhyven_known_categories_repeat": {
+          "input_tokens_by_turn": [
+            982,
+            1075
+          ],
+          "cumulative_input_tokens": 2057
+        },
+        "cross_server_workflow/direct_all": {
+          "input_tokens_by_turn": [
+            7104,
+            7184,
+            7314,
+            7374
+          ],
+          "cumulative_input_tokens": 28976
+        },
+        "cross_server_workflow/direct_all_repeat": {
+          "input_tokens_by_turn": [
+            7412,
+            7492,
+            7622,
+            7682
+          ],
+          "cumulative_input_tokens": 30208
+        },
+        "cross_server_workflow/direct_same_six_tools": {
+          "input_tokens_by_turn": [
+            1632,
+            1712,
+            1842,
+            1902
+          ],
+          "cumulative_input_tokens": 7088
+        },
+        "cross_server_workflow/direct_same_six_tools_repeat": {
+          "input_tokens_by_turn": [
+            1940,
+            2020,
+            2150,
+            2210
+          ],
+          "cumulative_input_tokens": 8320
+        },
+        "cross_server_workflow/direct_task_filtered": {
+          "input_tokens_by_turn": [
+            1066,
+            1146,
+            1276,
+            1336
+          ],
+          "cumulative_input_tokens": 4824
+        },
+        "cross_server_workflow/direct_task_filtered_repeat": {
+          "input_tokens_by_turn": [
+            1374,
+            1454,
+            1584,
+            1644
+          ],
+          "cumulative_input_tokens": 6056
+        },
+        "cross_server_workflow/rhyven_cold": {
+          "input_tokens_by_turn": [
+            409,
+            1183,
+            1651,
+            1744,
+            2096,
+            2239,
+            2940,
+            3015
+          ],
+          "cumulative_input_tokens": 15277
+        },
+        "cross_server_workflow/rhyven_cold_repeat": {
+          "input_tokens_by_turn": [
+            3053,
+            3146,
+            3289,
+            3364
+          ],
+          "cumulative_input_tokens": 12852
+        },
+        "cross_server_workflow/rhyven_known_categories": {
+          "input_tokens_by_turn": [
+            409,
+            877,
+            970,
+            1322,
+            1465,
+            2166,
+            2241
+          ],
+          "cumulative_input_tokens": 9450
+        },
+        "cross_server_workflow/rhyven_known_categories_repeat": {
+          "input_tokens_by_turn": [
+            2279,
+            2372,
+            2515,
+            2590
+          ],
+          "cumulative_input_tokens": 9756
+        }
+      },
+      "function_schema_only": {
+        "single_active_server/direct_all": {
+          "cumulative_input_tokens": 8024
+        },
+        "single_active_server/direct_all_repeat": {
+          "cumulative_input_tokens": 8234
+        },
+        "single_active_server/direct_same_six_tools": {
+          "cumulative_input_tokens": 1946
+        },
+        "single_active_server/direct_same_six_tools_repeat": {
+          "cumulative_input_tokens": 2156
+        },
+        "single_active_server/direct_task_filtered": {
+          "cumulative_input_tokens": 532
+        },
+        "single_active_server/direct_task_filtered_repeat": {
+          "cumulative_input_tokens": 742
+        },
+        "single_active_server/rhyven_cold": {
+          "cumulative_input_tokens": 4935
+        },
+        "single_active_server/rhyven_cold_repeat": {
+          "cumulative_input_tokens": 3605
+        },
+        "single_active_server/rhyven_known_categories": {
+          "cumulative_input_tokens": 2217
+        },
+        "single_active_server/rhyven_known_categories_repeat": {
+          "cumulative_input_tokens": 2057
+        },
+        "cross_server_workflow/direct_all": {
+          "cumulative_input_tokens": 16500
+        },
+        "cross_server_workflow/direct_all_repeat": {
+          "cumulative_input_tokens": 17732
+        },
+        "cross_server_workflow/direct_same_six_tools": {
+          "cumulative_input_tokens": 4344
+        },
+        "cross_server_workflow/direct_same_six_tools_repeat": {
+          "cumulative_input_tokens": 5576
+        },
+        "cross_server_workflow/direct_task_filtered": {
+          "cumulative_input_tokens": 3448
+        },
+        "cross_server_workflow/direct_task_filtered_repeat": {
+          "cumulative_input_tokens": 4680
+        },
+        "cross_server_workflow/rhyven_cold": {
+          "cumulative_input_tokens": 15277
+        },
+        "cross_server_workflow/rhyven_cold_repeat": {
+          "cumulative_input_tokens": 12852
+        },
+        "cross_server_workflow/rhyven_known_categories": {
+          "cumulative_input_tokens": 9450
+        },
+        "cross_server_workflow/rhyven_known_categories_repeat": {
+          "cumulative_input_tokens": 9756
+        }
+      }
+    }
+  }
+}

@@ -200,14 +200,36 @@ impl Runtime {
         )?;
         match operation {
             "rhyven_categories" => {
+                let apps = self.call("list_apps", args)?;
+                let apps: Vec<Value> = apps.as_array().unwrap().iter().map(|app| {
+                    let package = self.describe(app["name"].as_str().unwrap())?;
+                    Ok(json!({"name":app["name"],"description":app["description"],"version":app["version"],"contract_hash":crate::tools::contract_hash(&package)}))
+                }).collect::<Result<_>>()?;
                 return Ok(
-                    json!({"rhyven_protocol":1,"collection":collections::scope(&self.root)?["collection"],"workspace":self.root,"apps":self.call("list_apps", args)?}),
-                )
+                    json!({"rhyven_protocol":1,"collection":collections::scope(&self.root)?["collection"],"workspace":self.root,"apps":apps}),
+                );
             }
             "rhyven_describe" => {
-                catalog::keys(&args, &["category"])?;
+                if let Some(requests) = args.get("requests") {
+                    catalog::keys(&args, &["requests"])?;
+                    let requests = requests
+                        .as_array()
+                        .filter(|v| !v.is_empty() && v.len() <= 16)
+                        .ok_or_else(|| {
+                            Error::new("validation", "requests must contain 1..16 descriptions")
+                        })?;
+                    let mut descriptions = Vec::new();
+                    for request in requests {
+                        catalog::keys(
+                            request,
+                            &["category", "function", "search", "full", "index", "if_hash"],
+                        )?;
+                        descriptions.push(self.call("rhyven_describe", request.clone())?);
+                    }
+                    return Ok(json!({"descriptions":descriptions}));
+                }
                 let mut manifest =
-                    crate::tools::manifest(&self.describe(string(&args, "category")?)?);
+                    crate::tools::describe(&self.describe(string(&args, "category")?)?, &args)?;
                 manifest["scope"] = collections::scope(&self.root)?;
                 return Ok(manifest);
             }
@@ -322,6 +344,27 @@ impl Runtime {
             "validation",
             "Rich queries currently require local hosting",
         )?;
+        if crate::connector::enabled(&p) {
+            ensure(
+                operation == "execute",
+                "validation",
+                "Connectors expose actions only",
+            )?;
+            drop(tx);
+            let call_id = uuid::Uuid::new_v4().to_string();
+            let event = |status: &str| -> Result<()> {
+                store::open(&self.root)?.execute("INSERT INTO events(app,event) VALUES(?1,?2)", params![p["name"].as_str().unwrap(), json!({"operation":"connector_call","call_id":call_id,"action":args["action"],"actor":self.actor,"package_sha256":store::hash(&p),"time":crate::marketplace::now(),"status":status}).to_string()])?;
+                Ok(())
+            };
+            event("started")?;
+            // The external service owns its state. Keep the captured package contract,
+            // but allow unrelated local work while waiting on the network.
+            drop(_maintenance);
+            let result = crate::connector::call(&p, &args);
+            let _completion = crate::maintenance::lock(&self.root)?;
+            event(if result.is_ok() { "completed" } else { "failed_or_unknown" }).map_err(|_| Error::new("connector_app", "Connector call finished but audit completion failed; inspect upstream state before retrying"))?;
+            return result;
+        }
         if operation == "execute" && crate::execution::enabled(&p) {
             drop(tx);
             if crate::services::enabled(&p) {

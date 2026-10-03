@@ -11,11 +11,10 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
-The source version is **0.4.0-rc.10**, an open-source preview. Linux is the
-supported preview platform. macOS builds are feedback targets; full container
-acceptance on macOS is pending. Native Windows is not supported.
+Version **0.5.0** supports Linux x86-64 and ARM64. Native Windows and macOS
+are not supported release targets. Individual app images may support fewer architectures.
 
-The signed **0.4.0-rc.10** installer and platform binaries are available at
+The signed **0.5.0** installer and platform binaries are available at
 [rhyvenai.com](https://rhyvenai.com). App versions and container image digests
 are released independently.
 See [installation](docs/installation.md) and [release status](docs/release-status.md).
@@ -150,3 +149,16 @@ See [Python and JavaScript app deployment](docs/deploy-script.md) for its host-a
 permission model and the native repository documentation tool.
 
 Shared deployments: [hosting for groups](docs/shared-hosting.md). Knowledge transfer: [preview and merge](docs/knowledge-merge.md). Use `rhyven upgrade` for runtime updates; `r` in the TUI refreshes the marketplace catalog.
+
+### External-service connectors (unreleased)
+
+Rhyven 0.5 can generate apps from selected MCP tools or OpenAPI operations without installing upstream services. See [connector apps](docs/connector-apps.md) and the [token benchmark](docs/connector-benchmark.md).
+
+## Optional starter for users without a harness
+
+Existing harnesses extend their capabilities through Rhyven's three MCP tools;
+they do not need an additional runner. For users with only a model API, the
+[Starter Runner](apps/starter-runner/README.md) offers bounded planning, tasks,
+knowledge and human questions. It requires Docker and your own model endpoint.
+[User Questions](apps/user-questions/README.md) is a separate declarative app
+usable by either path. General apps remain independent of the starter.

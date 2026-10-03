@@ -15,7 +15,7 @@ on:
         description: App images to build and test
         type: choice
         default: all
-        options: [all, repo-documentation-tool, messaging]
+        options: [all, repo-documentation-tool, messaging, starter-runner]
 permissions:
   contents: read
 jobs:
@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJSON(inputs.app == 'messaging' && '["messaging"]' || inputs.app == 'repo-documentation-tool' && '["repo-documentation-tool"]' || '["repo-documentation-tool","messaging"]') }}
+        app: ${{ fromJSON(inputs.app == 'starter-runner' && '["starter-runner"]' || inputs.app == 'messaging' && '["messaging"]' || inputs.app == 'repo-documentation-tool' && '["repo-documentation-tool"]' || '["repo-documentation-tool","messaging","starter-runner"]') }}
     env:
       GH_TOKEN: ${{ github.token }}
       APP: ${{ matrix.app }}
@@ -67,13 +67,15 @@ jobs:
         run: |
           version=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "apps/$APP/app.json")
           image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/$APP:$version"
-          docker build --label "org.opencontainers.image.source=https://github.com/rhyven-ai/apps" --iidfile image.id -t "$image" "apps/$APP"
+          docker build --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" --iidfile image.id -t "$image" "apps/$APP"
           printf '%s\n' "$image" > image-name.txt
       - name: Test app behavior and runtime integration
         run: |
           python3 -m unittest discover -s "apps/$APP/tests" -v
           if [ "$APP" = repo-documentation-tool ]; then
             python3 apps/repo-documentation-tool/tests/integration.py runtime/rhyven-linux-x86_64 image.id
+          elif [ "$APP" = starter-runner ]; then
+            python3 apps/starter-runner/tests/integration.py runtime/rhyven-linux-x86_64 image.id
           else
             python3 qa/official_apps_check.py runtime/rhyven-linux-x86_64 image.id
           fi

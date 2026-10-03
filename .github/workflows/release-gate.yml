@@ -26,6 +26,7 @@ jobs:
           python3 qa/shared_runtime_check.py target/release/rhyven
           python3 qa/collections_check.py target/release/rhyven
           python3 qa/knowledge_merge_check.py target/release/rhyven
+          python3 qa/connector_check.py target/release/rhyven
       - name: Distribution and source exports
         run: |
           python3 -m unittest discover -s qa -p 'test_*.py' -v
@@ -42,3 +43,8 @@ jobs:
           python3 qa/container_check.py target/release/rhyven /tmp/example.id
           python3 qa/container_limits_check.py target/release/rhyven /tmp/probe.id
           python3 qa/recovery_check.py target/release/rhyven /tmp/probe.id
+      - name: Optional starter apps
+        run: |
+          python3 -m unittest discover -s apps/starter-runner/tests -v
+          docker build --iidfile /tmp/starter.id apps/starter-runner
+          python3 apps/starter-runner/tests/integration.py target/release/rhyven /tmp/starter.id

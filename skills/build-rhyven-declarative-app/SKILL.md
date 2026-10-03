@@ -5,7 +5,7 @@ description: Build a Rhyven app using JSON objects, relationships, rules, expres
 
 # Build a declarative Rhyven app
 
-Target: Rhyven 0.4.0-rc.9, app format 2. The distributable app is a JSON manifest.
+Target: Rhyven 0.5.0, app format 2. The distributable app is a JSON manifest.
 Rhyven interprets its operations and stores records in collection-scoped SQLite.
 Authors do not compile a binary, create a Dockerfile, or write a custom MCP server.
 
@@ -147,3 +147,6 @@ functions are generated as `object_item_query`, `object_item_create`, and
 
 Deliver the app manifest, guide, behavior tests, package, and validation results.
 Use the publishing skill when the user wants marketplace distribution.
+
+In 0.5+, actions may include optional `keywords` (up to 16 strings, each 1–64
+bytes) to improve discovery without changing execution. Use the 0.5 validator.

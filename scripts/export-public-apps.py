@@ -11,6 +11,8 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = ('README.md', 'LICENSE', 'NOTICE', 'THIRD_PARTY.md', '.gitignore')
 GROUPS = {
+    'apps/user-questions': ('LICENSE', 'NOTICE', 'README.md', 'app.json'),
+    'apps/starter-runner': ('LICENSE', 'NOTICE', 'README.md', '.dockerignore', 'Dockerfile', 'app.json', 'main.py', 'client.py', 'rhyven_service.py', 'tests/test_runner.py', 'tests/integration.py'),
     'catalog': ('LICENSE', 'NOTICE', 'ci-management.json', 'error-management.json',
                 'inventory.json', 'project-knowledge.json', 'work-management.json'),
     'apps': ('LICENSE', 'NOTICE'),

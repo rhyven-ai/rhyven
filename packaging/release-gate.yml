@@ -30,6 +30,7 @@ jobs:
       - name: Distribution and source exports
         run: |
           python3 -m unittest discover -s qa -p 'test_*.py' -v
+          python3 qa/image_scan_review_check.py
           python3 qa/direct_download_check.py target/release/rhyven
           python3 qa/installer_catalog_check.py
           python3 qa/platform_polish_check.py target/release/rhyven

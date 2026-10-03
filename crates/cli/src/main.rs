@@ -1,5 +1,6 @@
 mod connect;
 mod setup;
+mod upgrade;
 use agent_market_core::{
     catalog, conformance, error::ensure, http, registry, store, tools::AgentSession, Result,
     Runtime,
@@ -133,6 +134,12 @@ enum DaemonCommand {
 }
 #[derive(Subcommand)]
 enum Command {
+    /// Update the Rhyven executable from signed public releases; leaves apps and data intact.
+    Upgrade {
+        /// Report the available version without replacing the executable.
+        #[arg(long)]
+        check: bool,
+    },
     /// Show the Apache-2.0 license and attribution notices without opening app state.
     License {
         /// Include dependency license texts bundled in this executable.
@@ -388,6 +395,7 @@ fn run() -> Result<()> {
         })?;
     // Restore must run before the normal collection auto-creation.
     let early = match &cli.command {
+        Some(Command::Upgrade { check }) => Some(upgrade::run(&home, *check)?),
         Some(Command::Setup {
             containers,
             yes,
@@ -515,6 +523,7 @@ fn run() -> Result<()> {
             DaemonCommand::Status => agent_market_core::services::daemon_control(&runtime, "ping")?,
         },
         Command::Setup { .. }
+        | Command::Upgrade { .. }
         | Command::Doctor
         | Command::License { .. }
         | Command::App { .. }

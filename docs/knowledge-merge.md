@@ -1,7 +1,6 @@
 # Merge knowledge between collections or hosts
 
-Implemented on the `feat/knowledge-merge-query` branch; not yet in the published
-0.4.0-rc.9 installer. Both endpoints need a build with these functions.
+Available in Rhyven 0.4.0-rc.10. Both endpoints need rc.10 or newer.
 
 Project Knowledge exposes three additional functions through the existing
 `rhyven_call(category, function, args)` interface:

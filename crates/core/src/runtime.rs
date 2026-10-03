@@ -218,6 +218,15 @@ impl Runtime {
             catalog::keys(&args, &["app", "action", "args", "request_id"])?;
             return crate::services::dispatch(self, operation, args);
         }
+        // Catalog downloads and host probes do not mutate installed apps. Do not hold
+        // the collection maintenance lock while waiting on network or host tools.
+        if args["app"] == crate::marketplace::APP
+            && operation == "execute"
+            && matches!(args["action"].as_str(), Some("refresh" | "requirements"))
+        {
+            catalog::keys(&args, &["app", "action", "args", "request_id"])?;
+            return crate::marketplace::call(self, operation, args);
+        }
         let _maintenance = crate::maintenance::lock(&self.root)?;
         match operation {
             "list_apps" => {

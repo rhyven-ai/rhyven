@@ -14,6 +14,7 @@ pub mod query;
 pub mod recovery;
 mod recovery_archive;
 pub mod registry;
+pub mod requirements;
 pub mod runtime;
 pub mod schema;
 pub mod script;

@@ -34,7 +34,9 @@ pub fn describe() -> Value {
         actions.insert(name.into(), json!({"description":description,"input":input(json!({"app":string,"version":string}), &["app"])}));
     }
     actions.insert("apply".into(), json!({"description":"Apply a prepared request. User approval is required through MCP elicitation or the local approval command. Never self-approve.","input":input(json!({"request_id":string}), &["request_id"])}));
-    actions.insert("refresh".into(), json!({"description":"Refresh configured GitHub registry metadata and repository stars; download no app assets","input":input(json!({}), &[])}));
+    actions.insert("refresh".into(), json!({"description":"Refresh configured registry manifests and stars (public registry by default); installs no apps and pulls no images","input":input(json!({}), &[])}));
+    actions.insert("refresh_status".into(), json!({"description":"Read last catalog sync time and error", "input":input(json!({}), &[])}));
+    actions.insert("requirements".into(), json!({"description":"Check host prerequisites before installation; no app code, dependency installation or image downloads", "input":input(json!({"app":{"type":"string"}}), &["app"])}));
     actions.insert("doctor".into(), json!({"description":"Read-only execution capability diagnosis; no downloads or app execution", "input":input(json!({}), &[])}));
     let long_text = json!({"type":"string"});
     let hosting = input(
@@ -42,14 +44,22 @@ pub fn describe() -> Value {
         &["mode"],
     );
     let mut request_fields = json!({"request_id":string,"operation":string,"app":string,"version":string,"publisher":string,"publisher_label":string,"display_name":string,"repository":string,"stars":{"type":"integer"},"stars_status":long_text,"stars_checked_at":{"type":"integer"},"permissions":{"type":"array","items":string},"hosting":hosting,"trust":string,"sha256":string,"target_workspace":long_text,"target_collection":string,"expires_at":{"type":"integer"},"data_retained":{"type":"boolean"},"approval_instructions":long_text,"status":string,"review_digest":string,"execution_warning":long_text});
+    request_fields["requirements"] = input(
+        json!({"status":string,"summary":long_text,"detail":long_text}),
+        &["status", "summary", "detail"],
+    );
     request_fields["execution"] = input(
         json!({"driver":string,"language":string,"entrypoint":string,"environment":string,"python_version":string,"node_version":string,"dependencies":input(json!({"pip":string,"npm":string}), &[]),"image":long_text,"protocol":string,"timeout_seconds":{"type":"integer"},"memory_mb":{"type":"integer"},"cpus":{"type":"integer"},"secrets":{"type":"array","items":string}}),
         &["driver"],
     );
+    request_fields["execution"]["properties"].as_object_mut().unwrap().extend(json!({
+        "mode":string,"start_policy":string,"startup_timeout_seconds":{"type":"integer"},"shutdown_timeout_seconds":{"type":"integer"},"restart_limit":{"type":"integer"},
+        "calls":{"type":"array","items":input(json!({"category":string,"function":string,"version":string}), &["category","function","version"])}
+    }).as_object().unwrap().clone());
     let fields = json!({"name":string,"version":string,"description":long_text,"publisher":string,"publisher_label":string,"display_name":string,"repository":string,"installed_version":string,"update_available":{"type":"boolean"},"trust":string,"permissions":{"type":"array","items":string},"hosting":string,"stars":{"type":"integer","minimum":0},"stars_status":string,"stars_checked_at":{"type":"integer"},"metadata_checked_at":{"type":"integer"},"metadata_stale":{"type":"boolean"}});
     json!({"name":APP,"version":"0.1.0","publisher":"rhyven","platform":true,"description":"Discover and manage agent apps through the universal interface", "hosting":{"mode":"local"},"permissions":["marketplace.read","marketplace.manage_with_user_approval"],"trust":"Platform built-in",
         "objects":{"listing":{"immutable":true,"schema":input(fields,&["name","version","description","publisher","trust","permissions","hosting","stars_status","metadata_stale"])},"request":{"immutable":true,"schema":input(request_fields, &["request_id","operation","status","expires_at","target_workspace"]) }},
-        "actions":actions,"guide":"Use query listing (filters: search/name/installed/update_available) to browse. get listing uses publisher/app or publisher/app@version as id. Stars mean GitHub repository stars, never certification; unavailable is not zero. list_apps includes installed apps and this platform capability. Prepare install/update/remove, show the review including workspace, permissions and stars, ask the user, then apply the request. The host must deliver consent; an agent cannot approve itself. create/update are forbidden. Refresh requires a registry configured using registry-refresh. All writes occur on the serving runtime's workspace. Removal retains data."})
+        "actions":actions,"guide":"Use query listing (filters: search/name/installed/update_available) to browse. get listing uses publisher/app or publisher/app@version as id. Stars mean GitHub repository stars, never certification; unavailable is not zero. list_apps includes installed apps and this platform capability. Prepare install/update/remove, show the review including workspace, permissions and stars, ask the user, then apply the request. The host must deliver consent; an agent cannot approve itself. create/update are forbidden. Refresh downloads catalog manifests without installing apps and defaults to the public registry. All writes occur on the serving runtime's workspace. Removal retains data."})
 }
 pub fn summary() -> Value {
     let p = describe();
@@ -256,6 +266,8 @@ fn prepare(r: &Runtime, operation: &str, args: &Value) -> Result<Value> {
     let id = uuid::Uuid::new_v4().to_string();
     let expiry = now() + 900;
     let mut view = json!({"request_id":id,"operation":operation,"app":name,"version":p["version"],"publisher":p["publisher"],"publisher_label":catalog::publisher_label(p),"display_name":catalog::display_name(p),"repository":p["repository"],"stars":listing["data"]["stars"],"stars_status":listing["data"]["stars_status"],"stars_checked_at":listing["data"]["stars_checked_at"],"permissions":p["permissions"],"hosting":hosting,"trust":"Unverified","sha256":if target["kind"]=="local" {store::hash(p)} else {text(p,"sha256")?.into()},"target_workspace":r.root,"expires_at":expiry,"data_retained":true,"approval_instructions":"Ask the user before applying. MCP hosts with form elicitation prompt automatically. Otherwise the user runs rhyven --workspace PATH approve REQUEST_ID in their terminal."});
+    let requirements = crate::requirements::check(p);
+    view["requirements"] = json!({"status":requirements["status"],"summary":requirements["summary"],"detail":serde_json::to_string(&requirements)?});
     view["execution"] = p
         .get("execution")
         .cloned()
@@ -458,19 +470,11 @@ pub fn call(r: &Runtime, operation: &str, args: Value) -> Result<Value> {
                 "apply" => apply_with(r, text(&input, "request_id")?, |entry, anonymous| {
                     registry::download_cached(&r.root, entry, anonymous)
                 }),
-                "refresh" => {
-                    let m = registry::metadata(&r.root)?.ok_or_else(|| {
-                        Error::new(
-                            "registry",
-                            "Configure a registry first using registry-refresh OWNER/REPO",
-                        )
-                    })?;
-                    registry::refresh(
-                        &r.root,
-                        text(&m, "repository")?,
-                        text(&m, "ref")?,
-                        m["anonymous"].as_bool().unwrap_or(false),
-                    )
+                "refresh" => registry::refresh_catalog(&r.root),
+                "refresh_status" => registry::refresh_status(&r.root),
+                "requirements" => {
+                    let target = source(r, text(&input, "app")?)?;
+                    Ok(crate::requirements::check(package_info(&target)))
                 }
                 _ => unreachable!(),
             }

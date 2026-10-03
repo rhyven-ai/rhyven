@@ -633,3 +633,25 @@ pub(crate) fn run(_: &mut Command, _: Vec<u8>, _: u64) -> Result<Vec<u8>> {
         "Script execution currently requires a Unix host",
     ))
 }
+
+/// Probe only host tools; never prepare dependencies or execute package files.
+pub fn requirements(p: &Value) -> Result<Value> {
+    let environment = environment(Path::new("."), p)?;
+    if p["execution"]["language"] == "python" || p["execution"]["dependencies"].get("pip").is_some()
+    {
+        let python = environment.tools.get("python3").unwrap();
+        run(
+            clean(Command::new(python).args(["-c", "import venv, ensurepip"])),
+            vec![],
+            15,
+        )?;
+    }
+    if p["execution"]["dependencies"].get("npm").is_some() {
+        run(
+            clean(Command::new(executable("npm")?).arg("--version")),
+            vec![],
+            15,
+        )?;
+    }
+    Ok(environment.identity["runtimes"].clone())
+}

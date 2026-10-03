@@ -267,10 +267,9 @@ match range filters. These are annotations, not automatic reminders.
 The three MCP tools remain unchanged. REST and standalone exported MCP functions
 use the same query schemas, validation and runtime implementation.
 
-## Query extensions on the merge/query branch
+## Extended query options (0.4.0-rc.10)
 
-These additions are implemented on `feat/knowledge-merge-query`, not yet in the
-published 0.4.0-rc.9 installer. They use the existing object query function.
+These additions require 0.4.0-rc.10 or newer. They use the existing object query function.
 
 - `any_of`: 1–16 nonrecursive `where` objects; at least one must match. Conditions
   within a branch are ANDed. Other filters, search and `where` still apply.

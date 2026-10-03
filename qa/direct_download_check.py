@@ -110,7 +110,8 @@ else: raise SystemExit(91)
         prior = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else None
         record = None
         if prior:
-            assert '0.4.0-rc.10' in run([str(prior),'--version']).stdout
+            prior_version = run([str(prior), '--version']).stdout.strip()
+            assert prior_version.startswith('rhyven ') and prior_version != f'rhyven {version}'
             bin_dir.mkdir(parents=True,exist_ok=True)
             shutil.copyfile(prior,bin_dir/'rhyven');(bin_dir/'rhyven').chmod(0o755)
             fixture=ROOT/'crates/core/tests/fixtures/work-management-0.3.0.json'

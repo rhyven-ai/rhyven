@@ -1,9 +1,17 @@
 # Release status
 
-Rhyven 0.5.0 provides signed Linux x86-64 and ARM64 releases, with a matching
+Rhyven 0.5.2 provides signed Linux x86-64 and ARM64 releases, with a matching
 registry validator and website installer.
 
-New in 0.5.0:
+New in 0.5.2:
+
+- TUI refresh is manual: press `r` to reload local state and fetch listings.
+  The automatic refresh timer and elapsed sync counter are removed.
+- The installer configures existing Bash login profiles and prints the command
+  needed to use Rhyven immediately in the current terminal.
+- App formats, installed apps and collection state are unchanged.
+
+Included from 0.5.0:
 
 - Import selected tools from an existing HTTP MCP server or supported OpenAPI JSON
   document as a connector app. Upstream services and credentials remain user-managed.

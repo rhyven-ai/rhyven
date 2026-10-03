@@ -317,7 +317,15 @@ pub fn verify_package(e: &Entry, bytes: &[u8]) -> Result<Value> {
         "Release asset SHA-256 mismatch",
     )?;
     let p: Value = serde_json::from_slice(bytes)?;
-    catalog::validate(&p)?;
+    catalog::validate(&p).map_err(|error| {
+        if matches!(error.code.as_str(), "unsupported_schema" | "invalid_schema")
+            || error.message.starts_with("Unsupported field:")
+        {
+            Error::new(&error.code, format!(
+                "Cannot read {}@{} with Rhyven {}: {}. This package may require a newer runtime. Update Rhyven using https://rhyvenai.com/install.sh, then retry registry-sync. If it still fails, report the invalid package to its publisher. The existing catalog has not been replaced.",
+                e.name, e.version, env!("CARGO_PKG_VERSION"), error.message))
+        } else { error }
+    })?;
     ensure(
         p.get("execution") == e.execution.as_ref(),
         "integrity",
@@ -746,6 +754,24 @@ mod tests {
             },
             bytes,
         )
+    }
+    #[test]
+    fn unsupported_package_explains_runtime_upgrade_without_hiding_integrity_errors() {
+        let (mut index, bytes) = fixture();
+        let mut p: Value = serde_json::from_slice(&bytes).unwrap();
+        p["future_feature"] = json!(true);
+        let bytes = serde_json::to_vec(&p).unwrap();
+        index.apps[0].sha256 = format!("{:x}", Sha256::digest(&bytes));
+        let error = verify_package(&index.apps[0], &bytes).unwrap_err();
+        assert!(error.message.contains("Update Rhyven"));
+        assert!(error.message.contains(env!("CARGO_PKG_VERSION")));
+        assert!(error.message.contains("future_feature"));
+        assert_eq!(
+            verify_package(&index.apps[0], b"tampered")
+                .unwrap_err()
+                .code,
+            "integrity"
+        );
     }
     #[test]
     fn ownership_immutability_metadata_and_hash_fail_closed() {

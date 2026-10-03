@@ -6,12 +6,8 @@ optional; Python and other app dependencies stay in their images.
 
 ## Platform status
 
-**Linux is the supported platform for the current preview. macOS is a feedback
-preview for Intel and Apple Silicon; full Mac container acceptance is still pending.**
-
-Mac testers: please report your macOS version, chip type, Docker Desktop version,
-installation result, and any problems with app execution or persistent data. Include
-`rhyven doctor` output and the relevant error, with private details removed.
+**Linux x86-64 and ARM64 are supported for the current preview. Native Windows
+is unsupported; other platforms need separate acceptance testing.**
 
 Linux dependency automation currently targets Ubuntu/Debian. Other distributions
 can reuse an existing compatible engine. WSL follows the Linux route; native
@@ -22,8 +18,7 @@ Docker/rootless configuration passes the required capability checks.
 
 The engine is open source under Apache-2.0. Customers can download a prebuilt executable
 from **rhyvenai.com**, with no GitHub account, repository access or source build.
-The installer and download folder are prepared locally; **the public downloads
-have not been published yet**. After deployment, the customer command will be:
+Install with:
 
 ```bash
 curl -fsSL https://rhyvenai.com/install.sh | bash -s -- --containers
@@ -43,6 +38,23 @@ To connect an agent, run `rhyven --collection my-project connect --client codex`
 (also Claude Code, Cursor, VS Code, Cline and generic clients). `rhyven --agent`
 returns connection instructions. See [agent connection](harnesses.md).
 
+The website installer fetches the public marketplace catalog automatically. It
+only downloads manifests: apps, dependencies and container images still require
+an explicit installation. If the network is unavailable, installation succeeds
+with the five bundled apps and prints a retry command. TUI auto-refresh reloads
+this local cache; it does not poll GitHub.
+
+`--from-dir` installation stays offline. Set `RHYVEN_SETUP_OFFLINE=1` to skip
+catalog discovery while downloading a binary online. Current source builds also
+perform initial discovery during `rhyven setup`, retain an existing registry
+selection, and report catalog status separately from Docker readiness. The
+website installer supplies this discovery step for the published rc.9 binary.
+
+An `Unsupported field` error during registry sync can mean the executable is
+older than the package format. Check `rhyven --version` and the executable path
+(`command -v rhyven`), then rerun the current installer. A source checkout's
+`target/release/rhyven` is not updated by installing into `~/.local/bin`.
+
 The public runtime download is separate from marketplace app distribution.
 The public registry is `rhyven-ai/registry`. Refresh it without GitHub authentication:
 
@@ -55,8 +67,7 @@ and TUI browsing, run `rhyven registry-sync rhyven-ai/registry --anonymous` to
 explicitly download app manifests into the package cache. Sync does not install
 apps or pull container images.
 
-The website serves signed `0.4.0-rc.8` binaries for Linux x86-64/ARM64 and
-macOS Intel/Apple Silicon. The installer checks the signed manifest and selected
+The website serves signed `0.4.0-rc.9` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
 binary before replacing an existing installation. See [release status](release-status.md)
 for platform support and release boundaries.
 

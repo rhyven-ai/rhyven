@@ -117,7 +117,22 @@ fi
 set -- "$bin_dir/rhyven" setup
 if [ "$containers" = 1 ]; then set -- "$@" --containers; fi
 if [ "$yes" = 1 ]; then set -- "$@" --yes; fi
-"$@"
+# Older releases do not seed the catalog during setup. Keep this bootstrap compatible.
+if [ -n "$source_dir" ]; then export RHYVEN_SETUP_OFFLINE=1; fi
+setup_output=$("$@")
+printf '%s\n' "$setup_output"
+if ! printf '%s' "$setup_output" | grep -q '"marketplace":'; then
+  if [ "${RHYVEN_SETUP_OFFLINE:-0}" = 1 ]; then
+    printf '\nOffline setup: using bundled apps. Fetch the catalog later with:\n  %s/rhyven registry-sync rhyven-ai/registry --anonymous\n' "'$quoted'"
+  else
+    printf '\nFetching the public marketplace catalog...\n'
+    if ! "$bin_dir/rhyven" registry-sync rhyven-ai/registry --anonymous; then
+      printf '\nCatalog download failed; Rhyven is installed and bundled apps remain available.\n' >&2
+      printf 'Retry: %s/rhyven registry-sync rhyven-ai/registry --anonymous\n' "'$quoted'" >&2
+      printf 'If the error mentions unsupported fields, update Rhyven using the current installer and retry.\n' >&2
+    fi
+  fi
+fi
 printf '\nRhyven installed at %s/rhyven\n' "$bin_dir"
 printf '\nOpen the terminal marketplace (TUI):\n  %s/rhyven\n' "'$quoted'"
 printf '\nOr connect an agent (choose your client):\n'

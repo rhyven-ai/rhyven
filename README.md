@@ -154,3 +154,12 @@ Shared deployments: [hosting for groups](docs/shared-hosting.md). Knowledge tran
 ### External-service connectors (unreleased)
 
 The local connector feature branch can generate apps from selected MCP tools or OpenAPI operations without installing upstream services. See [connector apps](docs/connector-apps.md) and the [token benchmark](docs/connector-benchmark.md). These commands are not in the published rc.10 installer yet.
+
+## Optional starter for users without a harness
+
+Existing harnesses extend their capabilities through Rhyven's three MCP tools;
+they do not need an additional runner. For users with only a model API, the
+[Starter Runner](apps/starter-runner/README.md) offers bounded planning, tasks,
+knowledge and human questions. It requires Docker and your own model endpoint.
+[User Questions](apps/user-questions/README.md) is a separate declarative app
+usable by either path. General apps remain independent of the starter.

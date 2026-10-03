@@ -94,6 +94,6 @@ identity is separate from independent certification: new entries use trust
 `Unverified`; the legacy `Community` spelling remains readable. These metadata
 additions require runtime/validator `0.4.0-rc.6` or newer.
 
-## Connector packages (unreleased)
+## Connector packages (0.5+)
 
 An optional `connector` declaration wraps selected tools or JSON API operations from an already-running external service. It installs no upstream software and requires the new runtime/validator before distribution. See [connector apps](connector-apps.md) for the contract, generation commands and security boundaries.

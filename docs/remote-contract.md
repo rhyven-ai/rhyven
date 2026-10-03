@@ -55,6 +55,6 @@ The provider must authenticate the request, authorize access to its own data, va
 
 Self-hosting the local runtime itself is also possible on a customer-controlled machine through its authenticated generic REST adapter, with a harness connecting through `rhyven mcp --server URL`; an SSH-launched stdio process remains an alternative. This prototype ships no hosted service or provider workload.
 
-## External API and MCP wrappers (unreleased)
+## External API and MCP wrappers (0.5+)
 
 Packages with `connector.protocol` set to `mcp` or `http` use a native wrapper instead of the Rhyven remote wire protocol above. They expose reviewed actions from an existing service and do not install that service. See [connector apps](connector-apps.md).

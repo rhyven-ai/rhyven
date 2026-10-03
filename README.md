@@ -11,11 +11,11 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
-The source version is **0.4.0-rc.9**, an open-source preview. Linux is the
+The source version is **0.4.0-rc.10**, an open-source preview. Linux is the
 supported preview platform. macOS builds are feedback targets; full container
 acceptance on macOS is pending. Native Windows is not supported.
 
-The signed **0.4.0-rc.9** installer and platform binaries are available at
+The signed **0.4.0-rc.10** installer and platform binaries are available at
 [rhyvenai.com](https://rhyvenai.com). App versions and container image digests
 are released independently.
 See [installation](docs/installation.md) and [release status](docs/release-status.md).
@@ -148,3 +148,5 @@ local databases, customer data or signing keys in issues, commits or artifacts.
 Rhyven 0.4.0-rc.9 supports native Python and JavaScript apps without Docker.
 See [Python and JavaScript app deployment](docs/deploy-script.md) for its host-access
 permission model and the native repository documentation tool.
+
+Shared deployments: [hosting for groups](docs/shared-hosting.md). Knowledge transfer: [preview and merge](docs/knowledge-merge.md). Use `rhyven upgrade` for runtime updates; `r` in the TUI refreshes the marketplace catalog.

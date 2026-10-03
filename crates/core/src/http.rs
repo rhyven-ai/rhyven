@@ -91,6 +91,19 @@ impl HttpClient {
                     Some(args["args"].clone()),
                 )
             }
+            "export_records" | "merge_preview" | "merge_apply" => {
+                let suffix = if operation == "export_records" {
+                    "export"
+                } else {
+                    operation
+                };
+                let app = string(&args, "app")?.to_owned();
+                let object = string(&args, "object")?.to_owned();
+                let mut input = args;
+                input.as_object_mut().unwrap().remove("app");
+                input.as_object_mut().unwrap().remove("object");
+                self.call("rhyven_call", json!({"category":app,"function":format!("object_{object}_{suffix}"),"args":input}))
+            }
             "list_apps" => self.apps(),
             "describe_app" => self.describe(string(&args, "app")?),
             "query" => {

@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 const REFRESH_INTERVAL: Duration = Duration::from_secs(2);
 const INPUT_POLL_INTERVAL: Duration = Duration::from_millis(200);
 const UPDATE_HELP: &str = "Update app upgrades only the selected installed app in this collection. It does not update the Rhyven program or other collections.\n\nAfter you confirm, Rhyven saves a recovery backup, stages the new version, applies its declared migrations and validates the result before activation. Failed staging leaves the current app and state in place.\n\nPersistent services in this collection pause during maintenance and previously enabled services resume afterward. Backups remain in the collection's recovery directory.";
-const REFRESH_HELP: &str = "Auto-refresh reloads installed state and the local catalog every 2 seconds. It preserves your selection and search; approval screens stay fixed until you accept or cancel.\n\nRefresh does not install updates or contact GitHub. To fetch newer packages, run rhyven registry-sync OWNER/REPO explicitly in the same home/workspace; the TUI picks up the cache change automatically.";
+const REFRESH_HELP: &str = "Auto-refresh reloads local state every 2 seconds. Press r to sync the configured marketplace (the public registry by default) in the background. It fetches app manifests and stars, but never installs apps, pulls images or applies updates. The current catalog remains usable if the network fails. Approval screens stay fixed.";
 
 #[derive(Clone, Copy, PartialEq)]
 enum Operation {
@@ -51,6 +51,10 @@ pub struct Model {
     service_output: String,
     last_refresh: Instant,
     refresh_error: Option<String>,
+    catalog_job: Option<std::sync::mpsc::Receiver<Result<Value>>>,
+    catalog_status: Value,
+    requirements_job: Option<std::sync::mpsc::Receiver<(String, Value)>>,
+    requirements: std::collections::BTreeMap<String, Value>,
 }
 impl Model {
     pub fn new(runtime: &Runtime) -> Result<Self> {
@@ -61,7 +65,7 @@ impl Model {
             scroll: 0, pane: 0, searching: false, installed_only: false, installed: vec![],
             installed_packages: vec![],
             star_labels: std::collections::BTreeMap::new(), pending: None, service_output: String::new(),
-            last_refresh: Instant::now(), refresh_error: None };
+            last_refresh: Instant::now(), refresh_error: None, catalog_job: None, catalog_status: Value::Null, requirements_job: None, requirements: Default::default() };
         model.reload(runtime);
         Ok(model)
     }
@@ -121,6 +125,7 @@ impl Model {
             self.pane = 0;
             self.scroll = 0;
         }
+        self.catalog_status = agent_market_core::registry::refresh_status(&runtime.root)?;
         self.refresh_error = None;
         Ok(())
     }
@@ -131,10 +136,90 @@ impl Model {
         self.last_refresh = Instant::now();
     }
     fn tick(&mut self, runtime: &Runtime, now: Instant) {
+        if let Some(result) = self
+            .catalog_job
+            .as_ref()
+            .and_then(|job| match job.try_recv() {
+                Ok(value) => Some(value),
+                Err(std::sync::mpsc::TryRecvError::Empty) => None,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    Some(Err(agent_market_core::Error::new(
+                        "refresh",
+                        "Catalog worker stopped; press r to retry",
+                    )))
+                }
+            })
+        {
+            self.catalog_job = None;
+            self.message = match result {
+                Ok(value) => format!("Marketplace refreshed: {} packages", value["packages"]),
+                Err(error) => format!("Marketplace refresh failed; cached apps retained: {error}"),
+            };
+            if !self.review {
+                self.reload(runtime);
+            }
+        }
+        if let Some((key, report)) = self
+            .requirements_job
+            .as_ref()
+            .and_then(|job| job.try_recv().ok())
+        {
+            self.requirements_job = None;
+            self.requirements.insert(key, report);
+        }
+        if (self.pane != 0 || self.review) && self.requirements_job.is_none() {
+            if let Some(p) = self
+                .pending
+                .as_ref()
+                .map(|(_, p)| p.clone())
+                .or_else(|| self.current())
+            {
+                let key = agent_market_core::store::hash(&p);
+                if !self.requirements.contains_key(&key) {
+                    let (tx, rx) = std::sync::mpsc::channel();
+                    self.requirements_job = Some(rx);
+                    std::thread::spawn(move || {
+                        let _ = tx.send((key, agent_market_core::requirements::check(&p)));
+                    });
+                }
+            }
+        }
+
         // The package and installed version shown for consent remain fixed.
         if !self.review && now.duration_since(self.last_refresh) >= REFRESH_INTERVAL {
             self.reload(runtime);
         }
+    }
+    fn start_sync_with(&mut self, work: impl FnOnce() -> Result<Value> + Send + 'static) {
+        if self.catalog_job.is_some() {
+            return;
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.catalog_job = Some(rx);
+        self.message = "Refreshing marketplace… cached apps remain available".into();
+        self.requirements.clear();
+        std::thread::spawn(move || {
+            let _ = tx.send(work());
+        });
+    }
+    fn catalog_label(&self) -> String {
+        if self.catalog_job.is_some() {
+            return "Marketplace: refreshing…".into();
+        }
+        let last = self.catalog_status["last_success"]
+            .as_u64()
+            .map(|at| {
+                format!(
+                    "{}s ago",
+                    agent_market_core::marketplace::now().saturating_sub(at)
+                )
+            })
+            .unwrap_or_else(|| "not synced with r yet".into());
+        let error = self.catalog_status["error"]["message"]
+            .as_str()
+            .map(|e| format!(" · {e}"))
+            .unwrap_or_default();
+        format!("Marketplace sync: {last}{error}")
     }
     fn apply(&self, runtime: &Runtime, operation: Operation, package: &Value) -> Result<Value> {
         let _gate = agent_market_core::maintenance::lock(&runtime.root)?;
@@ -470,7 +555,8 @@ impl Model {
             KeyCode::PageUp => self.scroll = self.scroll.saturating_sub(10),
             KeyCode::Char('r') => {
                 self.reload(runtime);
-                self.message = "Reloaded local state · auto-refresh every 2s · u reviews an app upgrade · ? help".into();
+                let root = runtime.root.clone();
+                self.start_sync_with(move || agent_market_core::registry::refresh_catalog(&root));
             }
             _ => (),
         }
@@ -831,7 +917,7 @@ pub fn render(frame: &mut Frame, model: &Model, _installed: &[String]) {
                 .map(|error| {
                     format!("Refresh delayed; showing last view. Retrying automatically. {error}")
                 })
-                .unwrap_or_else(|| model.message.clone()),
+                .unwrap_or_else(|| format!("{} · {}", model.message, model.catalog_label())),
         ))
         .style(Style::default().fg(CYAN))
         .wrap(Wrap { trim: false })
@@ -911,7 +997,7 @@ fn render_details(frame: &mut Frame, model: &Model, area: Rect) {
     };
     frame.render_widget(
         Paragraph::new(clean(&format!(
-            "{}\n{}\n{}\n\n{}\n\nExecution: {}",
+            "{}\n{}\n{}\n\n{}\n\n{}\n\nExecution: {}",
             model.scope,
             model
                 .current()
@@ -921,6 +1007,7 @@ fn render_details(frame: &mut Frame, model: &Model, area: Rect) {
                 .current()
                 .and_then(|p| model.star_labels.get(p["name"].as_str().unwrap()).cloned())
                 .unwrap_or_else(|| "GitHub stars: unavailable".into()),
+            model.pending.as_ref().map(|(_,p)|p.clone()).or_else(||model.current()).and_then(|p|model.requirements.get(&agent_market_core::store::hash(&p))).map(|r| format!("Requirements: {}\n{}\n{}", r["summary"].as_str().unwrap_or("Unchecked"),r["error"]["message"].as_str().or_else(||r["remedy"].as_str()).unwrap_or(""),r["scope"].as_str().unwrap_or(""))).unwrap_or_else(||"Requirements: checking host…".into()),
             body,
             model
                 .pending
@@ -1014,6 +1101,32 @@ mod tests {
             .collect()
     }
     #[test]
+    fn background_sync_preserves_view_suppresses_duplicates_and_reports_failure() {
+        let dir = tempfile::tempdir().unwrap();
+        let runtime = Runtime::new(dir.path(), "human").unwrap();
+        let mut model = Model::new(&runtime).unwrap();
+        let before = model.packages.clone();
+        let (release, wait) = std::sync::mpsc::channel();
+        model.start_sync_with(move || {
+            wait.recv().unwrap();
+            Err(agent_market_core::Error::new("network", "offline"))
+        });
+        model.start_sync_with(|| panic!("duplicate refresh"));
+        assert!(model.catalog_label().contains("refreshing"));
+        assert_eq!(model.packages, before);
+        release.send(()).unwrap();
+        for _ in 0..100 {
+            model.tick(&runtime, Instant::now());
+            if model.catalog_job.is_none() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert!(model.catalog_job.is_none());
+        assert!(model.message.contains("offline"));
+        assert_eq!(model.packages, before);
+    }
+    #[test]
     fn automatic_refresh_tracks_other_clients_and_preserves_browsing() {
         let dir = tempfile::tempdir().unwrap();
         let runtime = Runtime::new(dir.path(), "human").unwrap();
@@ -1070,7 +1183,7 @@ mod tests {
         assert!(model.installed.is_empty());
         assert!(model.refresh_error.is_some());
         assert!(screen(&model).contains("Refresh delayed"));
-        model.key(KeyCode::Char('r'), &runtime).unwrap();
+        model.reload(&runtime);
         std::fs::remove_file(cache.join("broken.json")).unwrap();
         tick(&mut model, &runtime);
         assert!(model.refresh_error.is_none());
@@ -1136,7 +1249,7 @@ mod tests {
         model.key(KeyCode::Char('?'), &runtime).unwrap();
         let help = screen(&model);
         assert!(help.contains("Refresh and app updates"));
-        assert!(help.contains("does not install updates or contact GitHub"));
+        assert!(help.contains("Press r to sync"));
         assert!(help.contains("does not update the Rhyven program"));
         model.key(KeyCode::Esc, &runtime).unwrap();
         model.key(KeyCode::Tab, &runtime).unwrap();
@@ -1240,7 +1353,7 @@ mod tests {
         assert_eq!(m.visible().len(), 1); // Installed even without a registry entry.
         p["version"] = serde_json::json!("0.2.0");
         catalog::publish(&r.root, &p).unwrap();
-        m.key(KeyCode::Char('r'), &r).unwrap();
+        m.reload(&r);
         assert!(m.versions("acme/assets").contains("Update available"));
         for installed_view in [false, true] {
             m.installed_only = installed_view;
@@ -1272,7 +1385,7 @@ mod tests {
         p["objects"]["asset"]["schema"]["properties"]["serial"] =
             serde_json::json!({"type":"integer"});
         catalog::publish(&r.root, &p).unwrap();
-        m.key(KeyCode::Char('r'), &r).unwrap();
+        m.reload(&r);
         m.key(KeyCode::Char('u'), &r).unwrap();
         m.key(KeyCode::Char('y'), &r).unwrap();
         assert_eq!(r.describe("acme/assets").unwrap()["version"], "0.2.0");

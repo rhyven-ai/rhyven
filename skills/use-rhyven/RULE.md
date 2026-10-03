@@ -17,8 +17,8 @@ apps and scope; this rule grants no additional authorization.
   GitHub stars. Label unavailable/stale stars accurately; stars are not trust.
 - Public marketplace submissions currently require public source and an
   open-source license. This does not certify safety or apply to private local apps.
-- Use metadata-only `action_refresh` for configured registry updates. Do not
-  use eager downloads or `registry-sync` to bypass installation consent.
+- In rc.10+, `action_refresh` syncs manifests and stars; it does not install apps.
+  Use `action_requirements` to check host prerequisites. Installation still needs consent.
 - Prepare install/update/remove with `action_prepare_install`,
   `action_prepare_update`, or `action_prepare_remove`. Show the returned review,
   including target collection, effects and permissions. Ask the user to approve.

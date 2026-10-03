@@ -97,13 +97,16 @@ rhyven --workspace ./project registry-refresh rhyven-ai/registry
 rhyven --workspace ./public-project registry-refresh rhyven-ai/registry --anonymous
 ```
 
-Then the agent can call marketplace `action_refresh` without selecting an
-arbitrary source URL. Metadata-only refresh verifies index structure and publisher
-ownership, and caches GitHub repository star counts and timestamps. It never
-fetches release assets. Full package schema/hash/metadata verification occurs
-only after download consent. Remote entries need `hosting_details` in index
-metadata before they are eligible for approval; generated `registry-entry` output
-includes them for remote packages. Existing local entries work without this optional index field.
+In rc.10+, marketplace `action_refresh` syncs verified app manifests and repository
+stars using the configured registry, or the public registry by default. It does
+not install apps, prepare dependencies or pull container images. Manifests can
+include embedded script source. The separate CLI `registry-refresh` remains a
+metadata-only option. `action_refresh_status` reports the last successful full
+sync and any failure; cached listings remain usable offline.
+
+`action_requirements` accepts an app ID and checks host runtime prerequisites
+without executing app code. Installation reviews include the same report. Host
+readiness does not assert image availability, dependency resolution or app health.
 
 Stars belong to the repository, are cached popularity metadata, and are not a
 security or certification score. Unknown counts have no numeric `stars` field;

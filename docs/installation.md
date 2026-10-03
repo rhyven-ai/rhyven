@@ -67,7 +67,7 @@ and TUI browsing, run `rhyven registry-sync rhyven-ai/registry --anonymous` to
 explicitly download app manifests into the package cache. Sync does not install
 apps or pull container images.
 
-The website serves signed `0.4.0-rc.9` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
+The website serves signed `0.4.0-rc.10` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
 binary before replacing an existing installation. See [release status](release-status.md)
 for platform support and release boundaries.
 
@@ -262,3 +262,20 @@ Do not overwrite published version directories. Include `THIRD_PARTY_NOTICES.txt
 Publish only the signed download tree through the release hosting process.
 Website source and deployment tooling are maintained separately.
 See the [release publication runbook](publication.md) for distribution checks.
+
+## Runtime upgrades and catalog refresh
+
+`rhyven upgrade --check` shows the running executable, its version and the latest
+published version. `rhyven upgrade` replaces that installation only after release
+signature, checksum and binary-version verification. No privilege escalation is
+performed. A non-writable installation needs its owner's intervention. Restart
+long-running servers, supervisors and MCP connections afterward; app versions and
+state are unchanged. Downgrades are not automatic.
+
+Press `r` in the TUI to sync the configured registry in the background. The public
+registry is the default. Repeated presses do not start parallel downloads; cached
+apps remain visible during a failure. Two-second auto-refresh stays local-only.
+Agents use `rhyven_call` with category `rhyven/marketplace`, function
+`action_refresh` and empty args; `action_refresh_status` reports the last successful
+sync time and error. `action_requirements` accepts an `app` ID and checks host
+prerequisites without installing dependencies or running publisher code.

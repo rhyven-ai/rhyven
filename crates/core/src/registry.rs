@@ -464,7 +464,7 @@ fn cache_index(
     std::fs::create_dir_all(crate::collections::registry_dir(root)?)?;
     store::write(
         &cache_path,
-        &json!({"repository":repo,"ref":branch,"index":index,"packages":packages}),
+        &json!({"repository":repo,"ref":branch,"index":index,"packages":packages,"checked_at":crate::marketplace::now()}),
     )?;
     Ok(
         json!({"synced":repo,"ref":branch,"packages":packages.len(),"cache":cache_path,"installed":false}),
@@ -571,6 +571,58 @@ pub fn refresh(root: &Path, repo: &str, branch: &str, anonymous: bool) -> Result
     Ok(
         json!({"refreshed":repo,"listings":index.apps.len(),"package_downloads":0,"checked_at":checked_at}),
     )
+}
+
+/// Refresh the configured registry's manifests and popularity metadata without installing apps.
+pub fn refresh_catalog(root: &Path) -> Result<Value> {
+    use fs2::FileExt;
+    let dir = crate::collections::registry_dir(root)?;
+    store::private_dir(&dir)?;
+    let lock = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .read(true)
+        .write(true)
+        .open(dir.join("catalog-refresh.lock"))?;
+    lock.try_lock_exclusive()
+        .map_err(|_| Error::new("busy", "A marketplace refresh is already running"))?;
+    let previous = refresh_status(root)?;
+    let result: Result<Value> = (|| {
+        let configured = metadata(root)?
+            .unwrap_or(json!({"repository":"rhyven-ai/registry","ref":"main","anonymous":true}));
+        let repo = crate::runtime::string(&configured, "repository")?;
+        let branch = crate::runtime::string(&configured, "ref")?;
+        let anonymous = configured["anonymous"]
+            .as_bool()
+            .unwrap_or(repo == "rhyven-ai/registry");
+        let synced = sync(root, repo, branch, anonymous)?;
+        let stars = refresh(root, repo, branch, anonymous);
+        Ok(
+            json!({"repository":repo,"packages":synced["packages"],"checked_at":crate::marketplace::now(),"installed":false,"metadata_warning":stars.err().map(|e|e.message)}),
+        )
+    })();
+    let status = match &result {
+        Ok(value) => json!({"last_success":value["checked_at"],"error":null,"result":value}),
+        Err(error) => {
+            json!({"last_success":previous["last_success"],"error":error,"checked_at":crate::marketplace::now()})
+        }
+    };
+    store::write(&dir.join("catalog-refresh-status.json"), &status)?;
+    result
+}
+pub fn refresh_status(root: &Path) -> Result<Value> {
+    let path = crate::collections::registry_dir(root)?.join("catalog-refresh-status.json");
+    if !path.exists() {
+        return Ok(
+            json!({"last_success":metadata(root)?.unwrap_or(Value::Null)["checked_at"],"error":null}),
+        );
+    }
+    ensure(
+        std::fs::metadata(&path)?.len() <= MAX,
+        "registry",
+        "Refresh status too large",
+    )?;
+    Ok(serde_json::from_slice(&std::fs::read(path)?)?)
 }
 
 pub fn metadata(root: &Path) -> Result<Option<Value>> {

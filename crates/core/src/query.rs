@@ -59,6 +59,12 @@ pub fn properties(object: &Value) -> Value {
         if s["type"] == "string" {
             ops["contains"] = json!({"type":"string","maxLength":1000});
         }
+        ops["exists"] = json!({"type":"boolean"});
+        if s["type"] == "string" {
+            for op in ["icontains", "starts_with"] {
+                ops[op] = json!({"type":"string","maxLength":1000});
+            }
+        }
         if s["type"] == "array" {
             ops["has"] = s["items"].clone();
         }
@@ -74,6 +80,8 @@ pub fn properties(object: &Value) -> Value {
         );
     }
     let mut result = json!({"where":{"type":"object","properties":fields,"required":[],"additionalProperties":false}});
+    result["any_of"] = json!({"type":"array","minItems":1,"maxItems":16,"items":result["where"].clone(),"description":"At least one branch must match; combined with other filters using AND"});
+    result["select"] = json!({"type":"array","maxItems":128,"items":{"type":"string","enum":object["schema"]["properties"].as_object().unwrap().keys().collect::<Vec<_>>()},"description":"Return only these data fields; record metadata is retained"});
     if !sortable.is_empty() {
         result["order_by"] = json!({"type":"array","maxItems":3,"items":{"type":"object","properties":{"field":{"type":"string","enum":sortable},"direction":{"type":"string","enum":["asc","desc"]}},"required":["field"],"additionalProperties":false}});
     }
@@ -92,7 +100,15 @@ pub fn properties(object: &Value) -> Value {
 }
 pub fn validate(args: &Value, object: &Value) -> Result<()> {
     let props = properties(object);
-    for key in ["where", "order_by", "metadata", "search", "current_only"] {
+    for key in [
+        "where",
+        "any_of",
+        "select",
+        "order_by",
+        "metadata",
+        "search",
+        "current_only",
+    ] {
         if let Some(v) = args.get(key) {
             ensure(
                 props.get(key).is_some(),
@@ -101,6 +117,13 @@ pub fn validate(args: &Value, object: &Value) -> Result<()> {
             )?;
             schema::validate(v.clone(), &props[key])?;
         }
+    }
+    if let Some(branches) = args["any_of"].as_array() {
+        ensure(
+            !branches.is_empty(),
+            "validation",
+            "any_of requires 1..16 branches",
+        )?;
     }
     if let Some(search) = args["search"].as_str() {
         let n = search.split_whitespace().count();
@@ -114,10 +137,16 @@ pub fn validate(args: &Value, object: &Value) -> Result<()> {
 }
 pub fn matches(data: &Value, where_: &Value) -> Result<bool> {
     for (field, conditions) in where_.as_object().into_iter().flatten() {
-        let Some(actual) = data.get(field) else {
-            return Ok(false);
-        };
         for (op, expected) in conditions.as_object().unwrap() {
+            if op == "exists" {
+                if data.get(field).is_some() != expected.as_bool().unwrap() {
+                    return Ok(false);
+                }
+                continue;
+            }
+            let Some(actual) = data.get(field) else {
+                return Ok(false);
+            };
             let ok = match op.as_str() {
                 "eq" => expressions::equal(actual, expected)?,
                 "ne" => !expressions::equal(actual, expected)?,
@@ -129,6 +158,15 @@ pub fn matches(data: &Value, where_: &Value) -> Result<bool> {
                     .as_str()
                     .unwrap()
                     .contains(expected.as_str().unwrap()),
+                "icontains" => actual
+                    .as_str()
+                    .unwrap()
+                    .to_lowercase()
+                    .contains(&expected.as_str().unwrap().to_lowercase()),
+                "starts_with" => actual
+                    .as_str()
+                    .unwrap()
+                    .starts_with(expected.as_str().unwrap()),
                 "has" => actual.as_array().unwrap().contains(expected),
                 "in" => {
                     let mut found = false;
@@ -222,4 +260,17 @@ pub fn sort(records: &mut [Value], order: &Value) -> Result<()> {
         a["id"].as_str().cmp(&b["id"].as_str())
     });
     Ok(())
+}
+
+/// OR branches are bounded and nonrecursive to keep the query contract small.
+pub fn any_matches(data: &Value, branches: &Value) -> Result<bool> {
+    let Some(branches) = branches.as_array() else {
+        return Ok(true);
+    };
+    for branch in branches {
+        if matches(data, branch)? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }

@@ -59,7 +59,7 @@
     "apps/starter-runner/client.py": "ccd750410a98cd3aa25c060b3089f86a9b7474b02e0d6e007adafdaa5e29283f",
     "apps/starter-runner/main.py": "fcde921a1f1d7a4bf6c12ac49c1db3ea16284e4e36ac4cb7dbba5fa60b36601a",
     "apps/starter-runner/rhyven_service.py": "88cd9201c454899f537fc7300d18c526d3a7bad463976a99e4b5b70f2e8846e9",
-    "apps/starter-runner/tests/integration.py": "e9f94b8c874764798737e26fadfcc92555e79dd5b45589ed399e50601f40560f",
+    "apps/starter-runner/tests/integration.py": "eb8bc5bf08ed043e7e890141d9f54647e93850cd87753ac89392edba26cad1fb",
     "apps/starter-runner/tests/test_runner.py": "44611a7def9bc2f723e27c0ddcedc3c458d4440aefe530024c87b2a4997486d5",
     "apps/user-questions/LICENSE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
     "apps/user-questions/NOTICE": "62c78f1f8aba6f1cfaf1982712f65d8a002b677a64128f1b9d233a9f1a3ded66",

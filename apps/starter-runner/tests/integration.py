@@ -107,6 +107,13 @@ def main():
             print('PASS: container, model HTTP, restricted callbacks, human question, restart, completion and backup/restore')
         finally:
             cli('daemon', 'stop')
+            # Stop acknowledges the request; wait for the supervisor to finish
+            # its final state writes before removing the isolated test home.
+            deadline = time.monotonic() + 15
+            while (home/'supervisor/control.sock').exists():
+                if time.monotonic() >= deadline:
+                    raise AssertionError('Supervisor did not finish shutdown')
+                time.sleep(.05)
             server.shutdown()
             thread.join()
 

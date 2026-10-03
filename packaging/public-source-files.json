@@ -75,6 +75,7 @@
   "crates/cli/src/import.rs": "crates/cli/src/import.rs",
   "crates/cli/src/main.rs": "crates/cli/src/main.rs",
   "crates/cli/src/setup.rs": "crates/cli/src/setup.rs",
+  "crates/cli/src/skills.rs": "crates/cli/src/skills.rs",
   "crates/cli/src/upgrade.rs": "crates/cli/src/upgrade.rs",
   "crates/cli/tests/platform_cli.rs": "crates/cli/tests/platform_cli.rs",
   "crates/core/Cargo.toml": "crates/core/Cargo.toml",

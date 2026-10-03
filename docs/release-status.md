@@ -1,9 +1,16 @@
 # Release status
 
-Rhyven 0.5.2 provides signed Linux x86-64 and ARM64 releases, with a matching
+Rhyven 0.5.3 provides signed Linux x86-64 and ARM64 releases, with a matching
 registry validator and website installer.
 
-New in 0.5.2:
+New in 0.5.3:
+
+- All six skills and the usage rule are embedded in the binary and installed
+  offline under `RHYVEN_HOME/skills/0.5.3` during setup. `rhyven skills` lists
+  their paths; `rhyven skills --install` restores missing files while preserving
+  local edits. No agent configuration is changed.
+
+Included from 0.5.2:
 
 - TUI refresh is manual: press `r` to reload local state and fetch listings.
   The automatic refresh timer and elapsed sync counter are removed.

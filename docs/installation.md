@@ -67,7 +67,7 @@ and TUI browsing, run `rhyven registry-sync rhyven-ai/registry --anonymous` to
 explicitly download app manifests into the package cache. Sync does not install
 apps or pull container images.
 
-The website serves signed `0.5.2` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
+The website serves signed `0.5.3` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
 binary before replacing an existing installation. See [release status](release-status.md)
 for platform support and release boundaries.
 
@@ -296,3 +296,22 @@ Agents use `rhyven_call` with category `rhyven/marketplace`, function
 `action_refresh` and empty args; `action_refresh_status` reports the last successful
 sync time and error. `action_requirements` accepts an `app` ID and checks host
 prerequisites without installing dependencies or running publisher code.
+
+## Included agent skills
+
+Every binary includes all six skills and the usage rule. Setup writes them to
+`~/.rhyven/skills/0.5.3/` (or `$RHYVEN_HOME/skills/0.5.3/`) without downloading
+additional files. This also works with offline installation.
+
+```sh
+rhyven skills
+rhyven skills --install
+```
+
+The first command lists paths and installation status. The second restores missing
+files; existing edits are preserved. Each runtime version has its own directory.
+The skills cover using Rhyven, publishing apps, and building declarative, native
+script, on-demand container and persistent service apps. The usage rule is
+`use-rhyven/RULE.md`. Read the files directly or copy selected skills into your
+agent's supported skill directory. Merge the rule with existing project guidance.
+Installation does not change agent settings or grant execution permissions.

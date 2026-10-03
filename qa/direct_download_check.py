@@ -123,7 +123,14 @@ else: raise SystemExit(91)
             recovered=json.loads(run(['rhyven','call','get',json.dumps({'app':'official/work-management','object':'task','id':record['id']})],env=env).stdout)
             assert recovered==record, (recovered,record)
         assert run(['rhyven', '--version'], env=env).stdout.strip() == f'rhyven {version}'
-        assert json.loads((home / 'setup-state.json').read_text())['status'] == 'ready'
+        setup = json.loads((home / 'setup-state.json').read_text())
+        assert setup['status'] == 'ready'
+        skill_report = json.loads(run(['rhyven', 'skills'], env=env).stdout)
+        assert len(skill_report['files']) == 7
+        for item in skill_report['files']:
+            assert item['status'] == 'installed'
+            assert Path(item['path']).read_bytes() == (ROOT / 'skills' / item['name']).read_bytes()
+        assert setup['skills']['directory'] == str(home / 'skills' / version)
         # A non-TTY invocation of the same launch command returns agent connection instructions.
         instructions = json.loads(run(['rhyven'], env=env).stdout)
         assert instructions and 'connect' in json.dumps(instructions)

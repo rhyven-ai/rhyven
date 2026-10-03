@@ -1,6 +1,7 @@
 mod connect;
 mod import;
 mod setup;
+mod skills;
 mod upgrade;
 use agent_market_core::{
     catalog, conformance, error::ensure, http, registry, store, tools::AgentSession, Result,
@@ -156,6 +157,11 @@ enum Command {
         /// Include dependency license texts bundled in this executable.
         #[arg(long)]
         third_party: bool,
+    },
+    /// Locate bundled skills and optionally install local copies without changing agent settings.
+    Skills {
+        #[arg(long)]
+        install: bool,
     },
     /// Configure an agent client and verify MCP discovery and collection routing.
     Connect(connect::Options),
@@ -406,6 +412,7 @@ fn run() -> Result<()> {
         })?;
     // Restore must run before the normal collection auto-creation.
     let early = match &cli.command {
+        Some(Command::Skills { install }) => Some(skills::run(&home, *install)?),
         Some(Command::Upgrade { check }) => Some(upgrade::run(&home, *check)?),
         Some(Command::Setup {
             containers,
@@ -535,7 +542,8 @@ fn run() -> Result<()> {
             }
             DaemonCommand::Status => agent_market_core::services::daemon_control(&runtime, "ping")?,
         },
-        Command::Setup { .. }
+        Command::Skills { .. }
+        | Command::Setup { .. }
         | Command::Upgrade { .. }
         | Command::Doctor
         | Command::License { .. }

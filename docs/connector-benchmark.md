@@ -108,3 +108,7 @@ all turn counts, and the capture hash. The current benchmark script produces the
 additional selective-discovery scenarios. No database index was added: removing
 repeated payloads and returning relevant function schemas reduces input tokens
 without introducing another store to maintain.
+
+## Multiple servers
+
+The [three-server follow-up](multi-mcp-benchmark.md) tests actual Filesystem, Memory and Everything MCP servers, including both full-MCP-metadata and function-schema-only counts and matched filtered baselines.

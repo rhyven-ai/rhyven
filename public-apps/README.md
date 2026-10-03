@@ -89,3 +89,11 @@ For dependency licensing and image distribution obligations, read
 [registry security channel](https://github.com/rhyven-ai/registry/security/advisories/new).
 Do not attach credentials, customer repositories, app state or private reports
 to public issues. Contributions should include tests and use Apache-2.0 terms.
+
+## Optional starter apps
+
+Existing harnesses can use all general apps through the same three tools. Users
+without a harness can add [Starter Runner](apps/starter-runner/README.md), which
+connects their own model API to tasks, knowledge and user questions. It requires
+Docker. [User Questions](apps/user-questions/README.md) is a separate declarative
+app, also useful to existing harnesses. Neither is required for ordinary app use.

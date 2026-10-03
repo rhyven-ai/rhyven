@@ -33,6 +33,9 @@ rhyven --collection starter install rhyven/user-questions
 rhyven --collection starter install rhyven/starter-runner
 ```
 
+Each install prints the permission review. Repeat it with `--accept-permissions`
+after reviewing that app.
+
 The runner pins Work Management and Project Knowledge to **0.4.0**, and User
 Questions to **0.1.0**. A different peer version requires a reviewed runner update.
 Dependencies are not installed automatically.

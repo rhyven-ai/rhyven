@@ -355,5 +355,5 @@ def dispatch(name):
 
 
 if __name__ == '__main__':
-    Service({name: dispatch(name) for name in ('start', 'status', 'resume', 'cancel', 'health')},
+    Service({'action_' + name: dispatch(name) for name in ('start', 'status', 'resume', 'cancel', 'health')},
             start=start, stop=lambda service: service.runner.shutdown()).run()

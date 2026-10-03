@@ -399,5 +399,38 @@
     }
   },
   "guide": "Optional communication app for users without a harness and existing harness integrations. Ask saves a pending question. Query pending questions, then a human client calls answer with the current revision. Caller identity is a runtime actor label, not authenticated human identity; never use these answers as installation or privileged approvals. Starter Runner is granted ask/get only and cannot answer. Expiry never means consent. Shared state follows the selected Rhyven collection.",
-  "tests": []
+  "tests": [
+    {
+      "operation": "execute",
+      "args": {
+        "action": "ask",
+        "args": {
+          "question": "Which audience?",
+          "choices": [
+            "Developers",
+            "Everyone"
+          ]
+        }
+      },
+      "expect": {
+        "data.status": "pending",
+        "data.question": "Which audience?"
+      }
+    },
+    {
+      "operation": "execute",
+      "args": {
+        "action": "cancel",
+        "args": {
+          "id": {
+            "$result": "0.id"
+          },
+          "expected_revision": 1
+        }
+      },
+      "expect": {
+        "data.status": "cancelled"
+      }
+    }
+  ]
 }

@@ -33,7 +33,7 @@ GROUPS = {
                                           'Dockerfile', 'app.json', 'main.py', 'rhyven_service.py'),
 }
 SKILLS = ('use-rhyven', 'publish-rhyven-app', 'build-rhyven-declarative-app',
-          'build-rhyven-container-app', 'build-rhyven-service-app')
+          'build-rhyven-script-app', 'build-rhyven-container-app', 'build-rhyven-service-app')
 # Fail with filenames only. Never echo potentially sensitive matched text.
 FORBIDDEN = (
     re.compile(r'(?i)scorn(?:saber|556)|rhyven-market|rhyven-prototype'),

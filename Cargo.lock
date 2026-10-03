@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "agent-market-core"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "fs2",
  "libc",
@@ -20,7 +20,7 @@ dependencies = [
 
 [[package]]
 name = "agent-market-mcp"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "agent-market-core",
  "serde_json",
@@ -29,7 +29,7 @@ dependencies = [
 
 [[package]]
 name = "agent-market-tui"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "agent-market-core",
  "crossterm",
@@ -1772,7 +1772,7 @@ dependencies = [
 
 [[package]]
 name = "rhyven"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "agent-market-core",
  "agent-market-mcp",

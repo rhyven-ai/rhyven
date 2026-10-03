@@ -15,6 +15,7 @@ pub fn run(home: &Path, containers: bool, yes: bool, plan: bool) -> Result<Value
             "approval":"System changes require confirmation or --yes; Docker Desktop terms are accepted by the user", "resume":"rhyven setup --containers"}),
         );
     }
+    let skills = crate::skills::run(home, true)?;
     let runtime = Runtime::collection(home, "global", "setup")?;
     runtime.init()?;
     let marketplace = catalog_setup(
@@ -51,7 +52,7 @@ pub fn run(home: &Path, containers: bool, yes: bool, plan: bool) -> Result<Value
     };
     let ready = !containers || diagnosis["container"]["ready"] == true;
     let value = json!({"status":if ready {"ready"} else {"pending"},
-        "home":home,"containers_requested":containers,"setup_exit":setup_exit,"marketplace":marketplace,
+        "home":home,"containers_requested":containers,"setup_exit":setup_exit,"marketplace":marketplace,"skills":skills,
         "diagnosis":diagnosis,"resume":if ready {Value::Null} else {json!("rhyven setup --containers")},
         "agent_connection":{"instructions":"rhyven --agent","setup":"rhyven connect --client CLIENT","clients":["codex","claude","cursor","vscode","cline","generic"],"verify":"rhyven connect --check"}});
     let mut state = tempfile::NamedTempFile::new_in(home)?;

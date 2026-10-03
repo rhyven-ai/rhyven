@@ -144,6 +144,9 @@ if ! printf '%s' "$setup_output" | grep -q '"marketplace":'; then
   fi
 fi
 printf '\nRhyven installed at %s/rhyven\n' "$bin_dir"
+if printf '%s' "$setup_output" | grep -q '"skills":'; then
+  printf '\nAll six skills and the usage rule are installed locally. Show their paths:\n  %s/rhyven skills\n' "'$quoted'"
+fi
 printf '\nOpen the terminal marketplace (TUI):\n  %s/rhyven\n' "'$quoted'"
 printf '\nOr connect an agent (choose your client):\n'
 printf '  %s/rhyven connect --client codex\n' "'$quoted'"

@@ -13,12 +13,21 @@ def review(report, inventory, today=None):
     if not re.fullmatch(r'sha256:[0-9a-f]{64}', identity) or not isinstance(report.get('Results'), list) or not report['Results']:
         raise ValueError('Expected a complete container scan with image identity and results')
     # Exact package/version; expires so upgrades/new evidence require another review.
+    paths = inventory.get('owned_files', [])
+    header_paths = (
+        isinstance(paths, list) and bool(paths)
+        and all(isinstance(p, str) and '..' not in p.split('/')
+                and ((p.startswith('/usr/include/') and p.endswith('.h'))
+                     or p.startswith('/usr/share/doc/linux-libc-dev/'))
+                for p in paths)
+    )
     headers_verified = (
         today <= date(2026, 10, 11)
         and inventory.get('app') == 'repo-documentation-tool'
         and inventory.get('image_id') == report.get('Metadata', {}).get('ImageID')
-        and inventory.get('version') == '6.8.0-142.142'
+        and inventory.get('version') == '6.8.0-146.146'
         and inventory.get('header_only') is True
+        and header_paths
     )
     findings, reviewed, secrets, lower = [], [], 0, []
     for result in report.get('Results', []):
@@ -26,7 +35,8 @@ def review(report, inventory, today=None):
         for v in result.get('Vulnerabilities', []):
             item = {k: v.get(k) for k in ('VulnerabilityID', 'PkgName', 'InstalledVersion', 'FixedVersion', 'Severity')}
             if (headers_verified and result.get('Type') == 'ubuntu'
-                    and v['PkgName'] == 'linux-libc-dev' and v['InstalledVersion'] == inventory['version']):
+                    and v['PkgName'] == 'linux-libc-dev' and v['InstalledVersion'] == inventory['version']
+                    and 'kernel' in v.get('Description', '').lower()):
                 reviewed.append(item)
             elif v['Severity'] in ('HIGH', 'CRITICAL'):
                 findings.append(item)

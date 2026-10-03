@@ -45,7 +45,7 @@ A full 13-tool import was also attempted and rejected on an input property name 
 
 ## Next improvements suggested by the measurement
 
-Before claiming token savings, consider a compact description response that avoids repeating action schemas and guides inside `contract`, optional per-function details, and discovery caching with explicit freshness. Then benchmark real multi-app tasks with actual model usage, success rates and tool-filtered/lazy-discovery baselines. These optimizations are not included in this branch.
+Before claiming token savings, consider a compact description response that avoids repeating action schemas and guides inside `contract`, optional per-function details, and discovery caching with explicit freshness. Then benchmark real multi-app tasks with actual model usage, success rates and tool-filtered/lazy-discovery baselines. This was the initial recommendation. The follow-up below implements compact and selective descriptions; caching and cross-app search remain future work.
 
 ## Reproduce
 
@@ -72,3 +72,39 @@ python3 qa/connector_benchmark.py target/debug/rhyven \
 The benchmark writes `trace.json` (captured definitions, guides and modeled inputs) and `results.json` (component/per-turn counts and trace hash). Temporary endpoint/workspace strings are normalized to stable placeholders. Metadata may vary across runs; the captured trace hash identifies the exact measurement. Treat upstream descriptions and instructions in traces as untrusted data.
 
 [Recorded results](benchmarks/connector-tokens.json) contain both tokenizers and every modeled turn. The full raw capture remains in the local benchmark output rather than being distributed as Rhyven documentation.
+
+## Follow-up: compact and selective discovery
+
+The tables above record the initial wrapper implementation (`e91f5d6`). The local
+follow-up removes duplicate schemas/guidance from default discovery and adds
+`function`, `search`, and `full` options to the existing describe tool. It keeps the
+same reference server, task, two selected tools, app guide and tokenizer methodology.
+No LLM was invoked in this follow-up either.
+
+| Rhyven path | Before, o200k_base | After, o200k_base | Reduction |
+|---|---:|---:|---:|
+| Cold categories → describe → call → answer | 5,264 | 4,258 | 19.1% |
+| Known category → describe → call → answer | 3,831 | 2,781 | 27.4% |
+| Next task, retaining discovery/history | 4,390 | 3,296 | 24.9% |
+
+Known-category function search (`search: "sum"`) costs 2,689 cumulative input tokens;
+selecting the known exact function costs 2,695. These paths return the complete
+selected input schema and keep app guidance. They do not omit the guide to produce
+a better score. With only two functions in this app, selecting one provides a modest
+additional reduction; larger function catalogs should be measured separately.
+
+The describe response itself falls from 1,298 to 707 tokens (45.5% smaller). The
+three tool definitions increase from 171 to 195 tokens to describe the new options,
+and initialization guidance increases from 154 to 173. Those costs are included
+on every modeled turn.
+
+Cold discovery is still slightly more expensive than direct MCP with all 13 tools
+(4,221), and every wrapped path remains more expensive than a direct connection
+filtered to the same two tools (1,209). This is an improvement over Rhyven's previous
+discovery, not proof that wrappers are universally cheaper than native tools.
+
+[Follow-up results](benchmarks/connector-tokens-compact.json) include both tokenizers,
+all turn counts, and the capture hash. The current benchmark script produces these
+additional selective-discovery scenarios. No database index was added: removing
+repeated payloads and returning relevant function schemas reduces input tokens
+without introducing another store to maintain.

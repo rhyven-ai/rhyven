@@ -1,0 +1,185 @@
+{
+  "method": "Exact tokenizer counts of canonical visible JSON input fixtures, including guides and cumulative conversation history. Synthetic fixed tool-call schedule; no LLM was invoked. Not provider-billed input usage or a reasoning-quality benchmark.",
+  "reference_server": "@modelcontextprotocol/server-everything@2026.8.31",
+  "reference_source": "https://github.com/modelcontextprotocol/servers/tree/main/src/everything",
+  "upstream_server_info": {
+    "name": "mcp-servers/everything",
+    "title": "Everything Reference Server",
+    "version": "2.0.0"
+  },
+  "upstream_tool_count": 13,
+  "selected_tools": [
+    "echo",
+    "get-sum"
+  ],
+  "task": "Use the Everything server to calculate 17 + 25, then report the result.",
+  "result_matches": true,
+  "tokenizer_version": "0.12.0",
+  "trace_sha256": "b94aad54d28f33d6f133b678da33e2d0236782b7ddb01559700565a6f7e092c2",
+  "encodings": {
+    "o200k_base": {
+      "components": {
+        "direct_all_tools": 1719,
+        "direct_selected_tools": 213,
+        "upstream_guide": 327,
+        "rhyven_three_tools": 195,
+        "rhyven_guide": 173,
+        "categories_response": 326,
+        "describe_response_including_guide_and_contract": 707,
+        "selected_description": 657
+      },
+      "scenarios": {
+        "direct_all_tools": {
+          "input_tokens_by_turn": [
+            2081,
+            2140
+          ],
+          "cumulative_input_tokens": 4221
+        },
+        "direct_same_two_tools": {
+          "input_tokens_by_turn": [
+            575,
+            634
+          ],
+          "cumulative_input_tokens": 1209
+        },
+        "rhyven_cold_discovery": {
+          "input_tokens_by_turn": [
+            403,
+            761,
+            1508,
+            1586
+          ],
+          "cumulative_input_tokens": 4258
+        },
+        "rhyven_known_category": {
+          "input_tokens_by_turn": [
+            403,
+            1150,
+            1228
+          ],
+          "cumulative_input_tokens": 2781
+        },
+        "rhyven_known_function": {
+          "input_tokens_by_turn": [
+            403,
+            1107,
+            1185
+          ],
+          "cumulative_input_tokens": 2695
+        },
+        "rhyven_function_search": {
+          "input_tokens_by_turn": [
+            403,
+            1104,
+            1182
+          ],
+          "cumulative_input_tokens": 2689
+        },
+        "direct_all_tools_next_task": {
+          "input_tokens_by_turn": [
+            2163,
+            2222
+          ],
+          "cumulative_input_tokens": 4385
+        },
+        "direct_same_two_tools_next_task": {
+          "input_tokens_by_turn": [
+            657,
+            716
+          ],
+          "cumulative_input_tokens": 1373
+        },
+        "rhyven_next_task": {
+          "input_tokens_by_turn": [
+            1609,
+            1687
+          ],
+          "cumulative_input_tokens": 3296
+        }
+      }
+    },
+    "cl100k_base": {
+      "components": {
+        "direct_all_tools": 1655,
+        "direct_selected_tools": 203,
+        "upstream_guide": 330,
+        "rhyven_three_tools": 185,
+        "rhyven_guide": 176,
+        "categories_response": 323,
+        "describe_response_including_guide_and_contract": 702,
+        "selected_description": 654
+      },
+      "scenarios": {
+        "direct_all_tools": {
+          "input_tokens_by_turn": [
+            2018,
+            2074
+          ],
+          "cumulative_input_tokens": 4092
+        },
+        "direct_same_two_tools": {
+          "input_tokens_by_turn": [
+            566,
+            622
+          ],
+          "cumulative_input_tokens": 1188
+        },
+        "rhyven_cold_discovery": {
+          "input_tokens_by_turn": [
+            394,
+            748,
+            1488,
+            1563
+          ],
+          "cumulative_input_tokens": 4193
+        },
+        "rhyven_known_category": {
+          "input_tokens_by_turn": [
+            394,
+            1134,
+            1209
+          ],
+          "cumulative_input_tokens": 2737
+        },
+        "rhyven_known_function": {
+          "input_tokens_by_turn": [
+            394,
+            1092,
+            1167
+          ],
+          "cumulative_input_tokens": 2653
+        },
+        "rhyven_function_search": {
+          "input_tokens_by_turn": [
+            394,
+            1090,
+            1165
+          ],
+          "cumulative_input_tokens": 2649
+        },
+        "direct_all_tools_next_task": {
+          "input_tokens_by_turn": [
+            2097,
+            2153
+          ],
+          "cumulative_input_tokens": 4250
+        },
+        "direct_same_two_tools_next_task": {
+          "input_tokens_by_turn": [
+            645,
+            701
+          ],
+          "cumulative_input_tokens": 1346
+        },
+        "rhyven_next_task": {
+          "input_tokens_by_turn": [
+            1586,
+            1661
+          ],
+          "cumulative_input_tokens": 3247
+        }
+      }
+    }
+  }
+}

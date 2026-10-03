@@ -169,7 +169,7 @@ impl AgentSession {
                 "rhyven_categories",
                 json!({}),
             ));
-            tools.push(tool("rhyven_describe", "Read a category's machine-readable function manifest, schemas and Markdown guidance before calling it", json!({"category":string()}), &["category"], "rhyven_describe", json!({})));
+            tools.push(tool("rhyven_describe", "Read callable schemas and guidance. Select function or search to reduce context; full includes the package contract.", json!({"category":string(),"function":string(),"search":string(),"full":{"type":"boolean"}}), &["category"], "rhyven_describe", json!({})));
             tools.push(tool("rhyven_call", "Call a discovered function with arguments validated against its manifest. Marketplace downloads require user approval", json!({"category":string(),"function":string(),"args":free()}), &["category","function","args"], "rhyven_call", json!({})));
         }
         Ok(Self { backend, tools })
@@ -247,6 +247,77 @@ pub fn manifest(package: &Value) -> Value {
     contract.as_object_mut().unwrap().remove("files");
     json!({"category":package["name"],"version":package["version"],"description":package["description"],"functions":functions,"guidance_markdown":package["guide"],"contract":contract})
 }
+/// Compact discovery leaves the complete contract available explicitly.
+pub fn describe(package: &Value, args: &Value) -> Result<Value> {
+    crate::catalog::keys(args, &["category", "function", "search", "full"])?;
+    crate::error::ensure(
+        args.get("full").is_none_or(Value::is_boolean),
+        "validation",
+        "full must be boolean",
+    )?;
+    crate::error::ensure(
+        args.get("function").is_none() || args.get("search").is_none(),
+        "validation",
+        "Use function or search, not both",
+    )?;
+    for field in ["function", "search"] {
+        if let Some(value) = args.get(field) {
+            crate::error::ensure(
+                value
+                    .as_str()
+                    .is_some_and(|s| !s.trim().is_empty() && s.len() <= 128),
+                "validation",
+                format!("{field} must be 1..128 bytes of text"),
+            )?;
+        }
+    }
+    let mut result = manifest(package);
+    let functions = result["functions"].as_array_mut().unwrap();
+    let total = functions.len();
+    if let Some(name) = args["function"].as_str() {
+        functions.retain(|f| f["name"] == name);
+        crate::error::ensure(
+            !functions.is_empty(),
+            "not_found",
+            "Function is not declared by this category",
+        )?;
+    }
+    if let Some(search) = args["search"].as_str() {
+        let search = search.to_lowercase();
+        functions.retain(|f| {
+            let text = format!(
+                "{} {}",
+                f["name"].as_str().unwrap_or(""),
+                f["description"].as_str().unwrap_or("")
+            )
+            .to_lowercase();
+            search.split_whitespace().all(|word| text.contains(word))
+        });
+    }
+    if args.get("function").is_some() || args.get("search").is_some() {
+        result["total_functions"] = json!(total);
+    }
+    if args["full"] != true {
+        let mut contract =
+            json!({"hosting":package["hosting"],"permissions":package["permissions"]});
+        for field in ["execution", "connector"] {
+            if let Some(value) = package.get(field) {
+                contract[field] = value.clone();
+            }
+        }
+        // Keep object behavior and relationships; types already appear in callable schemas.
+        let mut objects = package["objects"].clone();
+        for object in objects.as_object_mut().unwrap().values_mut() {
+            object.as_object_mut().unwrap().remove("schema");
+        }
+        if !objects.as_object().unwrap().is_empty() {
+            contract["objects"] = objects;
+        }
+        result["contract"] = contract;
+    }
+    Ok(result)
+}
+
 pub fn invoke(runtime: &Runtime, args: Value) -> Result<Value> {
     crate::catalog::keys(&args, &["category", "function", "args"])?;
     let category = args["category"]

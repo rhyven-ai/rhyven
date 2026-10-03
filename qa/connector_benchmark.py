@@ -73,6 +73,9 @@ with tempfile.TemporaryDirectory(prefix='rhyven-connector-benchmark-') as temp:
         definitions=c.request('tools/list',{})['tools']
         categories=c.tool('rhyven_categories',{})
         description=c.tool('rhyven_describe',{'category':'test/everything'})
+        selected_description=c.tool('rhyven_describe',{'category':'test/everything','function':'action_get-sum'})
+        search_description=c.tool('rhyven_describe',{'category':'test/everything','search':'sum'})
+        assert selected_description['functions']==search_description['functions']
         wrapped=c.tool('rhyven_call',{'category':'test/everything','function':'action_get-sum','args':call_args})
         assert wrapped==result,(wrapped,result)
     finally:c.close()
@@ -87,6 +90,8 @@ with tempfile.TemporaryDirectory(prefix='rhyven-connector-benchmark-') as temp:
     wrapper_messages=[{'role':'system','content':rhyven_init.get('instructions','')},task]
     discovery=exchange('rhyven_categories',{},categories)
     describe=exchange('rhyven_describe',{'category':'test/everything'},description)
+    selected_describe=exchange('rhyven_describe',{'category':'test/everything','function':'action_get-sum'},selected_description)
+    search_describe=exchange('rhyven_describe',{'category':'test/everything','search':'sum'},search_description)
     wrapped_call=exchange('rhyven_call',{'category':'test/everything','function':'action_get-sum','args':call_args},wrapped)
     traces={
         'direct_all_tools':[{'tools':tools,'messages':direct_messages},{'tools':tools,'messages':direct_messages+direct_calls}],
@@ -99,10 +104,12 @@ with tempfile.TemporaryDirectory(prefix='rhyven-connector-benchmark-') as temp:
             {'tools':definitions,'messages':wrapper_messages+describe},
             {'tools':definitions,'messages':wrapper_messages+describe+wrapped_call}],
     }
+    for label,step in [('rhyven_known_function',selected_describe),('rhyven_function_search',search_describe)]:
+        traces[label]=[{'tools':definitions,'messages':wrapper_messages},{'tools':definitions,'messages':wrapper_messages+step},{'tools':definitions,'messages':wrapper_messages+step+wrapped_call}]
     # Repeated workflows retain discovery context, as a normal un-compacted session does.
     for label,defs,msg in [('direct_all_tools',tools,direct_messages+direct_calls),('direct_same_two_tools',selected,direct_messages+direct_calls),('rhyven',definitions,wrapper_messages+discovery+describe+wrapped_call)]:
         traces[label+'_next_task']=[{'tools':defs,'messages':msg+[task]},{'tools':defs,'messages':msg+[task]+(wrapped_call if label=='rhyven' else direct_calls)}]
-    artifact={'upstream_initialize':init,'upstream_tools':tools,'rhyven_initialize':rhyven_init,'categories':categories,'description':description,'result':result,'import':imported,'traces':traces}
+    artifact={'upstream_initialize':init,'upstream_tools':tools,'rhyven_initialize':rhyven_init,'categories':categories,'description':description,'selected_description':selected_description,'search_description':search_description,'result':result,'import':imported,'traces':traces}
     text=canonical(artifact).replace(str(root),'<temporary-directory>')
     (out/'trace.json').write_text(text+'\n')
     report={'method':'Exact tokenizer counts of canonical visible JSON input fixtures, including guides and cumulative conversation history. Synthetic fixed tool-call schedule; no LLM was invoked. Not provider-billed input usage or a reasoning-quality benchmark.',
@@ -117,7 +124,7 @@ with tempfile.TemporaryDirectory(prefix='rhyven-connector-benchmark-') as temp:
         report['encodings'][encoding]={
             'components':{'direct_all_tools':count(tools),'direct_selected_tools':count(selected),'upstream_guide':count(init.get('instructions','')),
                 'rhyven_three_tools':count(definitions),'rhyven_guide':count(rhyven_init.get('instructions','')),
-                'categories_response':count(categories),'describe_response_including_guide_and_contract':count(description)},
+                'categories_response':count(categories),'describe_response_including_guide_and_contract':count(description),'selected_description':count(selected_description)},
             'scenarios':{name:{'input_tokens_by_turn':[count(turn) for turn in turns],'cumulative_input_tokens':sum(count(turn) for turn in turns)} for name,turns in traces.items()}}
     (out/'results.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report,indent=2))

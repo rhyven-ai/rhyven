@@ -205,9 +205,8 @@ impl Runtime {
                 )
             }
             "rhyven_describe" => {
-                catalog::keys(&args, &["category"])?;
                 let mut manifest =
-                    crate::tools::manifest(&self.describe(string(&args, "category")?)?);
+                    crate::tools::describe(&self.describe(string(&args, "category")?)?, &args)?;
                 manifest["scope"] = collections::scope(&self.root)?;
                 return Ok(manifest);
             }

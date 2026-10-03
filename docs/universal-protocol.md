@@ -42,3 +42,44 @@ Parity gates: `qa/universal_market_check.py`, `qa/shared_runtime_check.py`,
 `qa/collections_check.py` and `qa/container_check.py`. They cover discovery,
 function manifests, schema errors, revision/idempotency semantics, approvals,
 collection routing, persisted state and direct versus REST-backed MCP.
+
+## Compact and selective discovery (unreleased)
+
+The local connector branch makes `rhyven_describe` compact by default. It returns
+callable input/output schemas and Markdown guidance once. `contract` retains
+hosting, permissions, execution settings, and object rules/relationships; it omits
+repeated descriptions, action definitions, object schemas, tests and package files.
+Execution validation still uses the complete installed package, not this view.
+
+Optional arguments on the same tool:
+
+```json
+{"category":"acme/documents","function":"action_search_documents"}
+```
+
+```json
+{"category":"acme/documents","search":"search documents"}
+```
+
+`function` selects an exact function name. `search` matches all whitespace-separated
+terms, case-insensitively, against function names and descriptions. They are
+mutually exclusive and limited to 128 bytes. Results include full callable schemas,
+not just names; no extra detail request is required before calling a match. An
+unknown exact name fails; a search with no matches returns an empty function list.
+Filtered responses include `total_functions` so absence is not mistaken for an
+empty app. App guidance and security disclosures remain present even when filtering.
+
+Use `{"category":"acme/documents","full":true}` when a client needs the complete
+package contract (embedded files are still omitted). Clients that previously
+consumed `contract.actions` or `contract.objects.*.schema` must request `full:true`
+or use the unchanged `GET /apps/{publisher}/{app}` contract endpoint.
+
+REST keeps `GET /categories/{publisher}/{app}` for default compact discovery and
+adds `POST /categories/{publisher}/{app}/describe` with an optional JSON body of
+`function`, `search`, and `full`. REST-backed MCP forwards these options. All paths
+use the same runtime filtering and collection scope; permissions and calls are unchanged.
+
+When a category is already known in the active collection, request its relevant
+function directly. Use categories to establish scope when it is unknown. Re-describe
+after package updates or contract mismatches. Search currently scans manifest text;
+there is no separate index or new storage dependency.

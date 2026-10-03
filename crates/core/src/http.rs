@@ -78,7 +78,14 @@ impl HttpClient {
             "rhyven_categories" => self.get("categories"),
             "rhyven_describe" => {
                 let (p, n) = app_parts(string(&args, "category")?)?;
-                self.get(&format!("categories/{p}/{n}"))
+                if args.as_object().is_some_and(|v| v.len() == 1) {
+                    self.get(&format!("categories/{p}/{n}"))
+                } else {
+                    let path = format!("categories/{p}/{n}/describe");
+                    let mut options = args;
+                    options.as_object_mut().unwrap().remove("category");
+                    self.send("POST", &path, Some(options))
+                }
             }
             "rhyven_call" => {
                 let (p, n) = app_parts(string(&args, "category")?)?;
@@ -520,6 +527,11 @@ fn route(runtime: &Runtime, method: &str, path: &str, mut body: Value) -> Result
         let category = format!("{}/{}", segment(parts[1])?, segment(parts[2])?);
         if method == "GET" && parts.len() == 3 {
             return runtime.call("rhyven_describe", json!({"category":category}));
+        }
+        if method == "POST" && parts.len() == 4 && parts[3] == "describe" {
+            crate::catalog::keys(&body, &["function", "search", "full"])?;
+            body["category"] = json!(category);
+            return runtime.call("rhyven_describe", body);
         }
         if method == "POST" && parts.len() == 5 && parts[3] == "functions" {
             return runtime.call(

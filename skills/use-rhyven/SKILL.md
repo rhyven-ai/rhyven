@@ -9,6 +9,17 @@ Use Rhyven's installed app contracts to complete the user's task. The TUI is
 optional. This skill does not grant permission to install apps, change host
 settings, or publish anything outside the user's request.
 
+## Existing harness or optional starter
+
+Keep the user's existing harness and extend it through the shared tools. The
+optional Starter Runner is for users with a model endpoint but no harness; do
+not install it merely to use other apps. It needs Docker, a user-configured
+model endpoint and its declared peer apps in the same collection. Read
+https://rhyvenai.com/#docs/starter-runner when that setup is requested.
+User Questions is independently usable by either path. Its answers are ordinary
+information, not installation consent or authenticated approval. Never answer a
+question on the user's behalf without their supplied answer.
+
 ## Connect and confirm the collection
 
 Prefer the connected universal MCP. It has exactly three tools:

@@ -1,6 +1,6 @@
 # Live Codex discovery and reuse benchmark
 
-Local, unreleased changes, 2026-10-03. Nothing published.
+Measured on the local 0.5 candidate, 2026-10-03. These discovery changes are now included in Rhyven 0.5.0; the measurements below retain their original test conditions.
 
 Codex CLI 0.160.0, requested model `gpt-6-astra`, medium reasoning. Two sessions
 per setup, three tasks per session; second repetition reverses setup order.

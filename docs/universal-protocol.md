@@ -43,9 +43,9 @@ Parity gates: `qa/universal_market_check.py`, `qa/shared_runtime_check.py`,
 function manifests, schema errors, revision/idempotency semantics, approvals,
 collection routing, persisted state and direct versus REST-backed MCP.
 
-## Compact and selective discovery (unreleased)
+## Compact and selective discovery (0.5+)
 
-The local connector branch makes `rhyven_describe` compact by default. It returns
+Rhyven 0.5 makes `rhyven_describe` compact by default. It returns
 callable input/output schemas and Markdown guidance once. `contract` retains
 hosting, permissions, execution settings, and object rules/relationships; it omits
 repeated descriptions, action definitions, object schemas, tests and package files.

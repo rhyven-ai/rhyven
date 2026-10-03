@@ -67,7 +67,7 @@ and TUI browsing, run `rhyven registry-sync rhyven-ai/registry --anonymous` to
 explicitly download app manifests into the package cache. Sync does not install
 apps or pull container images.
 
-The website serves signed `0.4.0-rc.10` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
+The website serves signed `0.5.0` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
 binary before replacing an existing installation. See [release status](release-status.md)
 for platform support and release boundaries.
 

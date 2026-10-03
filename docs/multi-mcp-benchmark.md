@@ -139,7 +139,7 @@ npm install --prefix /tmp/rhyven-multi-test --ignore-scripts --no-audit --no-fun
   @modelcontextprotocol/sdk@1.32.0
 ```
 
-Build the local feature branch, then use a Python environment with tiktoken 0.12.0:
+Build Rhyven 0.5.0, then use a Python environment with tiktoken 0.12.0:
 
 ```bash
 cargo build --bin rhyven

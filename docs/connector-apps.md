@@ -1,6 +1,6 @@
 # Wrap an existing API or MCP server
 
-Status: local feature branch; not part of the published rc.10 binary yet.
+Available in Rhyven 0.5.0 and the matching public registry validator.
 
 A connector app contains a reviewed contract and connection settings. It does **not** install, start, update or back up the external service. Provision the service, its dependencies and account separately. The same wrapper works through Rhyven's three MCP tools, REST adapter and standalone MCP export.
 
@@ -69,7 +69,7 @@ after discovering the contract with `rhyven_describe`. No extra agent-side MCP c
 
 ## Package contract
 
-Rhyven 0.5.0 extends format 2 with an optional `connector` declaration. Existing app formats keep their behavior. Older runtimes that do not support this field reject the package; do not publish these packages until the matching runtime and registry validator are released.
+Rhyven 0.5.0 extends format 2 with an optional `connector` declaration. Existing app formats keep their behavior. Older runtimes that do not support this field reject the package. Require Rhyven 0.5.0 or later for connector packages.
 
 ```json
 {

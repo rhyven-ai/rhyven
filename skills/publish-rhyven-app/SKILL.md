@@ -157,12 +157,11 @@ validation results, and any remaining installation or review blockers.
 ## Connector packages (0.5+)
 
 Use `rhyven app import-mcp` or `rhyven app import-openapi` with an explicit tool/
-operation allowlist; inspect `--help` and docs/connector-apps.md for supported inputs.
+operation allowlist; inspect `--help` and https://rhyvenai.com/#docs/connectors for supported inputs.
 Provide the upstream service separately. Review imported schemas, Markdown guidance,
 endpoint, permissions and credential variable name. Never embed credentials.
 Keep the public package source open source under the current marketplace policy.
 `app test` validates the contract, not remote behavior: test against a disposable
 service before submission. Upstream code/behavior is not pinned by package hashes.
-Do not publish connector packages before the matching 0.5 runtime and registry
-validator are released. Auth is currently configured bearer-token environment
+Require a compatible 0.5+ runtime and registry validator for connector packages. Auth is currently configured bearer-token environment
 variables; stdio launching, OAuth login and arbitrary OpenAPI schemas are not provided.

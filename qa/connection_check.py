@@ -28,9 +28,13 @@ with tempfile.TemporaryDirectory(prefix="rv-connect-") as temporary:
     assert probe["server_verified"] and not probe["client_session_verified"]
     assert probe["verification"]["server"]["version"] == subprocess.check_output([binary, "--version"], text=True).strip().split()[1]
     assert probe["collection"] == "alpha"
-    for client in ["codex", "claude", "cursor", "vscode", "cline"]:
+    for client in ["codex", "claude", "cursor", "vscode", "cline", "hermes", "openclaw"]:
         path = root / (client + (".toml" if client == "codex" else ".json"))
         original = '# Keep my comment\nmodel = "keep-model"\n[mcp_servers.other]\ncommand = "keep"\n' if client == "codex" else json.dumps({"keep": True, "servers" if client == "vscode" else "mcpServers": {"other": {"command": "keep"}}})
+        if client == "hermes":
+            original = '# Keep my comment\nmodel: keep-model\nlegacy_flag: on\nmcp_servers:\n  other:\n    command: keep\n    enabled: yes\n# Keep this setting\nagent:\n  max_turns: 12\n'
+        elif client == "openclaw":
+            original = '// Keep my comment\n{ keep: true, mcp: { servers: { other: { command: "keep", }, }, }, }'
         path.write_text(original)
         args = ("connect", "--client", client, "--config", str(path))
         assert cli(*args, "--print")["status"] == "instructions" and path.read_text() == original
@@ -42,6 +46,21 @@ with tempfile.TemporaryDirectory(prefix="rv-connect-") as temporary:
             assert cli(*args, ok=False)["code"] == "configuration"
             cli(*args, "--replace")
             assert "enabled = false" not in path.read_text()
+        if client in ("hermes", "openclaw"):
+            backups = list(path.parent.glob(path.name + ".rhyven-backup-*"))
+            assert len(backups) == 1 and backups[0].read_text() == original
+            assert backups[0].stat().st_mode & 0o077 == 0
+            if client == "hermes":
+                assert '# Keep my comment\nmodel: keep-model\nlegacy_flag: on\n' in path.read_text()
+                assert 'agent:\n  max_turns: 12\n' in path.read_text()
+                assert '    enabled: yes\n' in path.read_text()
+                entries = {'other': {'command': 'keep'}, 'rhyven': json.loads(path.read_text().split('  "rhyven": ', 1)[1].splitlines()[0])}
+            else:
+                entries = json.loads(path.read_text())["mcp"]["servers"]
+                assert entries['rhyven']['transport'] == 'stdio'
+            assert entries['other']['command'] == 'keep'
+            assert entries['rhyven']['command'] == binary
+            assert entries['rhyven']['args'][-1] == 'mcp'
         installed = path.read_bytes()
         assert not cli(*args)["configuration_changed"] and path.read_bytes() == installed
         other = prefix.copy()
@@ -52,6 +71,31 @@ with tempfile.TemporaryDirectory(prefix="rv-connect-") as temporary:
         path.write_text("invalid config [")
         assert cli(*args, "--replace", ok=False)["code"] == "configuration"
         assert path.read_text() == "invalid config ["
+
+    # Config path overrides support profiles without touching the user's real settings.
+    for client, key, location in [
+        ("hermes", "HERMES_HOME", root / "hermes-profile"),
+        ("openclaw", "OPENCLAW_STATE_DIR", root / "openclaw-profile"),
+        ("openclaw", "OPENCLAW_CONFIG_PATH", root / "custom-claw.json"),
+    ]:
+        env = dict(os.environ, HOME=str(root / "fake-user"))
+        for name in ["HERMES_HOME", "OPENCLAW_STATE_DIR", "OPENCLAW_CONFIG_PATH"]: env.pop(name, None)
+        env[key] = str(location)
+        result = cli("connect", "--client", client, env=env)
+        expected = location if key == "OPENCLAW_CONFIG_PATH" else location / ("config.yaml" if client == "hermes" else "openclaw.json")
+        assert result["config_path"] == str(expected) and expected.is_file()
+        assert not result["client_session_verified"]
+    for client, content in [("openclaw", '{"mcp":false}'), ("openclaw", '{"mcp":{"servers":[]}}'), ("hermes", "mcp_servers: []\n"), ("hermes", '{mcp_servers: {other: {command: keep}}}')]:
+        path = root / "bad-settings"
+        path.write_text(content)
+        assert cli("connect", "--client", client, "--config", str(path), ok=False)["code"] == "configuration"
+        assert path.read_text() == content
+    for client in ["hermes", "openclaw"]:
+        path = root / (client + "-link")
+        path.symlink_to(root / "missing")
+        assert cli("connect", "--client", client, "--config", str(path), ok=False)["code"] == "configuration"
+        assert not (root / "missing").exists()
+        assert cli("connect", "--client", client, "--name", "__proto__", "--print", ok=False)["code"] == "configuration"
 
     secret = "private-connection-token-0123456789"
     env = dict(os.environ, RHYVEN_SERVE_TOKEN=secret)
@@ -87,4 +131,4 @@ with tempfile.TemporaryDirectory(prefix="rv-connect-") as temporary:
     finally:
         server.terminate()
         server.wait(timeout=10)
-print("PASS: startup instructions; real MCP probe; five safe config adapters; reruns/conflicts; remote collection guard; bearer auth; no token disclosure")
+print("PASS: startup instructions; real MCP probe; seven safe config adapters; reruns/conflicts; remote collection guard; bearer auth; no token disclosure")

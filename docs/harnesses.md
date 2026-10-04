@@ -7,7 +7,7 @@ rhyven --collection my-project connect --client codex
 ```
 
 Other adapters: `claude` (Claude Code user configuration), `cursor` (user MCP
-configuration), `vscode` (the current project's `.vscode/mcp.json`), and `cline`
+configuration), `vscode` (the current project's `.vscode/mcp.json`), `hermes` (Hermes Agent), `openclaw` (native OpenClaw MCP), and `cline`
 (pass `--config /path/to/cline_mcp_settings.json`). `generic` returns a portable
 entry for any client supporting stdio MCP. The client does not need to be running.
 
@@ -21,7 +21,10 @@ configuration, is idempotent, and refuses to change an existing different entry
 unless `--replace` is supplied. `--name rhyven-project` adds another connection.
 `--config PATH` selects an explicit destination for any adapter. JSON files with
 comments or invalid syntax are left untouched; merge `--print` output manually.
-Codex TOML comments and unrelated entries are retained. Symlinked destination
+OpenClaw JSON5 is accepted and written as JSON; comments are normalized.
+Hermes preserves text outside a plain top-level `mcp_servers` block. Complex YAML layouts that cannot be merged safely require a manual merge of
+`--print` output. Other server definitions and YAML 1.1 scalar values are retained. Existing Hermes/OpenClaw settings are backed up privately beside the file
+as `<filename>.rhyven-backup-*` before changes. Codex TOML comments and unrelated entries are retained. Symlinked destination
 files are rejected; pass their real path explicitly.
 
 ```sh
@@ -49,6 +52,35 @@ environment needs its own environment configuration. The URL is REST, not native
 HTTP MCP. Authenticated `GET /` and `GET /connection` return connection
 instructions; `serve` prints a readiness message to stderr after binding.
 
+## Hermes Agent and OpenClaw
+
+Rhyven 0.5.4 adds setup adapters for both clients. Install the client separately;
+Rhyven does not install an agent or configure its model provider.
+
+```sh
+rhyven --collection my-project connect --client hermes
+rhyven --collection my-project connect --client openclaw
+```
+
+Hermes uses `~/.hermes/config.yaml` or `$HERMES_HOME/config.yaml`. For another
+profile, pass its file with `--config`. In Hermes, use `/reload-mcp` or start a
+new session, then ask it to call `rhyven_categories()` and confirm `my-project`.
+
+OpenClaw uses `~/.openclaw/openclaw.json`, respecting `OPENCLAW_STATE_DIR` and
+`OPENCLAW_CONFIG_PATH` (explicit `--config` takes precedence). It must support
+native `mcp.servers`; the adapter does not modify an older mcporter registry.
+Run `openclaw mcp doctor rhyven --probe`, then reload/restart the Gateway that
+owns the agent connection. Check discovery in the actual agent session.
+
+Both use the same three stdio MCP tools and existing marketplace consent flow.
+Do not configure automatic approval of app installs. A Gateway running elsewhere
+needs Rhyven on that host, with paths accessible to that process. Use `--server`
+for a shared Rhyven REST instance; Rhyven still provides the local stdio bridge.
+A server probe does not prove a running client has loaded its configuration.
+
+Configuration references: [Hermes MCP](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp),
+[OpenClaw MCP](https://docs.openclaw.ai/tools/mcp).
+
 ## Existing configuration command
 
 The server is ordinary stdio MCP. Start it with an absolute executable and workspace path:
@@ -57,7 +89,7 @@ The server is ordinary stdio MCP. Start it with an absolute executable and works
 /absolute/path/rhyven --workspace /absolute/path/project --actor assistant mcp
 ```
 
-Run `rhyven --workspace /absolute/path/project config CLIENT` to print a config for `claude`, `cline`, `cursor`, `vscode` or `codex`. It prints only; it does not overwrite existing harness configuration. Merge the generated entry into your harness's MCP settings. Do not start the terminal marketplace from an MCP configuration.
+Run `rhyven --workspace /absolute/path/project config CLIENT` to print a config for `claude`, `cline`, `cursor`, `vscode`, `codex`, `hermes` or `openclaw`. It prints only; it does not overwrite existing harness configuration. Merge the generated entry into your harness's MCP settings. Do not start the terminal marketplace from an MCP configuration.
 
 Claude/Cline/Cursor use the familiar `mcpServers` entry with `command` and `args`. VS Code uses `servers` and `type: "stdio"`. Codex output is TOML under `[mcp_servers.rhyven]`. The command should point to the provided binary or your compiled `target/release/rhyven`.
 
@@ -104,3 +136,14 @@ Marketplace management on a shared server additionally requires a distinct
 an agent tool argument. Without it, the adapter can browse but cannot prepare,
 approve or apply package changes. Never configure automatic acceptance of
 elicitation requests. See [agent marketplace](agent-marketplace.md).
+
+### 0.5.4 connection acceptance
+
+OpenClaw 2026.9.8 loaded a generated configuration and its native MCP probe
+discovered all three tools. Hermes source revision
+`af8839df1038cc026075fb254afa22edc19d911d`, with MCP SDK 2.0.0, loaded the
+generated YAML and called discovery and marketplace description successfully.
+`qa/hermes_connection_check.py` reproduces the Hermes test from an environment
+with Hermes and its MCP extra installed. No model API or paid inference is needed.
+These tests verify client transport and configuration, not a full model-driven task
+or every client version.

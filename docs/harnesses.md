@@ -22,9 +22,8 @@ unless `--replace` is supplied. `--name rhyven-project` adds another connection.
 `--config PATH` selects an explicit destination for any adapter. JSON files with
 comments or invalid syntax are left untouched; merge `--print` output manually.
 OpenClaw JSON5 is accepted and written as JSON; comments are normalized.
-Hermes preserves text outside a plain top-level `mcp_servers` block. Complex YAML
-anchors, tags or flow-style top-level mappings require a manual merge of `--print`
-output. Existing Hermes/OpenClaw settings are backed up privately beside the file
+Hermes preserves text outside a plain top-level `mcp_servers` block. Complex YAML layouts that cannot be merged safely require a manual merge of
+`--print` output. Other server definitions and YAML 1.1 scalar values are retained. Existing Hermes/OpenClaw settings are backed up privately beside the file
 as `<filename>.rhyven-backup-*` before changes. Codex TOML comments and unrelated entries are retained. Symlinked destination
 files are rejected; pass their real path explicitly.
 
@@ -137,3 +136,14 @@ Marketplace management on a shared server additionally requires a distinct
 an agent tool argument. Without it, the adapter can browse but cannot prepare,
 approve or apply package changes. Never configure automatic acceptance of
 elicitation requests. See [agent marketplace](agent-marketplace.md).
+
+### 0.5.4 connection acceptance
+
+OpenClaw 2026.9.8 loaded a generated configuration and its native MCP probe
+discovered all three tools. Hermes source revision
+`af8839df1038cc026075fb254afa22edc19d911d`, with MCP SDK 2.0.0, loaded the
+generated YAML and called discovery and marketplace description successfully.
+`qa/hermes_connection_check.py` reproduces the Hermes test from an environment
+with Hermes and its MCP extra installed. No model API or paid inference is needed.
+These tests verify client transport and configuration, not a full model-driven task
+or every client version.

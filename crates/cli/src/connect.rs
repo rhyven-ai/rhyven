@@ -350,7 +350,7 @@ fn merge(path: &Path, client: &str, name: &str, config: &Value, replace: bool) -
         }
         target[name] = entry.clone();
         if client == "hermes" {
-            merge_hermes(text, &doc["mcp_servers"])?
+            merge_hermes(text, name, &doc["mcp_servers"])?
         } else {
             serde_json::to_vec_pretty(&doc)?
         }
@@ -393,20 +393,28 @@ fn merge(path: &Path, client: &str, name: &str, config: &Value, replace: bool) -
 
 /// Change only the top-level MCP block. Leave the rest of Hermes YAML verbatim,
 /// including comments and YAML 1.1 scalars interpreted by Hermes's Python loader.
-fn merge_hermes(text: &str, servers: &Value) -> Result<Vec<u8>> {
+fn merge_hermes(text: &str, name: &str, servers: &Value) -> Result<Vec<u8>> {
+    let manual = || {
+        Error::new(
+            "configuration",
+            "Cannot safely merge Hermes YAML; merge --print output manually",
+        )
+    };
     let lines: Vec<&str> = text.split_inclusive('\n').collect();
-    let starts: Vec<usize> = lines
-        .iter()
-        .enumerate()
-        .filter_map(|(i, line)| line.starts_with("mcp_servers:").then_some(i))
-        .collect();
     let original: Value = if text.trim().is_empty() {
         json!({})
     } else {
-        serde_yaml_ng::from_str(text)
-            .map_err(|_| Error::new("configuration", "Invalid Hermes YAML"))?
+        serde_yaml_ng::from_str(text).map_err(|_| manual())?
     };
-    let (start, end) = if original.get("mcp_servers").is_some() {
+    let mut expected = original.clone();
+    expected["mcp_servers"] = servers.clone();
+    let mut output;
+    if original.get("mcp_servers").is_some() {
+        let starts: Vec<usize> = lines
+            .iter()
+            .enumerate()
+            .filter_map(|(i, line)| line.starts_with("mcp_servers:").then_some(i))
+            .collect();
         ensure(
             starts.len() == 1,
             "configuration",
@@ -419,30 +427,93 @@ fn merge_hermes(text: &str, servers: &Value) -> Result<Vec<u8>> {
                 !line.trim().is_empty() && !line.starts_with([' ', '\t', '#'])
             })
             .unwrap_or(lines.len());
-        let block = lines[start..end].concat();
-        // Anchors can be referenced elsewhere; do not silently invalidate them.
-        ensure(!block.contains('&') && !block.contains('*') && !block.contains('!'), "configuration", "Hermes MCP block uses anchors, tags or special scalar syntax; merge --print output manually")?;
-        (start, end)
+        let tail = lines[start]
+            .trim_end()
+            .strip_prefix("mcp_servers:")
+            .unwrap()
+            .trim();
+        if !tail.is_empty() && !tail.starts_with('#') {
+            // Previously generated JSON is also YAML. Do not reinterpret YAML 1.1 flow scalars.
+            let flow: Value = serde_json::from_str(tail).map_err(|_| manual())?;
+            ensure(
+                flow == original["mcp_servers"],
+                "configuration",
+                "Complex Hermes YAML requires manual merge",
+            )?;
+            output = lines[..start].concat();
+            output.push_str(&format!(
+                "mcp_servers: {}\n",
+                serde_json::to_string(servers)?
+            ));
+            output.push_str(&lines[end..].concat());
+        } else {
+            let indent = lines[start + 1..end]
+                .iter()
+                .filter(|line| !line.trim().is_empty() && !line.trim_start().starts_with('#'))
+                .map(|line| line.len() - line.trim_start_matches(' ').len())
+                .min()
+                .ok_or_else(manual)?;
+            ensure(
+                indent > 0,
+                "configuration",
+                "Invalid Hermes MCP indentation",
+            )?;
+            let prefixes = [
+                format!("{name}:"),
+                format!("\"{name}\":"),
+                format!("'{name}':"),
+            ];
+            let entry_start = (start + 1..end).find(|&i| {
+                let line = lines[i];
+                line.len() - line.trim_start_matches(' ').len() == indent
+                    && prefixes
+                        .iter()
+                        .any(|prefix| line.trim_start().starts_with(prefix))
+            });
+            ensure(
+                entry_start.is_some() == original["mcp_servers"].get(name).is_some(),
+                "configuration",
+                "Complex Hermes MCP key requires manual merge",
+            )?;
+            let replace_start = entry_start.unwrap_or(end);
+            let replace_end = entry_start
+                .map(|from| {
+                    (from + 1..end)
+                        .find(|&i| {
+                            let line = lines[i];
+                            !line.trim().is_empty()
+                                && !line.trim_start().starts_with('#')
+                                && line.len() - line.trim_start_matches(' ').len() <= indent
+                        })
+                        .unwrap_or(end)
+                })
+                .unwrap_or(end);
+            output = lines[..replace_start].concat();
+            if !output.ends_with('\n') {
+                output.push('\n');
+            }
+            output.push_str(&format!(
+                "{}{}: {}\n",
+                " ".repeat(indent),
+                serde_json::to_string(name)?,
+                serde_json::to_string(&servers[name])?
+            ));
+            output.push_str(&lines[replace_end..].concat());
+        }
     } else {
         ensure(!text.lines().any(|line| matches!(line.trim(), "---" | "...") || line.starts_with('{')), "configuration", "Hermes YAML document markers or flow mappings require a manual merge of --print output")?;
-        (lines.len(), lines.len())
-    };
-    // JSON flow syntax is valid YAML and keeps strings such as on/off unambiguous.
-    let block = format!("mcp_servers: {}\n", serde_json::to_string(servers)?);
-    let mut output = lines[..start].concat();
-    if !output.is_empty() && !output.ends_with('\n') {
-        output.push('\n');
+        output = text.to_string();
+        if !output.is_empty() && !output.ends_with('\n') {
+            output.push('\n');
+        }
+        output.push_str(&format!(
+            "mcp_servers: {}\n",
+            serde_json::to_string(servers)?
+        ));
     }
-    output.push_str(&block);
-    output.push_str(&lines[end..].concat());
-    let checked: Value = serde_yaml_ng::from_str(&output).map_err(|_| {
-        Error::new(
-            "configuration",
-            "Cannot safely merge Hermes YAML; configuration unchanged",
-        )
-    })?;
+    let checked: Value = serde_yaml_ng::from_str(&output).map_err(|_| manual())?;
     ensure(
-        checked["mcp_servers"] == *servers,
+        checked == expected,
         "configuration",
         "Cannot safely merge Hermes MCP settings",
     )?;

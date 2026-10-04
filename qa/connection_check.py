@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory(prefix="rv-connect-") as temporary:
         path = root / (client + (".toml" if client == "codex" else ".json"))
         original = '# Keep my comment\nmodel = "keep-model"\n[mcp_servers.other]\ncommand = "keep"\n' if client == "codex" else json.dumps({"keep": True, "servers" if client == "vscode" else "mcpServers": {"other": {"command": "keep"}}})
         if client == "hermes":
-            original = '# Keep my comment\nmodel: keep-model\nlegacy_flag: on\nmcp_servers:\n  other:\n    command: keep\n# Keep this setting\nagent:\n  max_turns: 12\n'
+            original = '# Keep my comment\nmodel: keep-model\nlegacy_flag: on\nmcp_servers:\n  other:\n    command: keep\n    enabled: yes\n# Keep this setting\nagent:\n  max_turns: 12\n'
         elif client == "openclaw":
             original = '// Keep my comment\n{ keep: true, mcp: { servers: { other: { command: "keep", }, }, }, }'
         path.write_text(original)
@@ -53,7 +53,8 @@ with tempfile.TemporaryDirectory(prefix="rv-connect-") as temporary:
             if client == "hermes":
                 assert '# Keep my comment\nmodel: keep-model\nlegacy_flag: on\n' in path.read_text()
                 assert 'agent:\n  max_turns: 12\n' in path.read_text()
-                entries = json.loads(path.read_text().split('mcp_servers: ', 1)[1].splitlines()[0])
+                assert '    enabled: yes\n' in path.read_text()
+                entries = {'other': {'command': 'keep'}, 'rhyven': json.loads(path.read_text().split('  "rhyven": ', 1)[1].splitlines()[0])}
             else:
                 entries = json.loads(path.read_text())["mcp"]["servers"]
                 assert entries['rhyven']['transport'] == 'stdio'

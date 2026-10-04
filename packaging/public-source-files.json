@@ -210,6 +210,7 @@
   "qa/fixtures/container-probe/main.py": "qa/fixtures/container-probe/main.py",
   "qa/fixtures/mcp-benchmark-gateway.mjs": "qa/fixtures/mcp-benchmark-gateway.mjs",
   "qa/fresh_machine_vm.sh": "qa/fresh_machine_vm.sh",
+  "qa/hermes_connection_check.py": "qa/hermes_connection_check.py",
   "qa/http_security_check.py": "qa/http_security_check.py",
   "qa/image_scan_review_check.py": "qa/image_scan_review_check.py",
   "qa/installer_catalog_check.py": "qa/installer_catalog_check.py",

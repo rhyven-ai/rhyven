@@ -54,7 +54,7 @@ pub fn run(home: &Path, containers: bool, yes: bool, plan: bool) -> Result<Value
     let value = json!({"status":if ready {"ready"} else {"pending"},
         "home":home,"containers_requested":containers,"setup_exit":setup_exit,"marketplace":marketplace,"skills":skills,
         "diagnosis":diagnosis,"resume":if ready {Value::Null} else {json!("rhyven setup --containers")},
-        "agent_connection":{"instructions":"rhyven --agent","setup":"rhyven connect --client CLIENT","clients":["codex","claude","cursor","vscode","cline","generic"],"verify":"rhyven connect --check"}});
+        "agent_connection":{"instructions":"rhyven --agent","setup":"rhyven connect --client CLIENT","clients":["codex","claude","cursor","vscode","cline","hermes","openclaw","generic"],"verify":"rhyven connect --check"}});
     let mut state = tempfile::NamedTempFile::new_in(home)?;
     serde_json::to_writer_pretty(&mut state, &value)?;
     state.as_file().sync_all()?;

@@ -35,7 +35,7 @@ rhyven
 ```
 
 To connect an agent, run `rhyven --collection my-project connect --client codex`
-(also Claude Code, Cursor, VS Code, Cline and generic clients). `rhyven --agent`
+(also Claude Code, Cursor, VS Code, Cline, Hermes Agent, OpenClaw and generic clients). `rhyven --agent`
 returns connection instructions. See [agent connection](harnesses.md).
 
 The website installer fetches the public marketplace catalog automatically. It
@@ -67,7 +67,7 @@ and TUI browsing, run `rhyven registry-sync rhyven-ai/registry --anonymous` to
 explicitly download app manifests into the package cache. Sync does not install
 apps or pull container images.
 
-The website serves signed `0.5.3` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
+The website serves signed `0.5.4` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
 binary before replacing an existing installation. See [release status](release-status.md)
 for platform support and release boundaries.
 
@@ -300,7 +300,7 @@ prerequisites without installing dependencies or running publisher code.
 ## Included agent skills
 
 Every binary includes all six skills and the usage rule. Setup writes them to
-`~/.rhyven/skills/0.5.3/` (or `$RHYVEN_HOME/skills/0.5.3/`) without downloading
+`~/.rhyven/skills/0.5.4/` (or `$RHYVEN_HOME/skills/0.5.4/`) without downloading
 additional files. This also works with offline installation.
 
 ```sh

@@ -19,6 +19,8 @@ clap.workspace = true
 tempfile.workspace = true
 toml_edit = "0.22"
 semver = "1"
+serde_yaml_ng = "0.10"
+json5 = "0.4"
 
 [dev-dependencies]
 tempfile.workspace = true

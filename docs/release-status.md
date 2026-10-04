@@ -1,12 +1,22 @@
 # Release status
 
-Rhyven 0.5.3 provides signed Linux x86-64 and ARM64 releases, with a matching
+Rhyven 0.5.4 provides signed Linux x86-64 and ARM64 releases, with a matching
 registry validator and website installer.
 
-New in 0.5.3:
+New in 0.5.4:
+
+- `connect --client hermes` configures Hermes Agent's YAML MCP settings.
+- `connect --client openclaw` configures native OpenClaw MCP through JSON5.
+- Both preserve unrelated settings, back up existing configuration, respect
+  profile paths, and verify the three-tool server and collection before writing.
+- Installer output and agent connection documentation include both clients.
+- Bundled usage guidance now tells agents to look for reusable app capabilities,
+  search existing apps first, and keep installation/publication consent explicit.
+
+Included from 0.5.3:
 
 - All six skills and the usage rule are embedded in the binary and installed
-  offline under `RHYVEN_HOME/skills/0.5.3` during setup. `rhyven skills` lists
+  offline under `RHYVEN_HOME/skills/0.5.4` during setup. `rhyven skills` lists
   their paths; `rhyven skills --install` restores missing files while preserving
   local edits. No agent configuration is changed.
 

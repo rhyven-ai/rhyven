@@ -14,7 +14,7 @@ use std::{
 #[derive(Args)]
 pub struct Options {
     /// Client whose configuration to merge. Generic prints a portable MCP entry.
-    #[arg(long, default_value = "generic", value_parser = ["generic", "codex", "claude", "cursor", "vscode", "cline"])]
+    #[arg(long, default_value = "generic", value_parser = ["generic", "codex", "claude", "cursor", "vscode", "cline", "hermes", "openclaw"])]
     pub client: String,
     /// Print instructions without configuring a client or starting the probe.
     #[arg(long, conflicts_with = "check")]
@@ -22,7 +22,7 @@ pub struct Options {
     /// Check the generated MCP connection without modifying client configuration.
     #[arg(long)]
     pub check: bool,
-    /// Explicit destination; required for Cline, whose settings location varies by editor.
+    /// Explicit client settings file; required for Cline and useful for agent profiles.
     #[arg(long)]
     pub config: Option<PathBuf>,
     /// Entry name, allowing several collections in the same agent client.
@@ -82,14 +82,14 @@ pub fn launch(runtime: &Runtime) -> Result<(PathBuf, Vec<String>)> {
 
 pub fn run(runtime: &Runtime, options: Options) -> Result<Value> {
     ensure(
-        !options.name.is_empty()
+        options.name != "__proto__" && !options.name.is_empty()
             && options.name.len() <= 64
             && options
                 .name
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b"_-".contains(&b)),
         "configuration",
-        "Connection name must contain 1-64 letters, digits, underscores or hyphens",
+        "Connection name must contain 1-64 letters, digits, underscores or hyphens and cannot be __proto__",
     )?;
     ensure(
         options
@@ -125,6 +125,11 @@ pub fn run(runtime: &Runtime, options: Options) -> Result<Value> {
     } else if options.client == "claude" {
         config["mcpServers"][&options.name]["type"] = json!("stdio");
     }
+    if options.client == "hermes" {
+        config = json!({"mcp_servers":{&options.name:entry}});
+    } else if options.client == "openclaw" {
+        config = json!({"mcp":{"servers":{&options.name:{"transport":"stdio","command":exe,"args":args}}}});
+    }
     let mut argv: Vec<String> = vec![exe.to_string_lossy().into_owned()];
     argv.extend(args.iter().take_while(|s| s.as_str() != "--actor").cloned());
     argv.extend(["connect".into(), "--client".into(), "CLIENT".into()]);
@@ -133,11 +138,11 @@ pub fn run(runtime: &Runtime, options: Options) -> Result<Value> {
         "collection":if options.server.is_some() {Value::Null} else {local_collection},
         "collection_source":if options.server.is_some() {"remote server; local --collection does not route remote calls"} else {"pinned in MCP launch arguments"},
         "transport":"stdio", "rest_server":options.server, "configuration":config,
-        "configuration_format":if options.client == "codex" {"TOML (shown as JSON here)"} else {"JSON"},
+        "configuration_format":if options.client == "codex" {"TOML (shown as JSON here)"} else if options.client == "hermes" {"YAML (shown as JSON here)"} else if options.client == "openclaw" {"JSON5"} else {"JSON"},
         "required_environment":if options.server.is_some() {json!([options.token_env])} else {json!([])},
         "optional_environment":if options.server.is_some() {json!(["RHYVEN_MANAGEMENT_TOKEN"])} else {json!([])},
         "configured":false,"server_verified":false,"client_session_verified":false,
-        "connect_argv":argv,"supported_clients":["codex","claude","cursor","vscode","cline","generic"],
+        "connect_argv":argv,"supported_clients":["codex","claude","cursor","vscode","cline","hermes","openclaw","generic"],
         "instructions":[
             "Run connect --client CLIENT with the same --home/--collection (or --workspace). It configures the client and verifies MCP discovery. Use --print to review first; --check verifies without writing configuration.",
             "Generic clients: merge configuration into your client's MCP settings. Cline: pass --config with its MCP settings file. Restart/reload the client if needed, then call rhyven_categories and confirm collection.",
@@ -147,6 +152,14 @@ pub fn run(runtime: &Runtime, options: Options) -> Result<Value> {
         ],
         "client_next_step":"Reload/restart your agent client, call rhyven_categories(), and verify its collection. A successful setup probe does not prove your running client has reloaded."
     });
+    if options.client == "hermes" {
+        result["client_next_step"] = json!("In Hermes, use /reload-mcp or start a new session. Call rhyven_categories() and confirm the collection. Use --config for a non-default profile's config.yaml.");
+    } else if options.client == "openclaw" {
+        result["client_next_step"] = json!("Use an OpenClaw version with native mcp.servers support. Run openclaw mcp doctor NAME --probe with your connection name, then reload/restart the Gateway that runs your agent and call rhyven_categories(). Older mcporter-only configurations need a generic MCP entry instead.");
+    }
+    if ["hermes", "openclaw"].contains(&options.client.as_str()) {
+        result["configuration_note"] = json!("Existing configuration is backed up before changes. YAML/JSON5 formatting and comments may be normalized; unrelated settings are retained.");
+    }
     if options.print {
         return Ok(result);
     }
@@ -191,6 +204,18 @@ fn config_path(options: &Options) -> Result<PathBuf> {
             .map(PathBuf::from)
             .unwrap_or(home.join(".codex"))
             .join("config.toml"),
+        "hermes" => std::env::var_os("HERMES_HOME")
+            .map(PathBuf::from)
+            .unwrap_or(home.join(".hermes"))
+            .join("config.yaml"),
+        "openclaw" => std::env::var_os("OPENCLAW_CONFIG_PATH")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                std::env::var_os("OPENCLAW_STATE_DIR")
+                    .map(PathBuf::from)
+                    .unwrap_or(home.join(".openclaw"))
+                    .join("openclaw.json")
+            }),
         "claude" => home.join(".claude.json"),
         "cursor" => home.join(".cursor/mcp.json"),
         "vscode" => std::env::current_dir()?.join(".vscode/mcp.json"),
@@ -282,6 +307,12 @@ fn merge(path: &Path, client: &str, name: &str, config: &Value, replace: bool) -
     } else {
         let mut doc: Value = if text.is_empty() {
             json!({})
+        } else if client == "hermes" {
+            serde_yaml_ng::from_str(text).map_err(|_| Error::new("configuration", "Invalid YAML or unsupported settings; configuration unchanged. Merge --print output manually."))?
+        } else if client == "openclaw" {
+            json5::from_str(text).map_err(|_| {
+                Error::new("configuration", "Invalid JSON5; configuration unchanged")
+            })?
         } else {
             serde_json::from_str(text).map_err(|_| Error::new("configuration", "Existing configuration must be valid JSON (comments are not rewritten); merge the --print output manually"))?
         };
@@ -290,28 +321,39 @@ fn merge(path: &Path, client: &str, name: &str, config: &Value, replace: bool) -
             "configuration",
             "Client configuration must be an object",
         )?;
-        let key = if client == "vscode" {
-            "servers"
-        } else {
-            "mcpServers"
+        let keys: &[&str] = match client {
+            "vscode" => &["servers"],
+            "hermes" => &["mcp_servers"],
+            "openclaw" => &["mcp", "servers"],
+            _ => &["mcpServers"],
         };
-        let entry = &config[key][name];
-        if let Some(existing) = doc.get(key).and_then(|v| v.get(name)) {
+        let mut target = &mut doc;
+        let mut source = config;
+        for key in keys {
+            if target.get(*key).is_none() {
+                target[*key] = json!({});
+            }
+            ensure(
+                target[*key].is_object(),
+                "configuration",
+                "MCP server settings must be an object; configuration unchanged",
+            )?;
+            target = &mut target[*key];
+            source = &source[*key];
+        }
+        let entry = &source[name];
+        if let Some(existing) = target.get(name) {
             if existing == entry {
                 return Ok(false);
             }
             ensure(replace, "configuration", "A different Rhyven connection exists; use --name for another entry or --replace to switch it")?;
         }
-        if doc.get(key).is_none() {
-            doc[key] = json!({});
+        target[name] = entry.clone();
+        if client == "hermes" {
+            merge_hermes(text, &doc["mcp_servers"])?
+        } else {
+            serde_json::to_vec_pretty(&doc)?
         }
-        ensure(
-            doc[key].is_object(),
-            "configuration",
-            "MCP server settings must be an object",
-        )?;
-        doc[key][name] = entry.clone();
-        serde_json::to_vec_pretty(&doc)?
     };
     let parent = path
         .parent()
@@ -330,10 +372,81 @@ fn merge(path: &Path, client: &str, name: &str, config: &Value, replace: bool) -
         "configuration",
         "Client configuration changed during setup; retry",
     )?;
+    if ["hermes", "openclaw"].contains(&client) {
+        if let Some(original) = &before {
+            let mut backup = tempfile::Builder::new()
+                .prefix(&format!(
+                    "{}.rhyven-backup-",
+                    path.file_name().unwrap().to_string_lossy()
+                ))
+                .tempfile_in(parent)?;
+            backup.write_all(original)?;
+            backup.as_file().sync_all()?;
+            backup.keep().map_err(|e| Error::new("io", e.to_string()))?;
+        }
+    }
     staged
         .persist(path)
         .map_err(|e| Error::new("io", e.to_string()))?;
     Ok(true)
+}
+
+/// Change only the top-level MCP block. Leave the rest of Hermes YAML verbatim,
+/// including comments and YAML 1.1 scalars interpreted by Hermes's Python loader.
+fn merge_hermes(text: &str, servers: &Value) -> Result<Vec<u8>> {
+    let lines: Vec<&str> = text.split_inclusive('\n').collect();
+    let starts: Vec<usize> = lines
+        .iter()
+        .enumerate()
+        .filter_map(|(i, line)| line.starts_with("mcp_servers:").then_some(i))
+        .collect();
+    let original: Value = if text.trim().is_empty() {
+        json!({})
+    } else {
+        serde_yaml_ng::from_str(text)
+            .map_err(|_| Error::new("configuration", "Invalid Hermes YAML"))?
+    };
+    let (start, end) = if original.get("mcp_servers").is_some() {
+        ensure(
+            starts.len() == 1,
+            "configuration",
+            "Hermes needs a plain top-level mcp_servers block; merge --print output manually",
+        )?;
+        let start = starts[0];
+        let end = (start + 1..lines.len())
+            .find(|&i| {
+                let line = lines[i];
+                !line.trim().is_empty() && !line.starts_with([' ', '\t', '#'])
+            })
+            .unwrap_or(lines.len());
+        let block = lines[start..end].concat();
+        // Anchors can be referenced elsewhere; do not silently invalidate them.
+        ensure(!block.contains('&') && !block.contains('*') && !block.contains('!'), "configuration", "Hermes MCP block uses anchors, tags or special scalar syntax; merge --print output manually")?;
+        (start, end)
+    } else {
+        ensure(!text.lines().any(|line| matches!(line.trim(), "---" | "...") || line.starts_with('{')), "configuration", "Hermes YAML document markers or flow mappings require a manual merge of --print output")?;
+        (lines.len(), lines.len())
+    };
+    // JSON flow syntax is valid YAML and keeps strings such as on/off unambiguous.
+    let block = format!("mcp_servers: {}\n", serde_json::to_string(servers)?);
+    let mut output = lines[..start].concat();
+    if !output.is_empty() && !output.ends_with('\n') {
+        output.push('\n');
+    }
+    output.push_str(&block);
+    output.push_str(&lines[end..].concat());
+    let checked: Value = serde_yaml_ng::from_str(&output).map_err(|_| {
+        Error::new(
+            "configuration",
+            "Cannot safely merge Hermes YAML; configuration unchanged",
+        )
+    })?;
+    ensure(
+        checked["mcp_servers"] == *servers,
+        "configuration",
+        "Cannot safely merge Hermes MCP settings",
+    )?;
+    Ok(output.into_bytes())
 }
 
 /// Probe the actual executable/transport, not a second in-process dispatch path.

@@ -153,6 +153,8 @@ printf '  %s/rhyven connect --client codex\n' "'$quoted'"
 printf '  %s/rhyven connect --client claude\n' "'$quoted'"
 printf '  %s/rhyven connect --client cursor\n' "'$quoted'"
 printf '  %s/rhyven connect --client vscode\n' "'$quoted'"
+printf '  %s/rhyven connect --client hermes\n' "'$quoted'"
+printf '  %s/rhyven connect --client openclaw\n' "'$quoted'"
 printf '\nFor other MCP clients, print connection instructions:\n  %s/rhyven --agent\n' "'$quoted'"
 printf '\nAfter connecting, reload your agent client and ask:\n'
 printf '  "Use Rhyven to search the marketplace. Show me an app and its permissions before installing it."\n'

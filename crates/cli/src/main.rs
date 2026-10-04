@@ -280,7 +280,7 @@ enum Command {
     },
     /// Print a harness config using this executable and absolute workspace.
     Config {
-        #[arg(default_value="claude",value_parser=["claude","cline","cursor","vscode","codex"])]
+        #[arg(default_value="claude",value_parser=["claude","cline","cursor","vscode","codex","hermes","openclaw"])]
         client: String,
     },
     /// Export an installed app with a runtime binary and generated app-specific MCP.
@@ -670,7 +670,16 @@ fn run() -> Result<()> {
                 );
                 return Ok(());
             }
-            if client == "vscode" {
+            if client == "hermes" {
+                println!(
+                    "mcp_servers: {}",
+                    json!({"rhyven":{"command":exe,"args":args}})
+                );
+                return Ok(());
+            }
+            if client == "openclaw" {
+                json!({"mcp":{"servers":{"rhyven":{"transport":"stdio","command":exe,"args":args}}}})
+            } else if client == "vscode" {
                 json!({"servers":{"rhyven":{"type":"stdio","command":exe,"args":args}}})
             } else {
                 json!({"mcpServers":{"rhyven":{"command":exe,"args":args}}})

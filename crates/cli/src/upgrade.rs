@@ -4,6 +4,15 @@ use serde_json::{json, Value};
 use std::{io::Write, path::Path, process::Command};
 
 pub fn run(home: &Path, check: bool) -> Result<Value> {
+    let executable = std::env::current_exe()?;
+    if executable == Path::new("/usr/bin/rhyven")
+        && Path::new("/usr/share/rhyven/package-manager").is_file()
+    {
+        let manager = std::fs::read_to_string("/usr/share/rhyven/package-manager")?;
+        return Ok(json!({"updated":false,"installation":"system_package",
+            "package_manager":manager.trim(),"current":env!("CARGO_PKG_VERSION"),
+            "next":"Download the new Rhyven package from https://rhyvenai.com and install it with your system package manager. No package repository is configured automatically; the curl updater will not overwrite a package-owned executable."}));
+    }
     let output = Command::new("curl")
         .args([
             "--proto",

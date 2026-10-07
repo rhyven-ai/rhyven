@@ -11,10 +11,10 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
-Version **0.5.4** supports Linux x86-64 and ARM64. Native Windows and macOS
+Version **0.5.5** supports Linux x86-64 and ARM64. Native Windows and macOS
 are not supported release targets. Individual app images may support fewer architectures.
 
-The signed **0.5.4** installer and platform binaries are available at
+The signed **0.5.5** installer and platform binaries are available at
 [rhyvenai.com](https://rhyvenai.com). App versions and container image digests
 are released independently.
 See [installation](docs/installation.md) and [release status](docs/release-status.md).
@@ -22,12 +22,12 @@ See [installation](docs/installation.md) and [release status](docs/release-statu
 ## Install
 
 ```sh
-curl -fsSL https://rhyvenai.com/install.sh | bash -s -- --containers
+curl -fsSL https://rhyvenai.com/install.sh | bash
 rhyven
 ```
 
-Omit `--containers` if you only need declarative apps. The installer verifies
-signatures and checksums and requests approval for Docker dependency setup.
+Docker is optional. To add container support, run `rhyven setup --containers` and review the requested system changes. The installer verifies
+signatures and checksums. Container setup asks before changing your system.
 Open a new terminal after installation so PATH changes take effect.
 
 ## Build from source

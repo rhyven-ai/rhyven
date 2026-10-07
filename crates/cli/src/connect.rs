@@ -152,6 +152,23 @@ pub fn run(runtime: &Runtime, options: Options) -> Result<Value> {
         ],
         "client_next_step":"Reload/restart your agent client, call rhyven_categories(), and verify its collection. A successful setup probe does not prove your running client has reloaded."
     });
+    let executable_name = match options.client.as_str() {
+        "vscode" => "code",
+        "generic" => "",
+        client => client,
+    };
+    let client_executable = find_executable(executable_name);
+    result["client_executable"] = json!(client_executable);
+    result["client_detection"] = json!(if executable_name.is_empty() {
+        "not_applicable"
+    } else if client_executable.is_some() {
+        "executable_found"
+    } else {
+        "not_found_on_path"
+    });
+    if !executable_name.is_empty() && client_executable.is_none() {
+        result["client_warning"] = json!("Client executable not found on PATH. Configuration can still be prepared, but an installed client must load it before agents can use Rhyven. An editor extension or remote client may exist outside PATH.");
+    }
     if options.client == "hermes" {
         result["client_next_step"] = json!("In Hermes, use /reload-mcp or start a new session. Call rhyven_categories() and confirm the collection. Use --config for a non-default profile's config.yaml.");
     } else if options.client == "openclaw" {
@@ -192,6 +209,27 @@ pub fn run(runtime: &Runtime, options: Options) -> Result<Value> {
     Ok(result)
 }
 
+fn find_executable(name: &str) -> Option<PathBuf> {
+    if name.is_empty() {
+        return None;
+    }
+    std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+        .map(|directory| directory.join(name))
+        .find(|path| {
+            path.metadata().is_ok_and(|metadata| {
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    metadata.is_file() && metadata.permissions().mode() & 0o111 != 0
+                }
+                #[cfg(not(unix))]
+                {
+                    metadata.is_file()
+                }
+            })
+        })
+}
+
 fn config_path(options: &Options) -> Result<PathBuf> {
     if let Some(path) = &options.config {
         return Ok(std::path::absolute(path)?);
@@ -222,7 +260,7 @@ fn config_path(options: &Options) -> Result<PathBuf> {
         _ => {
             return Err(Error::new(
                 "configuration",
-                "Pass --config with this client's MCP settings file",
+                "Pass --config with the active client's MCP settings file. For Cline, open MCP Servers > Configure > Configure MCP Servers to locate it. CLI example: ~/.cline/mcp.json; Linux VS Code example: ~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json. Choose the file used by your installation; Rhyven does not choose between profiles.",
             ))
         }
     })

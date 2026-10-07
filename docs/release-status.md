@@ -1,9 +1,19 @@
 # Release status
 
-Rhyven 0.5.4 provides signed Linux x86-64 and ARM64 releases, with a matching
+Rhyven 0.5.5 provides signed Linux x86-64 and ARM64 releases, with a matching
 registry validator and website installer.
 
-New in 0.5.4:
+New in 0.5.5:
+
+- Default onboarding installs the runtime without requesting Docker setup.
+- Setup reports runtime readiness separately from optional container setup.
+- Connection output reports client executable detection without claiming a live session.
+- Cline errors identify how to find the active settings file; headless approval and
+  collection routing are documented explicitly.
+- System packages install `/usr/bin/rhyven`; the runtime updater respects package
+  ownership. Skills remain embedded and install per user during `rhyven setup`.
+
+Included from 0.5.4:
 
 - `connect --client hermes` configures Hermes Agent's YAML MCP settings.
 - `connect --client openclaw` configures native OpenClaw MCP through JSON5.

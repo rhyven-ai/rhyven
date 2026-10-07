@@ -1,8 +1,9 @@
 # Installation and dependency setup
 
 The bootstrap installs the marketplace TUI, CLI, local runtime and adapters as one
-prebuilt executable. Rust and host Python are not required. Container support is
-optional; Python and other app dependencies stay in their images.
+prebuilt executable. Rust and host Python are not required. Container support is optional. Declarative state operations need no language runtime;
+script actions need their declared host interpreter and dependencies. Container
+apps carry their language dependencies in the image.
 
 ## Platform status
 
@@ -14,6 +15,8 @@ can reuse an existing compatible engine. WSL follows the Linux route; native
 Windows is not advertised as supported. Linux support does not imply that every
 Docker/rootless configuration passes the required capability checks.
 
+For system-wide installation, see [DEB, RPM, Arch and Alpine packages](linux-packages.md).
+
 ## Install and run
 
 The engine is open source under Apache-2.0. Customers can download a prebuilt executable
@@ -21,11 +24,12 @@ from **rhyvenai.com**, with no GitHub account, repository access or source build
 Install with:
 
 ```bash
-curl -fsSL https://rhyvenai.com/install.sh | bash -s -- --containers
+curl -fsSL https://rhyvenai.com/install.sh | bash
 ```
 
-This installs Rhyven and initiates Docker dependency setup with user approval.
-Omit `--containers` for marketplace/declarative-only use. Rust and host Python
+This installs Rhyven without requesting system changes for Docker.
+For container apps, run `rhyven setup --containers` separately and review the
+requested changes. Pending container setup does not prevent declarative use. Rust and host Python
 are not required. Bash, curl, OpenSSL and a SHA-256 utility are needed by the bootstrap.
 
 Open a new terminal if the installer added Rhyven to PATH, then launch the TUI:
@@ -67,7 +71,7 @@ and TUI browsing, run `rhyven registry-sync rhyven-ai/registry --anonymous` to
 explicitly download app manifests into the package cache. Sync does not install
 apps or pull container images.
 
-The website serves signed `0.5.4` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
+The website serves signed `0.5.5` binaries for Linux x86-64/ARM64. The installer checks the signed manifest and selected
 binary before replacing an existing installation. See [release status](release-status.md)
 for platform support and release boundaries.
 
@@ -300,7 +304,7 @@ prerequisites without installing dependencies or running publisher code.
 ## Included agent skills
 
 Every binary includes all six skills and the usage rule. Setup writes them to
-`~/.rhyven/skills/0.5.4/` (or `$RHYVEN_HOME/skills/0.5.4/`) without downloading
+`~/.rhyven/skills/0.5.5/` (or `$RHYVEN_HOME/skills/0.5.5/`) without downloading
 additional files. This also works with offline installation.
 
 ```sh

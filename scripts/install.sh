@@ -167,5 +167,5 @@ else
   printf '\nPATH was not changed. Use the full commands above or add the install directory to PATH.\n'
 fi
 if [ "$containers" = 1 ]; then
-  printf '\nIf Docker setup reports pending, follow its instructions and resume with:\n  %s/rhyven setup --containers\n' "'$quoted'"
+  printf '\nRhyven and declarative apps are ready even if optional Docker setup is pending.\nTo resume container setup:\n  %s/rhyven setup --containers\n' "'$quoted'"
 fi

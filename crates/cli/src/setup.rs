@@ -51,7 +51,9 @@ pub fn run(home: &Path, containers: bool, yes: bool, plan: bool) -> Result<Value
         before
     };
     let ready = !containers || diagnosis["container"]["ready"] == true;
-    let value = json!({"status":if ready {"ready"} else {"pending"},
+    let value = json!({"status":"ready", "runtime_ready":true,
+        "container_setup":{"requested":containers,"status":if !containers {"not_requested"} else if ready {"ready"} else {"pending"},
+            "message":if ready {"Container setup is optional for declarative apps"} else {"Rhyven is installed and declarative apps are ready. Optional container setup needs attention; review diagnosis and resume when ready."}},
         "home":home,"containers_requested":containers,"setup_exit":setup_exit,"marketplace":marketplace,"skills":skills,
         "diagnosis":diagnosis,"resume":if ready {Value::Null} else {json!("rhyven setup --containers")},
         "agent_connection":{"instructions":"rhyven --agent","setup":"rhyven connect --client CLIENT","clients":["codex","claude","cursor","vscode","cline","hermes","openclaw","generic"],"verify":"rhyven connect --check"}});

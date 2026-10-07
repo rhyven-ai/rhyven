@@ -95,7 +95,9 @@ Path({str(engine)!r}).touch()
         assert result["status"]=="ready" and starts.exists(),result
         engine.unlink()
         executable("systemctl","raise SystemExit(1)\n")
-        assert cli("setup","--containers","--yes")["status"]=="pending"
+        pending=cli("setup","--containers","--yes")
+        assert pending["status"]=="ready" and pending["runtime_ready"]
+        assert pending["container_setup"]["status"]=="pending" and pending["resume"]
         engine.touch()
         assert cli("setup","--containers")["status"]=="ready"
     assert marker.read_text()=="retain me"

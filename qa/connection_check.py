@@ -28,6 +28,22 @@ with tempfile.TemporaryDirectory(prefix="rv-connect-") as temporary:
     assert probe["server_verified"] and not probe["client_session_verified"]
     assert probe["verification"]["server"]["version"] == subprocess.check_output([binary, "--version"], text=True).strip().split()[1]
     assert probe["collection"] == "alpha"
+    # Configuring an absent client is allowed but must not claim a live session.
+    empty_path = root / "empty-path"
+    empty_path.mkdir()
+    absent_env = dict(os.environ, PATH=str(empty_path))
+    absent = cli("connect", "--client", "codex", "--config", str(root / "absent.toml"), env=absent_env)
+    assert absent["configured"] and absent["client_detection"] == "not_found_on_path"
+    assert absent["client_executable"] is None and absent["client_warning"]
+    assert not absent["client_session_verified"] and absent["collection"] == "alpha"
+    fake_client = empty_path / "codex"
+    fake_client.write_text("#!/bin/sh\nexit 99\n")
+    fake_client.chmod(0o755)
+    detected = cli("connect", "--client", "codex", "--print", env=absent_env)
+    assert detected["client_detection"] == "executable_found"
+    assert detected["client_executable"] == str(fake_client)
+    cline_error = cli("connect", "--client", "cline", ok=False)
+    assert "--config" in cline_error["message"] and "cline_mcp_settings.json" in cline_error["message"]
     for client in ["codex", "claude", "cursor", "vscode", "cline", "hermes", "openclaw"]:
         path = root / (client + (".toml" if client == "codex" else ".json"))
         original = '# Keep my comment\nmodel = "keep-model"\n[mcp_servers.other]\ncommand = "keep"\n' if client == "codex" else json.dumps({"keep": True, "servers" if client == "vscode" else "mcpServers": {"other": {"command": "keep"}}})

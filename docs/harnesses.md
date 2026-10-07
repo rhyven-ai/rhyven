@@ -147,3 +147,36 @@ generated YAML and called discovery and marketplace description successfully.
 with Hermes and its MCP extra installed. No model API or paid inference is needed.
 These tests verify client transport and configuration, not a full model-driven task
 or every client version.
+
+## Headless setup and verification
+
+Use the same collection throughout setup and agent use:
+
+```bash
+rhyven --collection my-project connect --client codex
+rhyven --collection my-project connect --check
+```
+
+`configured` means settings were written. `client_detection` reports whether the
+client executable was found on PATH; editor extensions and remote clients may
+not be detectable that way. `server_verified` means the real stdio MCP handshake
+and discovery succeeded without model credentials. It does not prove a running
+agent session loaded the configuration. Reload the client, call
+`rhyven_categories()`, and confirm the returned collection.
+
+For Cline, use its MCP Servers panel → Configure → Configure MCP Servers to find
+the active settings file, then pass `--config /path/to/settings.json`. The CLI
+uses `~/.cline/mcp.json`; a common Linux VS Code extension path is
+`~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`.
+Use the actual file for your client/profile, including remote installations.
+
+A headless agent can search, inspect requirements, and prepare installation
+requests. Applying a request still requires a human terminal or a connected MCP
+host with human elicitation. Arrange that approval before unattended work, or
+have the operator install the required apps beforehand. Do not have the agent
+approve its own request or use a permission-acceptance flag to bypass consent.
+Without a client, `connect --check` is the available server-side verification;
+it does not install an agent client or supply model credentials.
+
+The three `rhyven_*` tools are top-level tools. App functions go through
+`rhyven_call(category, function, args)`, not directly through `rhyven call`.

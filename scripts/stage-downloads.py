@@ -125,4 +125,4 @@ if __name__ == '__main__':
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f'Cannot stage downloads: {error}\n')
     print(f'Staged v{version}: {", ".join(names)}\nLocal output: {args.out}\nNothing was uploaded.')
-    print(f'After publishing: curl -fsSL {args.base_url.rstrip("/")}/install.sh | bash -s -- --containers')
+    print(f'After publishing: curl -fsSL {args.base_url.rstrip("/")}/install.sh | bash')

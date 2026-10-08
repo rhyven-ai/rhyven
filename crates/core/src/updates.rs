@@ -252,6 +252,9 @@ fn restricted_action(r: &Runtime, p: &Value, action: &str, args: Value) -> Resul
 }
 pub fn install(r: &Runtime, p: &Value, accepted: bool) -> Result<Value> {
     catalog::validate(p)?;
+    if crate::composition::enabled(p) {
+        crate::composition::check_dependencies(r, p)?;
+    }
     ensure(
         accepted,
         "permission_review_required",

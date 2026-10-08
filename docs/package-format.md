@@ -1,5 +1,11 @@
 # Rhyven package format 2
 
+The unpublished 0.6.0 branch adds [composable capabilities](composable-capabilities.md):
+pinned cross-app stacks, bounded plan matching, local frames and native ELF actions.
+That document specifies engine workflows. [Portable pallets](portable-pallets.md)
+are separate source libraries used to build complete apps; saving one does not
+install an app. Existing app behavior remains compatible.
+
 `app.json` (or `*.rhyven.json`) defines a complete app contract. By default it is a
 declarative app containing executable rules/actions, guidance and contract cases.
 The optional `execution` field also supports container apps: a digest-pinned image

@@ -126,7 +126,8 @@ else: raise SystemExit(91)
         setup = json.loads((home / 'setup-state.json').read_text())
         assert setup['status'] == 'ready'
         skill_report = json.loads(run(['rhyven', 'skills'], env=env).stdout)
-        assert len(skill_report['files']) == 7
+        expected_skills = {str(p.relative_to(ROOT / 'skills')) for p in (ROOT / 'skills').rglob('*.md') if p.name in ('SKILL.md', 'RULE.md')}
+        assert {item['name'] for item in skill_report['files']} == expected_skills
         for item in skill_report['files']:
             assert item['status'] == 'installed'
             assert Path(item['path']).read_bytes() == (ROOT / 'skills' / item['name']).read_bytes()

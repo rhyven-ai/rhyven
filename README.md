@@ -11,10 +11,16 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
-Version **0.5.5** supports Linux x86-64 and ARM64. Native Windows and macOS
+Version **0.6.0** adds portable source libraries and reusable app composition. See
+[portable code libraries](docs/portable-pallets.md) for reusable bricks, mortar,
+stacks and pallets that can be imported without Rhyven. Complete apps remain
+separate; [app workflows](docs/composable-capabilities.md) provide engine-managed
+composition, bounded discovery, frames and native executable actions. The installer below downloads the current signed release.
+
+Version **0.6.0** supports Linux x86-64 and ARM64. Native Windows and macOS
 are not supported release targets. Individual app images may support fewer architectures.
 
-The signed **0.5.5** installer and platform binaries are available at
+The signed **0.6.0** installer and platform binaries are available at
 [rhyvenai.com](https://rhyvenai.com). App versions and container image digests
 are released independently.
 See [installation](docs/installation.md) and [release status](docs/release-status.md).
@@ -162,3 +168,14 @@ they do not need an additional runner. For users with only a model API, the
 knowledge and human questions. It requires Docker and your own model endpoint.
 [User Questions](apps/user-questions/README.md) is a separate declarative app
 usable by either path. General apps remain independent of the starter.
+
+## Reusable code for your agent
+
+Save tested functions as pallets, compose them into workflows, and bundle them
+into complete apps. Keep project helpers in a workspace or share libraries across
+your agents. Each useful addition gives future tasks a tested starting point.
+
+Open the TUI and press **p** to browse pallets, or read the
+[portable library guide](docs/portable-pallets.md). The example
+[`rhyven/text-kit`](https://github.com/rhyven-ai/text-kit) works through Rhyven and
+as ordinary Python source. Downloading source never grants execution permission.

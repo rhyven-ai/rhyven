@@ -11,6 +11,7 @@ use std::{
 pub struct Runtime {
     pub root: PathBuf,
     pub actor: String,
+    pub pallet_workspace: Option<PathBuf>,
 }
 impl Runtime {
     pub fn collection(home: impl AsRef<Path>, name: &str, actor: &str) -> Result<Self> {
@@ -28,6 +29,7 @@ impl Runtime {
         Ok(Self {
             root,
             actor: actor.into(),
+            pallet_workspace: None,
         })
     }
     pub fn init(&self) -> Result<Value> {
@@ -119,6 +121,9 @@ impl Runtime {
             "Reserved platform capability",
         )?;
         catalog::validate(p)?;
+        if crate::composition::enabled(p) {
+            crate::composition::check_dependencies(self, p)?;
+        }
         ensure(accepted, "permission_review_required", format!("Review package, hosting disclosures and permissions; explicitly accept to install: {}", p["permissions"]))?;
         let _instance_lock = if crate::execution::enabled(p) {
             Some(crate::execution::lock(
@@ -344,6 +349,12 @@ impl Runtime {
             "validation",
             "Rich queries currently require local hosting",
         )?;
+        if operation == "execute"
+            && p["actions"][args["action"].as_str().unwrap_or("")]["operation"] == "stack"
+        {
+            drop(tx);
+            return crate::composition::call(self, &p, &args);
+        }
         if crate::connector::enabled(&p) {
             ensure(
                 operation == "execute",

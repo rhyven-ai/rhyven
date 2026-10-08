@@ -1,5 +1,11 @@
 # Agent-native marketplace and the three-tool interface
 
+The unpublished 0.6.0 branch adds [composable capabilities](composable-capabilities.md):
+pinned cross-app stacks, bounded plan matching, local frames and native ELF actions.
+That document specifies engine workflows. [Portable pallets](portable-pallets.md)
+are separate source libraries used to build complete apps; saving one does not
+install an app. Existing app behavior remains compatible.
+
 The source-built `target/release/rhyven` exposes exactly:
 
 ```text
@@ -144,3 +150,10 @@ always affect the server's workspace, which appears in every review.
 The server defaults to loopback. External deployments need TLS termination.
 The current shared-token model trusts the host and workspace owner; it does not
 provide per-user roles or protect against an administrator impersonating consent.
+
+## Portable libraries
+
+The Pallets view distributes source libraries separately from installed apps.
+Agents can use `action_pallet_search`, `action_prepare_pallet` and the existing
+`action_apply` approval flow. Choose workspace or global storage explicitly.
+See [portable pallets](portable-pallets.md#marketplace-pallets).

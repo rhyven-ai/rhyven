@@ -31,6 +31,10 @@ const FILES: &[(&str, &str)] = &[
         "build-rhyven-service-app/SKILL.md",
         include_str!("../../../skills/build-rhyven-service-app/SKILL.md"),
     ),
+    (
+        "build-rhyven-composition/SKILL.md",
+        include_str!("../../../skills/build-rhyven-composition/SKILL.md"),
+    ),
 ];
 
 fn directory(path: &Path) -> Result<()> {
@@ -101,7 +105,7 @@ mod tests {
                 .as_array()
                 .unwrap()
                 .len(),
-            7
+            FILES.len()
         );
         assert!(!home.exists());
         let report = run(&home, true).unwrap();

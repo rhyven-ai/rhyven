@@ -242,7 +242,7 @@ pub fn bundle(directory: &Path, p: &mut Value) -> Result<()> {
     Ok(())
 }
 
-fn executable(name: &str) -> Result<PathBuf> {
+pub(crate) fn executable(name: &str) -> Result<PathBuf> {
     for directory in std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()) {
         if directory.is_absolute() && directory.join(name).is_file() {
             return Ok(directory.join(name));
@@ -453,7 +453,7 @@ pub(crate) fn prepare_home(home: &Path, p: &Value) -> Result<()> {
 pub(crate) struct Invocation {
     pub command: Command,
     pub data_dir: PathBuf,
-    _source: tempfile::TempDir,
+    pub(crate) _source: tempfile::TempDir,
 }
 
 pub(crate) fn launch(root: &Path, p: &Value) -> Result<Invocation> {

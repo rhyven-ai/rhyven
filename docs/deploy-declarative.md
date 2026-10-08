@@ -1,5 +1,11 @@
 # Deploy a declarative app
 
+The unpublished 0.6.0 branch adds [composable capabilities](composable-capabilities.md):
+pinned cross-app stacks, bounded plan matching, local frames and native ELF actions.
+That document specifies engine workflows. [Portable pallets](portable-pallets.md)
+are separate source libraries used to build complete apps; saving one does not
+install an app. Existing app behavior remains compatible.
+
 Use this method for structured records, relationships and actions such as status
 changes, assignments, arithmetic, guarded stock changes and string normalization.
 See the [declarative expression and query contract](declarative-engine.md) for

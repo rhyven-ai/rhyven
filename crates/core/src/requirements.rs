@@ -10,6 +10,14 @@ pub fn check(package: &Value) -> Value {
         return json!({"status":"unchecked","summary":"Remote endpoint access required","remedy":"Configure the declared endpoint credentials","scope":"Endpoint connectivity and authorization have not been tested"});
     }
     match driver {
+        "native" => match crate::native::requirements(package) {
+            Ok(info) => {
+                json!({"status":"ready","summary":"Matching native artifact","tools":info,"scope":"Dynamic library availability and execution have not been tested"})
+            }
+            Err(error) => {
+                json!({"status":"needs_setup","summary":"Native artifact unavailable","error":error,"remedy":"Obtain a matching publisher artifact or use a container"})
+            }
+        },
         "script" => match crate::script::requirements(package) {
             Ok(tools) => {
                 json!({"status":"ready","summary":"Host script prerequisites ready","tools":tools,"scope":"Dependency installation and app-specific external tools are checked separately; host execution is unsandboxed"})

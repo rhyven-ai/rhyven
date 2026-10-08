@@ -33,6 +33,21 @@ pub struct Entry {
     pub hosting_details: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execution: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dependencies: Option<Value>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct PalletEntry {
+    pub name: String,
+    pub version: String,
+    pub description: String,
+    pub language: String,
+    pub license: String,
+    pub repository: String,
+    pub asset_id: u64,
+    pub sha256: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -42,6 +57,28 @@ pub struct Index {
     /// Namespace -> GitHub account/organization that owns its package repositories.
     pub publishers: BTreeMap<String, String>,
     pub apps: Vec<Entry>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pallets: Vec<PalletEntry>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PalletIndex {
+    format: u32,
+    pallets: Vec<PalletEntry>,
+}
+fn merge_pallet_index(mut index: Index, bytes: Option<&[u8]>) -> Result<Index> {
+    if let Some(bytes) = bytes {
+        let extra: PalletIndex = serde_json::from_slice(bytes)?;
+        ensure(
+            extra.format == 1 && index.pallets.is_empty(),
+            "registry",
+            "Use either embedded pallets or pallets.json, not both",
+        )?;
+        index.pallets = extra.pallets;
+    }
+    validate(&index, None)?;
+    Ok(index)
 }
 
 fn repository(s: &str) -> bool {
@@ -132,31 +169,42 @@ pub fn validate(index: &Index, base: Option<&Index>) -> Result<()> {
             json!({"execution":e.execution.clone().unwrap_or(json!({"driver":"declarative"}))});
         crate::execution::validate(&contract)?;
         let container = crate::container::enabled(&contract);
+        let composition = e.dependencies.is_some();
+        if composition {
+            let p = json!({"dependencies": e.dependencies, "hosting":{"mode":e.hosting}});
+            crate::composition::validate(&p)?;
+        }
         ensure(
-            crate::script::enabled(&contract) == e.permissions.iter().any(|s| s == "host.execute"),
+            composition
+                || (crate::script::enabled(&contract) || crate::native::enabled(&contract))
+                    == e.permissions.iter().any(|s| s == "host.execute"),
             "registry",
             "Script execution must disclose host.execute",
         )?;
         ensure(
-            !crate::script::enabled(&contract) || e.hosting == "local",
+            !(crate::script::enabled(&contract) || crate::native::enabled(&contract))
+                || e.hosting == "local",
             "registry",
             "Script apps require local hosting",
         )?;
         ensure(
-            crate::services::enabled(&contract) == e.permissions.iter().any(|s| s == "service.run"),
+            composition
+                || crate::services::enabled(&contract)
+                    == e.permissions.iter().any(|s| s == "service.run"),
             "registry",
             "Persistent service execution must disclose service.run",
         )?;
         ensure(
-            contract["execution"]["calls"]
-                .as_array()
-                .is_some_and(|v| !v.is_empty())
+            (composition
+                || contract["execution"]["calls"]
+                    .as_array()
+                    .is_some_and(|v| !v.is_empty()))
                 == e.permissions.iter().any(|s| s == "app.call"),
             "registry",
             "Peer calls must disclose app.call",
         )?;
         ensure(
-            container == e.permissions.iter().any(|s| s == "container.execute"),
+            composition || container == e.permissions.iter().any(|s| s == "container.execute"),
             "registry",
             "Container execution must be disclosed in registry metadata",
         )?;
@@ -171,7 +219,60 @@ pub fn validate(index: &Index, base: Option<&Index>) -> Result<()> {
             "Published container apps require local hosting and a distributable image digest",
         )?;
     }
+    ensure(
+        index.pallets.len() <= 100,
+        "registry",
+        "At most 100 pallet versions",
+    )?;
+    let mut pallet_ids = BTreeSet::new();
+    for e in &index.pallets {
+        let namespace = e.name.split('/').next().unwrap_or("");
+        ensure(
+            catalog::app_name(&e.name)
+                && repository(&e.repository)
+                && index
+                    .publishers
+                    .get(namespace)
+                    .is_some_and(|owner| e.repository.split('/').next() == Some(owner.as_str()))
+                && e.asset_id > 0
+                && e.sha256.len() == 64
+                && e.sha256.bytes().all(|c| c.is_ascii_hexdigit())
+                && !e.description.trim().is_empty()
+                && e.description.len() <= 4096
+                && !e.language.is_empty()
+                && e.language.len() <= 64
+                && matches!(
+                    e.license.as_str(),
+                    "Apache-2.0"
+                        | "MIT"
+                        | "BSD-2-Clause"
+                        | "BSD-3-Clause"
+                        | "ISC"
+                        | "MPL-2.0"
+                        | "GPL-3.0-only"
+                        | "GPL-3.0-or-later"
+                        | "AGPL-3.0-only"
+                        | "AGPL-3.0-or-later"
+                ),
+            "registry",
+            "Invalid pallet metadata, publisher ownership, hash or open-source license",
+        )?;
+        catalog::version(&e.version)?;
+        ensure(
+            pallet_ids.insert((&e.name, &e.version)),
+            "registry",
+            "Duplicate pallet version",
+        )?;
+    }
     if let Some(old) = base {
+        for e in &old.pallets {
+            ensure(
+                index.pallets.contains(e),
+                "immutable_version",
+                "Published pallets cannot be changed or removed",
+            )?;
+        }
+
         for e in &old.apps {
             ensure(
                 index.apps.iter().any(|n| n == e),
@@ -197,8 +298,18 @@ pub fn read_index(path: &Path) -> Result<Index> {
         "Index exceeds 1 MiB",
     )?;
     let index = serde_json::from_slice(&std::fs::read(path)?)?;
-    validate(&index, None)?;
-    Ok(index)
+    let sidecar = path.with_file_name("pallets.json");
+    let extra = if sidecar.exists() {
+        ensure(
+            std::fs::metadata(&sidecar)?.len() <= MAX,
+            "registry",
+            "Pallet index exceeds 1 MiB",
+        )?;
+        Some(std::fs::read(sidecar)?)
+    } else {
+        None
+    };
+    merge_pallet_index(index, extra.as_deref())
 }
 
 fn token(anonymous: bool) -> Option<String> {
@@ -248,7 +359,10 @@ impl Github {
             token: token(anonymous),
         })
     }
-    fn get(&self, mut url: Url, accept: &str) -> Result<Vec<u8>> {
+    fn get(&self, url: Url, accept: &str) -> Result<Vec<u8>> {
+        self.get_optional(url,accept)?.ok_or_else(|| Error::new("network","GitHub returned HTTP 404; private repositories need gh auth login or GH_TOKEN with contents access"))
+    }
+    fn get_optional(&self, mut url: Url, accept: &str) -> Result<Option<Vec<u8>>> {
         for _ in 0..4 {
             ensure(
                 allowed_url(&url),
@@ -275,6 +389,9 @@ impl Github {
                     .map_err(|_| Error::new("network", "Invalid redirect"))?;
                 continue;
             }
+            if response.status() == reqwest::StatusCode::NOT_FOUND {
+                return Ok(None);
+            }
             ensure(response.status().is_success(), "network", format!("GitHub returned HTTP {}; private repositories need gh auth login or GH_TOKEN with contents access", response.status().as_u16()))?;
             let mut bytes = Vec::new();
             response.take(MAX + 1).read_to_end(&mut bytes)?;
@@ -283,9 +400,28 @@ impl Github {
                 "registry",
                 "GitHub response exceeds 1 MiB",
             )?;
-            return Ok(bytes);
+            return Ok(Some(bytes));
         }
         Err(Error::new("network", "Too many GitHub redirects"))
+    }
+    fn index(&self, repo: &str, branch: &str) -> Result<Index> {
+        let mut url = Url::parse(&format!(
+            "https://api.github.com/repos/{repo}/contents/index.json"
+        ))
+        .unwrap();
+        url.query_pairs_mut().append_pair("ref", branch);
+        let index: Index =
+            serde_json::from_slice(&self.get(url, "application/vnd.github.raw+json")?)?;
+        let mut sidecar = Url::parse(&format!(
+            "https://api.github.com/repos/{repo}/contents/pallets.json"
+        ))
+        .unwrap();
+        sidecar.query_pairs_mut().append_pair("ref", branch);
+        merge_pallet_index(
+            index,
+            self.get_optional(sidecar, "application/vnd.github.raw+json")?
+                .as_deref(),
+        )
     }
     fn package(&self, e: &Entry) -> Result<Value> {
         let url = Url::parse(&format!(
@@ -327,7 +463,8 @@ pub fn verify_package(e: &Entry, bytes: &[u8]) -> Result<Value> {
         } else { error }
     })?;
     ensure(
-        p.get("execution") == e.execution.as_ref(),
+        p.get("execution") == e.execution.as_ref()
+            && p.get("dependencies") == e.dependencies.as_ref(),
         "integrity",
         "Execution differs from registry disclosures",
     )?;
@@ -373,6 +510,7 @@ pub fn entry(path: &Path, repo: &str, asset_id: u64) -> Result<Value> {
         trust: "Unverified".into(),
         hosting_details: (p["hosting"]["mode"] != "local").then(|| p["hosting"].clone()),
         execution: p.get("execution").cloned(),
+        dependencies: p.get("dependencies").cloned(),
     };
     ensure(
         !crate::container::enabled(&p)
@@ -392,9 +530,15 @@ pub fn check(path: &Path, base: Option<&Path>, anonymous: bool) -> Result<Value>
     let base = base.map(read_index).transpose()?;
     validate(&index, base.as_ref())?;
     let client = Github::new(anonymous)?;
+    for e in &index.pallets {
+        download_pallet(&client, e)?;
+    }
     for e in &index.apps {
         let p = client.package(e)?;
-        if e.hosting == "local" && !crate::execution::enabled(&p) {
+        if e.hosting == "local"
+            && !crate::execution::enabled(&p)
+            && !crate::composition::enabled(&p)
+        {
             conformance::run(&p)?;
         }
     }
@@ -411,13 +555,7 @@ pub fn sync(root: &Path, repo: &str, branch: &str, anonymous: bool) -> Result<Va
         "Expected owner/repo and a ref",
     )?;
     let client = Github::new(anonymous)?;
-    let mut url = Url::parse(&format!(
-        "https://api.github.com/repos/{repo}/contents/index.json"
-    ))
-    .unwrap();
-    url.query_pairs_mut().append_pair("ref", branch);
-    let index: Index =
-        serde_json::from_slice(&client.get(url, "application/vnd.github.raw+json")?)?;
+    let index = client.index(repo, branch)?;
     cache_index(root, repo, branch, index, |e| client.package(e))
 }
 
@@ -524,13 +662,7 @@ pub fn refresh(root: &Path, repo: &str, branch: &str, anonymous: bool) -> Result
         "Expected owner/repo and ref",
     )?;
     let client = Github::new(anonymous)?;
-    let mut url = Url::parse(&format!(
-        "https://api.github.com/repos/{repo}/contents/index.json"
-    ))
-    .unwrap();
-    url.query_pairs_mut().append_pair("ref", branch);
-    let index: Index =
-        serde_json::from_slice(&client.get(url, "application/vnd.github.raw+json")?)?;
+    let index = client.index(repo, branch)?;
     let previous = metadata(root)?;
     if let Some(old) = &previous {
         ensure(
@@ -544,23 +676,24 @@ pub fn refresh(root: &Path, repo: &str, branch: &str, anonymous: bool) -> Result
     }
     let checked_at = crate::marketplace::now();
     let mut stars = serde_json::Map::new();
-    for entry in &index.apps {
-        if stars.contains_key(&entry.repository) {
+    for repository in index
+        .apps
+        .iter()
+        .map(|e| &e.repository)
+        .chain(index.pallets.iter().map(|e| &e.repository))
+    {
+        if stars.contains_key(repository) {
             continue;
         }
         let count = client
             .get(
-                Url::parse(&format!(
-                    "https://api.github.com/repos/{}",
-                    entry.repository
-                ))
-                .unwrap(),
+                Url::parse(&format!("https://api.github.com/repos/{repository}")).unwrap(),
                 "application/vnd.github+json",
             )
             .ok()
             .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
             .and_then(|v| v["stargazers_count"].as_u64());
-        stars.insert(entry.repository.clone(), json!({"count":count,"checked_at":checked_at,"source":"GitHub repository","available":count.is_some()}));
+        stars.insert(repository.clone(),json!({"count":count,"checked_at":checked_at,"source":"GitHub repository","available":count.is_some()}));
     }
     let value = json!({"repository":repo,"ref":branch,"anonymous":anonymous,"index":index,"stars":stars,"checked_at":checked_at});
     std::fs::create_dir_all(crate::collections::registry_dir(root)?)?;
@@ -569,7 +702,7 @@ pub fn refresh(root: &Path, repo: &str, branch: &str, anonymous: bool) -> Result
         &value,
     )?;
     Ok(
-        json!({"refreshed":repo,"listings":index.apps.len(),"package_downloads":0,"checked_at":checked_at}),
+        json!({"refreshed":repo,"listings":index.apps.len(),"pallets":index.pallets.len(),"package_downloads":0,"checked_at":checked_at}),
     )
 }
 
@@ -738,9 +871,114 @@ pub fn resolve_install(root: &Path, selector: &str, accepted: bool) -> Result<Va
     local
 }
 
+/// Pallets use the same GitHub asset transport, but never enter the app catalog.
+pub fn pallet_listings(root: &Path) -> Result<Value> {
+    let cache = metadata(root)?.or_else(|| read_cache(root).ok());
+    let Some(cache) = cache else {
+        return Ok(json!([]));
+    };
+    let index: Index = serde_json::from_value(cache["index"].clone())?;
+    validate(&index, None)?;
+    Ok(json!(index
+        .pallets
+        .iter()
+        .map(|e| {
+            let mut v = serde_json::to_value(e).unwrap();
+            v["kind"] = json!("pallet");
+            v["trust"] = json!("Unverified");
+            v["stars"] = cache["stars"][&e.repository]["count"].clone();
+            v
+        })
+        .collect::<Vec<_>>()))
+}
+pub fn verify_pallet(e: &PalletEntry, bytes: &[u8]) -> Result<Value> {
+    ensure(
+        bytes.len() as u64 <= MAX && format!("{:x}", Sha256::digest(bytes)) == e.sha256,
+        "integrity",
+        "Pallet release SHA-256 mismatch",
+    )?;
+    let p: Value = serde_json::from_slice(bytes)?;
+    crate::pallet::validate(&p)?;
+    ensure(
+        p["name"] == e.name
+            && p["version"] == e.version
+            && p["description"] == e.description
+            && p["language"] == e.language
+            && p["license"] == e.license,
+        "integrity",
+        "Pallet metadata differs from registry",
+    )?;
+    Ok(p)
+}
+fn download_pallet(client: &Github, e: &PalletEntry) -> Result<Value> {
+    let url = Url::parse(&format!(
+        "https://api.github.com/repos/{}/releases/assets/{}",
+        e.repository, e.asset_id
+    ))
+    .unwrap();
+    verify_pallet(e, &client.get(url, "application/octet-stream")?)
+}
+pub fn fetch_pallet(
+    r: &crate::Runtime,
+    selector: &str,
+    scope: &str,
+    accepted: bool,
+) -> Result<Value> {
+    ensure(
+        accepted,
+        "approval_required",
+        "Review source metadata and explicitly accept the download; no source will be executed",
+    )?;
+    let e = pallet_entry(&r.root, selector)?;
+    let anonymous = metadata(&r.root)?
+        .and_then(|m| m["anonymous"].as_bool())
+        .unwrap_or(true);
+    let p = download_pallet(&Github::new(anonymous)?, &e)?;
+    crate::pallet::save_scoped(r, &p, scope)
+}
+
+pub fn fetch_reviewed_pallet(e: &PalletEntry, anonymous: bool) -> Result<Value> {
+    download_pallet(&Github::new(anonymous)?, e)
+}
+pub fn pallet_entry(root: &Path, selector: &str) -> Result<PalletEntry> {
+    let entries = pallet_listings(root)?;
+    let mut e = entries
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| {
+            format!(
+                "{}@{}",
+                p["name"].as_str().unwrap(),
+                p["version"].as_str().unwrap()
+            ) == selector
+        })
+        .cloned()
+        .ok_or_else(|| Error::new("not_found", "Pallet not listed; use name@version"))?;
+    for key in ["kind", "trust", "stars"] {
+        e.as_object_mut().unwrap().remove(key);
+    }
+    Ok(serde_json::from_value(e)?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn separate_pallet_index_keeps_legacy_apps_readable() {
+        let (index, _) = fixture();
+        let original = serde_json::to_value(&index).unwrap();
+        assert!(original.get("pallets").is_none());
+        assert_eq!(
+            merge_pallet_index(index.clone(), None).unwrap().apps,
+            index.apps
+        );
+        let merged =
+            merge_pallet_index(index.clone(), Some(br#"{"format":1,"pallets":[]}"#)).unwrap();
+        assert_eq!(merged.apps, index.apps);
+        assert!(merge_pallet_index(index.clone(), Some(br#"{"format":2,"pallets":[]}"#)).is_err());
+        assert!(merge_pallet_index(index, Some(b"invalid")).is_err());
+    }
     #[test]
     fn collections_reuse_verified_release_and_detect_corruption() {
         let d = tempfile::tempdir().unwrap();
@@ -800,6 +1038,7 @@ mod tests {
         let e: Entry = serde_json::from_value(json!({"name":p["name"],"display_name":p["display_name"],"version":p["version"],"publisher":p["publisher"],"description":p["description"],"permissions":p["permissions"],"hosting":"local","trust":"Community","repository":"example-publisher/apps","asset_id":42,"sha256":format!("{:x}", Sha256::digest(&bytes))})).unwrap();
         (
             Index {
+                pallets: vec![],
                 format: 1,
                 publishers: BTreeMap::from([("rhyven".into(), "example-publisher".into())]),
                 apps: vec![e],

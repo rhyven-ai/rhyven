@@ -1,7 +1,24 @@
 # Release status
 
-Rhyven 0.5.5 provides signed Linux x86-64 and ARM64 releases, with a matching
-registry validator and website installer.
+Rhyven 0.6.0 adds portable source libraries alongside complete headless apps.
+
+New in 0.6.0:
+
+- Bricks, mortar and portable stacks are ordinary reusable functions, grouped
+  into versioned pallets. Python and JavaScript have built-in test launchers;
+  other source languages use their own toolchains.
+- Workspace and user-global libraries, explicit promotion and scope-aware
+  discovery. Bundled app dependencies retain exact versions and content hashes.
+- A separate Pallets marketplace view with approved source downloads through
+  the TUI or the existing three-tool MCP interface.
+- Bounded plan-based discovery, cached contracts, frames and engine app workflows.
+- Native Linux executable actions with explicit host-execution permission.
+- A bundled composition skill and updated usage guidance.
+
+See [portable libraries](portable-pallets.md), [app workflows](composable-capabilities.md)
+and [live pallet acceptance](pallet-marketplace-acceptance.md). The live acceptance
+used a minimal MCP client and the actual TUI on Linux; it did not claim a live
+Codex session or measured model-token savings.
 
 New in 0.5.5:
 

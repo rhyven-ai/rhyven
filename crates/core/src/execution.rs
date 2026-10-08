@@ -11,24 +11,28 @@ pub fn driver(p: &Value) -> &str {
     p["execution"]["driver"].as_str().unwrap_or("declarative")
 }
 pub fn enabled(p: &Value) -> bool {
-    matches!(driver(p), "container" | "script")
+    matches!(driver(p), "container" | "script" | "native")
 }
 pub fn validate(p: &Value) -> Result<()> {
-    if crate::script::enabled(p) {
+    if crate::native::enabled(p) {
+        crate::native::validate(p)
+    } else if crate::script::enabled(p) {
         crate::script::validate(p)
     } else {
         crate::container::validate_execution(p)
     }
 }
 pub fn prepare(root: &Path, p: &Value) -> Result<()> {
-    if crate::script::enabled(p) {
+    if crate::native::enabled(p) {
+        crate::native::prepare(root, p)
+    } else if crate::script::enabled(p) {
         crate::script::prepare(root, p)
     } else {
         crate::container::prepare(p)
     }
 }
 fn code(p: &Value, kind: &str) -> &'static str {
-    match (crate::script::enabled(p), kind) {
+    match (crate::script::enabled(p) || crate::native::enabled(p), kind) {
         (true, "incomplete") => "script_incomplete",
         (true, _) => "script_protocol",
         (false, "incomplete") => "container_incomplete",
@@ -119,7 +123,7 @@ pub fn call(root: &Path, p: &Value, actor: &str, arguments: &Value) -> Result<Va
     }
     drop(db);
     let instance_name = format!("rhyven-{}", uuid::Uuid::new_v4().simple());
-    let command = if crate::script::enabled(p) {
+    let command = if crate::script::enabled(p) || crate::native::enabled(p) {
         None
     } else {
         Some(crate::container::launch_command(
@@ -129,7 +133,9 @@ pub fn call(root: &Path, p: &Value, actor: &str, arguments: &Value) -> Result<Va
             false,
         )?)
     };
-    let mut script = if crate::script::enabled(p) {
+    let mut script = if crate::native::enabled(p) {
+        Some(crate::native::launch(root, p)?)
+    } else if crate::script::enabled(p) {
         Some(crate::script::launch(root, p)?)
     } else {
         None

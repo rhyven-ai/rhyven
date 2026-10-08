@@ -1,6 +1,6 @@
-# Composable capabilities — 0.6.0 local development
+# Composable capabilities — 0.6.0
 
-This branch is not published. Existing apps and the three-tool MCP contract
+Existing apps and the three-tool MCP contract
 remain compatible. REST and MCP dispatch through the same runtime.
 
 ## Apps and portable code libraries

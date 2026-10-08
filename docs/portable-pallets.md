@@ -279,7 +279,8 @@ sha256sum text-tools-0.1.0.json
 
 Packaging writes a new source-only asset and never publishes it. When the user
 requests publication, upload that file to a GitHub release and submit a registry
-PR. Add a `pallets` array alongside `apps` in `index.json`:
+PR. Keep app listings in `index.json`. Add a separate `pallets.json` with
+`{"format":1,"pallets":[...]}`; each pallet entry has this shape:
 
 ```json
 {
@@ -293,6 +294,10 @@ PR. Add a `pallets` array alongside `apps` in `index.json`:
   "sha256": "REPLACE_WITH_RELEASE_FILE_SHA256"
 }
 ```
+
+Keeping the files separate lets older runtimes read the app index. Version 0.6.0
+fetches both files and validates them together; only a missing pallet file is
+optional, while malformed files and access failures stop the refresh.
 
 The publisher namespace must map to the GitHub repository owner in `publishers`.
 Pallet listings require an accepted open-source license. The package must match

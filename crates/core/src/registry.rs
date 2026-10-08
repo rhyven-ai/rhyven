@@ -61,6 +61,26 @@ pub struct Index {
     pub pallets: Vec<PalletEntry>,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PalletIndex {
+    format: u32,
+    pallets: Vec<PalletEntry>,
+}
+fn merge_pallet_index(mut index: Index, bytes: Option<&[u8]>) -> Result<Index> {
+    if let Some(bytes) = bytes {
+        let extra: PalletIndex = serde_json::from_slice(bytes)?;
+        ensure(
+            extra.format == 1 && index.pallets.is_empty(),
+            "registry",
+            "Use either embedded pallets or pallets.json, not both",
+        )?;
+        index.pallets = extra.pallets;
+    }
+    validate(&index, None)?;
+    Ok(index)
+}
+
 fn repository(s: &str) -> bool {
     let parts: Vec<_> = s.split('/').collect();
     parts.len() == 2
@@ -278,8 +298,18 @@ pub fn read_index(path: &Path) -> Result<Index> {
         "Index exceeds 1 MiB",
     )?;
     let index = serde_json::from_slice(&std::fs::read(path)?)?;
-    validate(&index, None)?;
-    Ok(index)
+    let sidecar = path.with_file_name("pallets.json");
+    let extra = if sidecar.exists() {
+        ensure(
+            std::fs::metadata(&sidecar)?.len() <= MAX,
+            "registry",
+            "Pallet index exceeds 1 MiB",
+        )?;
+        Some(std::fs::read(sidecar)?)
+    } else {
+        None
+    };
+    merge_pallet_index(index, extra.as_deref())
 }
 
 fn token(anonymous: bool) -> Option<String> {
@@ -329,7 +359,10 @@ impl Github {
             token: token(anonymous),
         })
     }
-    fn get(&self, mut url: Url, accept: &str) -> Result<Vec<u8>> {
+    fn get(&self, url: Url, accept: &str) -> Result<Vec<u8>> {
+        self.get_optional(url,accept)?.ok_or_else(|| Error::new("network","GitHub returned HTTP 404; private repositories need gh auth login or GH_TOKEN with contents access"))
+    }
+    fn get_optional(&self, mut url: Url, accept: &str) -> Result<Option<Vec<u8>>> {
         for _ in 0..4 {
             ensure(
                 allowed_url(&url),
@@ -356,6 +389,9 @@ impl Github {
                     .map_err(|_| Error::new("network", "Invalid redirect"))?;
                 continue;
             }
+            if response.status() == reqwest::StatusCode::NOT_FOUND {
+                return Ok(None);
+            }
             ensure(response.status().is_success(), "network", format!("GitHub returned HTTP {}; private repositories need gh auth login or GH_TOKEN with contents access", response.status().as_u16()))?;
             let mut bytes = Vec::new();
             response.take(MAX + 1).read_to_end(&mut bytes)?;
@@ -364,9 +400,28 @@ impl Github {
                 "registry",
                 "GitHub response exceeds 1 MiB",
             )?;
-            return Ok(bytes);
+            return Ok(Some(bytes));
         }
         Err(Error::new("network", "Too many GitHub redirects"))
+    }
+    fn index(&self, repo: &str, branch: &str) -> Result<Index> {
+        let mut url = Url::parse(&format!(
+            "https://api.github.com/repos/{repo}/contents/index.json"
+        ))
+        .unwrap();
+        url.query_pairs_mut().append_pair("ref", branch);
+        let index: Index =
+            serde_json::from_slice(&self.get(url, "application/vnd.github.raw+json")?)?;
+        let mut sidecar = Url::parse(&format!(
+            "https://api.github.com/repos/{repo}/contents/pallets.json"
+        ))
+        .unwrap();
+        sidecar.query_pairs_mut().append_pair("ref", branch);
+        merge_pallet_index(
+            index,
+            self.get_optional(sidecar, "application/vnd.github.raw+json")?
+                .as_deref(),
+        )
     }
     fn package(&self, e: &Entry) -> Result<Value> {
         let url = Url::parse(&format!(
@@ -500,13 +555,7 @@ pub fn sync(root: &Path, repo: &str, branch: &str, anonymous: bool) -> Result<Va
         "Expected owner/repo and a ref",
     )?;
     let client = Github::new(anonymous)?;
-    let mut url = Url::parse(&format!(
-        "https://api.github.com/repos/{repo}/contents/index.json"
-    ))
-    .unwrap();
-    url.query_pairs_mut().append_pair("ref", branch);
-    let index: Index =
-        serde_json::from_slice(&client.get(url, "application/vnd.github.raw+json")?)?;
+    let index = client.index(repo, branch)?;
     cache_index(root, repo, branch, index, |e| client.package(e))
 }
 
@@ -613,13 +662,7 @@ pub fn refresh(root: &Path, repo: &str, branch: &str, anonymous: bool) -> Result
         "Expected owner/repo and ref",
     )?;
     let client = Github::new(anonymous)?;
-    let mut url = Url::parse(&format!(
-        "https://api.github.com/repos/{repo}/contents/index.json"
-    ))
-    .unwrap();
-    url.query_pairs_mut().append_pair("ref", branch);
-    let index: Index =
-        serde_json::from_slice(&client.get(url, "application/vnd.github.raw+json")?)?;
+    let index = client.index(repo, branch)?;
     let previous = metadata(root)?;
     if let Some(old) = &previous {
         ensure(
@@ -921,6 +964,21 @@ pub fn pallet_entry(root: &Path, selector: &str) -> Result<PalletEntry> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn separate_pallet_index_keeps_legacy_apps_readable() {
+        let (index, _) = fixture();
+        let original = serde_json::to_value(&index).unwrap();
+        assert!(original.get("pallets").is_none());
+        assert_eq!(
+            merge_pallet_index(index.clone(), None).unwrap().apps,
+            index.apps
+        );
+        let merged =
+            merge_pallet_index(index.clone(), Some(br#"{"format":1,"pallets":[]}"#)).unwrap();
+        assert_eq!(merged.apps, index.apps);
+        assert!(merge_pallet_index(index.clone(), Some(br#"{"format":2,"pallets":[]}"#)).is_err());
+        assert!(merge_pallet_index(index, Some(b"invalid")).is_err());
+    }
     #[test]
     fn collections_reuse_verified_release_and_detect_corruption() {
         let d = tempfile::tempdir().unwrap();

@@ -26,3 +26,11 @@ pub use error::{Error, Result};
 pub use runtime::Runtime;
 
 pub mod updates;
+
+pub mod authoring;
+pub mod composition;
+pub mod discovery;
+pub mod native;
+pub mod ranker;
+
+pub mod pallet;

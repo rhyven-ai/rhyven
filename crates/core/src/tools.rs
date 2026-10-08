@@ -256,6 +256,7 @@ pub fn manifest(package: &Value) -> Value {
     }).collect();
     let mut contract = package.clone();
     contract.as_object_mut().unwrap().remove("files");
+    strip_artifact_bytes(&mut contract);
     json!({"category":package["name"],"version":package["version"],"description":package["description"],"functions":functions,"guidance_markdown":package["guide"],"contract":contract})
 }
 /// Changes to schemas, guidance or package metadata invalidate cached descriptions.
@@ -369,11 +370,12 @@ pub fn describe(package: &Value, args: &Value) -> Result<Value> {
     if args["full"] != true {
         let mut contract =
             json!({"hosting":package["hosting"],"permissions":package["permissions"]});
-        for field in ["execution", "connector"] {
+        for field in ["execution", "connector", "dependencies", "libraries"] {
             if let Some(value) = package.get(field) {
                 contract[field] = value.clone();
             }
         }
+        strip_artifact_bytes(&mut contract);
         // Keep object behavior and relationships; types already appear in callable schemas.
         let mut objects = package["objects"].clone();
         for object in objects.as_object_mut().unwrap().values_mut() {
@@ -430,4 +432,26 @@ pub fn invoke(runtime: &Runtime, args: Value) -> Result<Value> {
             .extend(input.as_object().unwrap().clone());
     }
     runtime.call(&tool.operation, actual)
+}
+
+fn strip_artifact_bytes(contract: &mut Value) {
+    if let Some(libraries) = contract.get_mut("libraries").and_then(Value::as_object_mut) {
+        for library in libraries.values_mut() {
+            if let Some(fields) = library.as_object_mut() {
+                fields.remove("files");
+            }
+        }
+    }
+
+    if let Some(artifacts) = contract
+        .get_mut("execution")
+        .and_then(|e| e.get_mut("artifacts"))
+        .and_then(Value::as_object_mut)
+    {
+        for artifact in artifacts.values_mut() {
+            if let Some(fields) = artifact.as_object_mut() {
+                fields.remove("hex");
+            }
+        }
+    }
 }

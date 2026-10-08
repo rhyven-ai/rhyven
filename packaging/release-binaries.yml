@@ -39,6 +39,7 @@ jobs:
           if [ "$(uname -s)" = Linux ]; then export CC=musl-gcc; fi
           export RUSTFLAGS="--remap-path-prefix=$GITHUB_WORKSPACE=/src --remap-path-prefix=$HOME/.cargo=/cargo --remap-path-prefix=$HOME/.rustup=/rustup"
           cargo +1.90.0 build --release --locked --target "$TARGET" --bin rhyven
+          python3 qa/portable_pallet_check.py "target/$TARGET/release/rhyven"
           python3 qa/connection_check.py "target/$TARGET/release/rhyven"
           python3 qa/installer_check.py "target/$TARGET/release/rhyven"
           python3 qa/container_host_check.py "target/$TARGET/release/rhyven"

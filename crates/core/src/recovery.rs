@@ -158,6 +158,10 @@ fn restore_inner(
                 ensure(accept_permissions, "permission_review_required", "Container restore requires --accept-permissions after reviewing the backup's packages")?;
                 crate::container::prepare(&p)?;
             }
+            if crate::native::enabled(&p) {
+                ensure(accept_permissions, "permission_review_required", "Native restore requires --accept-permissions; host.execute grants unsandboxed host access")?;
+                crate::native::requirements(&p)?;
+            }
             if crate::script::enabled(&p) {
                 ensure(accept_permissions, "permission_review_required", "Script restore requires --accept-permissions; host.execute grants unsandboxed host access")?;
                 crate::script::prepare_home(&home, &p)?;

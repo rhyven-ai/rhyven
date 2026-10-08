@@ -27,6 +27,9 @@ struct Cli {
     /// Shared package home (default: RHYVEN_HOME or ~/.rhyven).
     #[arg(long, global = true)]
     home: Option<PathBuf>,
+    /// Bind portable libraries to this project directory (independent of app state).
+    #[arg(long, global = true)]
+    project: Option<PathBuf>,
     /// App state collection; created automatically (default: global).
     #[arg(long, global = true)]
     collection: Option<String>,
@@ -39,7 +42,112 @@ struct Cli {
     command: Option<Command>,
 }
 #[derive(Subcommand)]
+enum PalletCommand {
+    /// Copy an exact saved library into the user-global library. Never executes it.
+    Promote {
+        selector: String,
+    },
+    /// Browse portable libraries in the cached marketplace.
+    Search {
+        #[arg(default_value = "")]
+        query: String,
+    },
+    /// Download reviewed source without executing it.
+    Download {
+        selector: String,
+        #[arg(long, default_value="workspace", value_parser=["workspace","global"])]
+        scope: String,
+        #[arg(long)]
+        accept_source: bool,
+    },
+    /// Create a source-only release asset; publishing is a separate operation.
+    Package {
+        path: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+    },
+
+    /// Scaffold portable source, a typed export and a test in a new directory.
+    Init {
+        name: String,
+        #[arg(long)]
+        dir: PathBuf,
+        #[arg(long,default_value="python",value_parser=["python","javascript"])]
+        language: String,
+    },
+    /// Validate a portable library; never execute its code.
+    Validate {
+        path: PathBuf,
+    },
+    /// Save an immutable library locally without installing an app.
+    Save {
+        path: PathBuf,
+        #[arg(long, default_value="default", value_parser=["default","workspace","global","collection"])]
+        scope: String,
+    },
+    List,
+    /// Read compact contracts; source is omitted.
+    Describe {
+        selector: String,
+        #[arg(long)]
+        export: Option<String>,
+        #[arg(long)]
+        if_hash: Option<String>,
+    },
+    /// Export source and a standalone launcher into a new directory.
+    Export {
+        selector: String,
+        #[arg(long)]
+        dir: PathBuf,
+    },
+    /// Run declared examples. Unsandboxed; no dependency installation.
+    Test {
+        path: PathBuf,
+        #[arg(long)]
+        allow_host: bool,
+        #[arg(long)]
+        interpreter: Option<PathBuf>,
+    },
+    /// Run saved code rather than regenerate it. Requires source review.
+    Run {
+        selector: String,
+        export: String,
+        #[arg(long, default_value = "{}")]
+        args: String,
+        #[arg(long)]
+        allow_host: bool,
+        #[arg(long)]
+        interpreter: Option<PathBuf>,
+    },
+}
+#[derive(Subcommand)]
 enum AppCommand {
+    /// Bundle saved portable libraries into a complete script app.
+    Bundle {
+        path: PathBuf,
+        #[arg(long, required = true)]
+        pallet: Vec<String>,
+        #[arg(long)]
+        out: PathBuf,
+    },
+    /// Pin installed app dependencies and write an app workflow draft; never installs.
+    Compose {
+        #[arg(long)]
+        definition: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+    },
+    /// Preview a frame; --apply writes to a new directory without installing dependencies.
+    Frame {
+        path: PathBuf,
+        #[arg(long)]
+        dir: PathBuf,
+        #[arg(long)]
+        apply: bool,
+    },
+    /// Encode a precompiled ELF artifact for a native package. Does not execute it.
+    NativeArtifact { path: PathBuf },
+
     /// Wrap selected tools from an already-running Streamable HTTP MCP server.
     ImportMcp(import::Options),
     /// Wrap selected JSON API operations from a local OpenAPI document.
@@ -84,6 +192,10 @@ enum AppCommand {
 impl From<AppCommand> for Command {
     fn from(command: AppCommand) -> Self {
         match command {
+            AppCommand::Bundle { path, pallet, out } => Self::Bundle { path, pallet, out },
+            AppCommand::Compose { definition, out } => Self::Compose { definition, out },
+            AppCommand::Frame { path, dir, apply } => Self::Frame { path, dir, apply },
+            AppCommand::NativeArtifact { path } => Self::NativeArtifact { path },
             AppCommand::ImportMcp(options) => Self::ImportMcp(options),
             AppCommand::ImportOpenapi(options) => Self::ImportOpenapi(options),
             AppCommand::Init { name, dir, runtime } => Self::New { name, dir, runtime },
@@ -142,6 +254,39 @@ enum DaemonCommand {
 }
 #[derive(Subcommand)]
 enum Command {
+    /// Portable reusable source libraries, separate from installed apps.
+    Pallet {
+        #[command(subcommand)]
+        command: PalletCommand,
+    },
+    #[command(hide = true)]
+    Bundle {
+        path: PathBuf,
+        #[arg(long, required = true)]
+        pallet: Vec<String>,
+        #[arg(long)]
+        out: PathBuf,
+    },
+    /// Pin installed app dependencies and write an app workflow draft; never installs.
+    Compose {
+        #[arg(long)]
+        definition: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+    },
+    /// Preview a frame; --apply writes to a new directory without installing dependencies.
+    Frame {
+        path: PathBuf,
+        #[arg(long)]
+        dir: PathBuf,
+        #[arg(long)]
+        apply: bool,
+    },
+    /// Encode a precompiled ELF artifact for a native package. Does not execute it.
+    NativeArtifact {
+        path: PathBuf,
+    },
+
     #[command(hide = true)]
     ImportMcp(import::Options),
     #[command(hide = true)]
@@ -488,7 +633,7 @@ fn run() -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&value)?);
         return Ok(());
     }
-    let runtime = if let Some(workspace) = cli.workspace {
+    let mut runtime = if let Some(workspace) = cli.workspace {
         Runtime::new(workspace, &cli.actor)?
     } else {
         let name = cli
@@ -496,6 +641,7 @@ fn run() -> Result<()> {
             .unwrap_or(agent_market_core::collections::current(&home)?);
         Runtime::collection(home, &name, &cli.actor)?
     };
+    runtime.pallet_workspace = cli.project.map(std::fs::canonicalize).transpose()?;
     use std::io::IsTerminal;
     let default =
         if cli.agent || !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
@@ -771,6 +917,107 @@ fn run() -> Result<()> {
             }
             json!({"created":dir,"name":name})
         }
+        Command::Pallet { command } => {
+            use agent_market_core::pallet;
+            match command {
+                PalletCommand::Promote { selector } => {
+                    pallet::save_scoped(&runtime, &pallet::resolve(&runtime, &selector)?, "global")?
+                }
+                PalletCommand::Search { query } => {
+                    let entries = registry::pallet_listings(&runtime.root)?;
+                    json!(entries
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter(|p| format!("{} {}", p["name"], p["description"])
+                            .to_lowercase()
+                            .contains(&query.to_lowercase()))
+                        .collect::<Vec<_>>())
+                }
+                PalletCommand::Download {
+                    selector,
+                    scope,
+                    accept_source,
+                } => registry::fetch_pallet(&runtime, &selector, &scope, accept_source)?,
+                PalletCommand::Package { path, out } => {
+                    let p = pallet::read(&path)?;
+                    use std::io::Write;
+                    let mut file = std::fs::OpenOptions::new()
+                        .write(true)
+                        .create_new(true)
+                        .open(&out)?;
+                    file.write_all(serde_json::to_string_pretty(&p)?.as_bytes())?;
+                    json!({"package":out,"published":false})
+                }
+                PalletCommand::Init {
+                    name,
+                    dir,
+                    language,
+                } => pallet::init(&name, &language, &dir)?,
+                PalletCommand::Validate { path } => {
+                    let p = pallet::read(&path)?;
+                    json!({"valid":true,"kind":"pallet","sha256":store::hash(&p)})
+                }
+                PalletCommand::Save { path, scope } => {
+                    pallet::save_scoped(&runtime, &pallet::read(&path)?, &scope)?
+                }
+                PalletCommand::List => pallet::list(&runtime)?,
+                PalletCommand::Describe {
+                    selector,
+                    export,
+                    if_hash,
+                } => pallet::describe(
+                    &pallet::resolve(&runtime, &selector)?,
+                    export.as_deref(),
+                    if_hash.as_deref(),
+                )?,
+                PalletCommand::Export { selector, dir } => {
+                    pallet::export(&pallet::resolve(&runtime, &selector)?, &dir)?
+                }
+                PalletCommand::Test {
+                    path,
+                    allow_host,
+                    interpreter,
+                } => pallet::test(&pallet::read(&path)?, allow_host, interpreter.as_deref())?,
+                PalletCommand::Run {
+                    selector,
+                    export,
+                    args,
+                    allow_host,
+                    interpreter,
+                } => pallet::run(
+                    &pallet::resolve(&runtime, &selector)?,
+                    &export,
+                    serde_json::from_str(&args)?,
+                    allow_host,
+                    interpreter.as_deref(),
+                )?,
+            }
+        }
+        Command::Bundle { path, pallet, out } => {
+            let refs = pallet
+                .iter()
+                .map(|value| {
+                    value
+                        .split_once('=')
+                        .map(|(a, b)| (a.to_owned(), b.to_owned()))
+                        .ok_or_else(|| {
+                            agent_market_core::Error::new(
+                                "pallet",
+                                "Use --pallet alias=publisher/library@version",
+                            )
+                        })
+                })
+                .collect::<Result<Vec<_>>>()?;
+            agent_market_core::pallet::bundle(&runtime, &catalog::read(&path)?, &refs, &out)?
+        }
+        Command::Compose { definition, out } => {
+            agent_market_core::authoring::compose(&runtime, &definition, &out)?
+        }
+        Command::Frame { path, dir, apply } => {
+            agent_market_core::authoring::frame(&path, &dir, apply)?
+        }
+        Command::NativeArtifact { path } => agent_market_core::native::artifact(&path)?,
         Command::Validate { path } => {
             let p = catalog::read(&path)?;
             json!({"valid":true,"name":p["name"],"sha256":store::hash(&p),"certified":false})
@@ -780,7 +1027,9 @@ fn run() -> Result<()> {
             allow_container,
             allow_host,
         } => {
-            conformance::run_with_permissions(&catalog::read(&path)?, allow_container, allow_host)?
+            let package = catalog::read(&path)?;
+            let fixtures = conformance::dependency_fixtures(&runtime, &package)?;
+            conformance::run_with_dependencies(&package, &fixtures, allow_container, allow_host)?
         }
         Command::Package { path, out, image } => {
             let mut p = catalog::read(&path)?;
@@ -793,8 +1042,9 @@ fn run() -> Result<()> {
                 p["execution"]["image"] = json!(image);
                 catalog::validate(&p)?;
             }
-            let tested =
-                p["hosting"]["mode"] == "local" && !agent_market_core::execution::enabled(&p);
+            let tested = p["hosting"]["mode"] == "local"
+                && !agent_market_core::execution::enabled(&p)
+                && !agent_market_core::composition::enabled(&p);
             if tested {
                 conformance::run(&p)?;
             }

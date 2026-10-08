@@ -1,0 +1,134 @@
+{
+  "format": 2,
+  "name": "example/document-intake",
+  "version": "0.1.0",
+  "publisher": "example",
+  "description": "Collect documents with normalized titles, unique slugs and persistent local storage.",
+  "hosting": {
+    "mode": "local"
+  },
+  "permissions": [
+    "state.read",
+    "state.write",
+    "host.execute"
+  ],
+  "execution": {
+    "driver": "script",
+    "language": "python",
+    "protocol": "rhyven.action/1",
+    "entrypoint": "main.py",
+    "python_version": "3.10",
+    "environment": "isolated",
+    "timeout_seconds": 30
+  },
+  "objects": {},
+  "actions": {
+    "add_document": {
+      "description": "Prepare and save a document; duplicate slugs are rejected.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "title",
+          "slug"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "list_documents": {
+      "description": "List stored documents.",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                "slug": {
+                  "type": "string",
+                  "maxLength": 1000
+                }
+              },
+              "required": [
+                "title",
+                "slug"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "documents"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "files": [
+    "main.py"
+  ],
+  "guide": "Bundle the text library first. Add documents, then retrieve their saved titles and slugs. This is a complete app, not a library.",
+  "tests": [
+    {
+      "operation": "execute",
+      "args": {
+        "action": "add_document",
+        "args": {
+          "title": " Release  Notes! "
+        }
+      },
+      "expect": {
+        "title": "Release Notes!",
+        "slug": "release-notes"
+      }
+    },
+    {
+      "operation": "execute",
+      "args": {
+        "action": "list_documents",
+        "args": {}
+      },
+      "expect": {
+        "documents": [
+          {
+            "title": "Release Notes!",
+            "slug": "release-notes"
+          }
+        ]
+      }
+    }
+  ]
+}

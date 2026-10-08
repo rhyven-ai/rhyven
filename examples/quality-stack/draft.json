@@ -1,0 +1,377 @@
+{
+  "format": 2,
+  "name": "example/quality-stack",
+  "version": "0.1.0",
+  "publisher": "example",
+  "description": "Evaluate a saved improvement and retain regression evidence across three apps.",
+  "hosting": {
+    "mode": "local"
+  },
+  "permissions": [],
+  "dependencies": {
+    "preflight": "rhyven/preflight-checker",
+    "failures": "rhyven/failure-to-regression",
+    "evaluator": "rhyven/workflow-evaluator"
+  },
+  "objects": {},
+  "actions": {
+    "verify": {
+      "description": "Compare two policies on the same two cases and record a verified fix.",
+      "operation": "stack",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "suite_hash": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64
+          },
+          "baseline_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "candidate_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "baseline_correct": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_correct": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "improved_cases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "maxItems": 30
+          },
+          "regressed_cases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "maxItems": 30
+          },
+          "improved_without_regressions": {
+            "type": "boolean"
+          },
+          "check_time_delta_ms": {
+            "type": "number"
+          },
+          "timing_note": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "suite_hash",
+          "baseline_id",
+          "candidate_id",
+          "baseline_correct",
+          "candidate_correct",
+          "total",
+          "improved_cases",
+          "regressed_cases",
+          "improved_without_regressions",
+          "check_time_delta_ms",
+          "timing_note"
+        ],
+        "additionalProperties": false
+      },
+      "steps": [
+        {
+          "id": "failure",
+          "dependency": "failures",
+          "action": "record_failure",
+          "args": {
+            "title": "Invalid config missed",
+            "project": "sample",
+            "symptom": "Exists-only policy accepts invalid JSON",
+            "reproduction": "Check config.json containing {broken"
+          }
+        },
+        {
+          "id": "regression",
+          "dependency": "failures",
+          "action": "add_regression",
+          "args": {
+            "failure_id": {
+              "$step": "failure",
+              "path": "/id"
+            },
+            "case_id": "broken",
+            "files": [
+              {
+                "path": "config.json",
+                "content": "{broken"
+              }
+            ],
+            "expected_pass": false
+          }
+        },
+        {
+          "id": "suite",
+          "dependency": "evaluator",
+          "action": "save_suite",
+          "args": {
+            "name": "config-quality",
+            "version": "1",
+            "cases": [
+              {
+                "id": "valid",
+                "files": [
+                  {
+                    "path": "config.json",
+                    "content": "{\"ok\":true}"
+                  }
+                ],
+                "expected_pass": true
+              },
+              {
+                "id": "broken",
+                "files": [
+                  {
+                    "path": "config.json",
+                    "content": "{broken"
+                  }
+                ],
+                "expected_pass": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "baseline",
+          "dependency": "preflight",
+          "action": "save_policy",
+          "args": {
+            "name": "baseline",
+            "version": "1",
+            "checks": [
+              {
+                "id": "config",
+                "kind": "exists",
+                "path": "config.json"
+              }
+            ]
+          }
+        },
+        {
+          "id": "baseline_valid",
+          "dependency": "preflight",
+          "action": "run",
+          "args": {
+            "policy_hash": {
+              "$step": "baseline",
+              "path": "/policy_hash"
+            },
+            "files": [
+              {
+                "path": "config.json",
+                "content": "{\"ok\":true}"
+              }
+            ]
+          }
+        },
+        {
+          "id": "baseline_broken",
+          "dependency": "preflight",
+          "action": "run",
+          "args": {
+            "policy_hash": {
+              "$step": "baseline",
+              "path": "/policy_hash"
+            },
+            "files": [
+              {
+                "path": "config.json",
+                "content": "{broken"
+              }
+            ]
+          }
+        },
+        {
+          "id": "baseline_score",
+          "dependency": "evaluator",
+          "action": "evaluate",
+          "args": {
+            "suite_hash": {
+              "$step": "suite",
+              "path": "/suite_hash"
+            },
+            "observations": [
+              {
+                "case_id": "valid",
+                "report": {
+                  "$step": "baseline_valid",
+                  "path": ""
+                }
+              },
+              {
+                "case_id": "broken",
+                "report": {
+                  "$step": "baseline_broken",
+                  "path": ""
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "candidate",
+          "dependency": "preflight",
+          "action": "save_policy",
+          "args": {
+            "name": "candidate",
+            "version": "1",
+            "checks": [
+              {
+                "id": "config",
+                "kind": "json_valid",
+                "path": "config.json"
+              }
+            ]
+          }
+        },
+        {
+          "id": "candidate_valid",
+          "dependency": "preflight",
+          "action": "run",
+          "args": {
+            "policy_hash": {
+              "$step": "candidate",
+              "path": "/policy_hash"
+            },
+            "files": [
+              {
+                "path": "config.json",
+                "content": "{\"ok\":true}"
+              }
+            ]
+          }
+        },
+        {
+          "id": "candidate_broken",
+          "dependency": "preflight",
+          "action": "run",
+          "args": {
+            "policy_hash": {
+              "$step": "candidate",
+              "path": "/policy_hash"
+            },
+            "files": [
+              {
+                "path": "config.json",
+                "content": "{broken"
+              }
+            ]
+          }
+        },
+        {
+          "id": "candidate_score",
+          "dependency": "evaluator",
+          "action": "evaluate",
+          "args": {
+            "suite_hash": {
+              "$step": "suite",
+              "path": "/suite_hash"
+            },
+            "observations": [
+              {
+                "case_id": "valid",
+                "report": {
+                  "$step": "candidate_valid",
+                  "path": ""
+                }
+              },
+              {
+                "case_id": "broken",
+                "report": {
+                  "$step": "candidate_broken",
+                  "path": ""
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "compare",
+          "dependency": "evaluator",
+          "action": "compare",
+          "args": {
+            "baseline_id": {
+              "$step": "baseline_score",
+              "path": "/evaluation_id"
+            },
+            "candidate_id": {
+              "$step": "candidate_score",
+              "path": "/evaluation_id"
+            }
+          }
+        },
+        {
+          "id": "fixed",
+          "dependency": "failures",
+          "action": "mark_fixed",
+          "args": {
+            "id": {
+              "$step": "failure",
+              "path": "/id"
+            },
+            "expected_revision": 1,
+            "fix_summary": "Added JSON validity check",
+            "evaluation_id": {
+              "$step": "candidate_score",
+              "path": "/evaluation_id"
+            },
+            "suite_hash": {
+              "$step": "suite",
+              "path": "/suite_hash"
+            }
+          },
+          "when": {
+            "$step": "compare",
+            "path": "/improved_without_regressions"
+          }
+        }
+      ],
+      "result": {
+        "$step": "compare",
+        "path": ""
+      }
+    }
+  },
+  "guide": "Run once with a stable request_id. Evidence stays in this collection. Changed pins require compose and explicit activation.",
+  "tests": [
+    {
+      "operation": "execute",
+      "args": {
+        "action": "verify",
+        "args": {}
+      },
+      "expect": {
+        "improved_without_regressions": true,
+        "baseline_correct": 1,
+        "candidate_correct": 2
+      }
+    }
+  ]
+}

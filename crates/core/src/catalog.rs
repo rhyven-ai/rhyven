@@ -46,6 +46,7 @@ pub fn validate(p: &Value) -> Result<()> {
     keys(
         p,
         &[
+            "dependencies",
             "format",
             "name",
             "display_name",
@@ -64,6 +65,7 @@ pub fn validate(p: &Value) -> Result<()> {
             "health_action",
             "connector",
             "files",
+            "libraries",
         ],
     )?;
     ensure(p["format"] == 2, "package", "Expected package format 2")?;
@@ -77,7 +79,10 @@ pub fn validate(p: &Value) -> Result<()> {
             "Embedded files require script execution",
         )?;
     }
+    crate::pallet::validate_libraries(p)?;
     crate::updates::validate(p)?;
+    crate::composition::validate(p)?;
+    let composition = crate::composition::enabled(p);
     let container = crate::container::enabled(p);
     let executable = crate::execution::enabled(p);
     let connector = crate::connector::enabled(p);
@@ -139,7 +144,7 @@ pub fn validate(p: &Value) -> Result<()> {
         )?;
     }
     ensure(
-        permissions.contains(&json!("service.run")) == crate::services::enabled(p),
+        composition || permissions.contains(&json!("service.run")) == crate::services::enabled(p),
         "permission",
         "Service mode requires service.run; other apps cannot request it",
     )?;
@@ -147,22 +152,24 @@ pub fn validate(p: &Value) -> Result<()> {
         .as_array()
         .is_some_and(|v| !v.is_empty());
     ensure(
-        permissions.contains(&json!("app.call")) == peer_calls,
+        permissions.contains(&json!("app.call")) == (peer_calls || composition),
         "permission",
         "app.call must match declared service peer calls",
     )?;
     ensure(
-        permissions.contains(&json!("container.execute")) == container,
+        composition || permissions.contains(&json!("container.execute")) == container,
         "permission",
         "Container apps require container.execute; declarative apps cannot request it",
     )?;
     ensure(
-        !permissions.contains(&json!("secrets.read")) || container,
+        !permissions.contains(&json!("secrets.read")) || container || composition,
         "permission",
         "Secrets require container execution",
     )?;
     ensure(
-        permissions.contains(&json!("host.execute")) == crate::script::enabled(p),
+        composition
+            || permissions.contains(&json!("host.execute"))
+                == (crate::script::enabled(p) || crate::native::enabled(p)),
         "permission",
         "Script apps require host.execute (unsandboxed access as your OS user)",
     )?;
@@ -239,7 +246,7 @@ pub fn validate(p: &Value) -> Result<()> {
         }
     } else {
         ensure(
-            executable || !permissions.contains(&json!("network.connect")),
+            executable || composition || !permissions.contains(&json!("network.connect")),
             "permission",
             "Local declarative apps cannot use network",
         )?;
@@ -253,7 +260,7 @@ pub fn validate(p: &Value) -> Result<()> {
         .as_object()
         .ok_or_else(|| Error::new("package", "objects required"))?;
     ensure(
-        (executable || connector || !objects.is_empty()) && objects.len() <= 32,
+        (executable || connector || composition || !objects.is_empty()) && objects.len() <= 32,
         "package",
         "Provide 1..32 objects",
     )?;
@@ -378,6 +385,10 @@ pub fn validate(p: &Value) -> Result<()> {
                 "package",
                 "Action keywords must be at most 16 nonempty strings of at most 64 bytes",
             )?;
+        }
+        if action["operation"] == "stack" {
+            crate::composition::validate_action(p, action)?;
+            continue;
         }
         if connector {
             continue;

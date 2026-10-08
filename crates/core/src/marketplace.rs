@@ -38,6 +38,13 @@ pub fn describe() -> Value {
     actions.insert("refresh_status".into(), json!({"description":"Read last catalog sync time and error", "input":input(json!({}), &[])}));
     actions.insert("requirements".into(), json!({"description":"Check host prerequisites before installation; no app code, dependency installation or image downloads", "input":input(json!({"app":{"type":"string"}}), &["app"])}));
     actions.insert("doctor".into(), json!({"description":"Read-only execution capability diagnosis; no downloads or app execution", "input":input(json!({}), &[])}));
+    actions.insert("prepare_pallet".into(),json!({"description":"Prepare a user-approved source download into workspace or global library. Does not execute source.","input":input(json!({"selector":string,"scope":{"type":"string","enum":["workspace","global"]}}), &["selector","scope"])}));
+    actions.insert("pallet_search".into(),json!({"description":"Browse marketplace source libraries, separate from complete apps. Download requires user approval; no code executes during download.","input":input(json!({"query":string}), &[])}));
+    actions.insert("pallet_list".into(),json!({"description":"List saved portable source libraries. Pallets are not installed apps; this does not execute source.","input":input(json!({}), &[])}));
+    actions.insert("pallet_describe".into(),json!({"description":"Read a saved library index or one typed export without loading source. Reuse contract_hash with if_hash.","input":input(json!({"selector":string,"export":string,"if_hash":string}), &["selector"])}));
+    actions.insert("match_plan".into(),json!({"description":"Match a structured plan against bounded local capability metadata. No installation or execution; one explicit retry maximum.", "input":crate::discovery::input_schema()}));
+    actions.insert("inspect_candidate".into(),json!({"description":"Read one shortlisted contract within the eight-inspection budget","input":input(json!({"session":string,"candidate":string}), &["session","candidate"])}));
+    actions.insert("stack_report".into(),json!({"description":"Read this actor's stack run report","input":input(json!({"request_id":string}), &["request_id"])}));
     let long_text = json!({"type":"string"});
     let hosting = input(
         json!({"mode":string,"endpoint":long_text,"auth_env":string,"auth":long_text,"privacy":long_text,"account":long_text,"billing":long_text,"domains":{"type":"array","items":string}}),
@@ -49,13 +56,14 @@ pub fn describe() -> Value {
         &["status", "summary", "detail"],
     );
     request_fields["execution"] = input(
-        json!({"driver":string,"language":string,"entrypoint":string,"environment":string,"python_version":string,"node_version":string,"dependencies":input(json!({"pip":string,"npm":string}), &[]),"image":long_text,"protocol":string,"timeout_seconds":{"type":"integer"},"memory_mb":{"type":"integer"},"cpus":{"type":"integer"},"secrets":{"type":"array","items":string}}),
+        json!({"driver":string,"language":string,"entrypoint":string,"artifacts":input(json!({"linux-x86_64":input(json!({"sha256":string}), &["sha256"]),"linux-aarch64":input(json!({"sha256":string}), &["sha256"])}), &[]),"environment":string,"python_version":string,"node_version":string,"dependencies":input(json!({"pip":string,"npm":string}), &[]),"image":long_text,"protocol":string,"timeout_seconds":{"type":"integer"},"memory_mb":{"type":"integer"},"cpus":{"type":"integer"},"secrets":{"type":"array","items":string}}),
         &["driver"],
     );
     request_fields["execution"]["properties"].as_object_mut().unwrap().extend(json!({
         "mode":string,"start_policy":string,"startup_timeout_seconds":{"type":"integer"},"shutdown_timeout_seconds":{"type":"integer"},"restart_limit":{"type":"integer"},
         "calls":{"type":"array","items":input(json!({"category":string,"function":string,"version":string}), &["category","function","version"])}
     }).as_object().unwrap().clone());
+    request_fields["dependencies"] = json!({"type":"array","items":input(json!({"alias":string,"app":string,"version":string,"sha256":string}), &["alias","app","version","sha256"])});
     let fields = json!({"name":string,"version":string,"description":long_text,"publisher":string,"publisher_label":string,"display_name":string,"repository":string,"installed_version":string,"update_available":{"type":"boolean"},"trust":string,"permissions":{"type":"array","items":string},"hosting":string,"stars":{"type":"integer","minimum":0},"stars_status":string,"stars_checked_at":{"type":"integer"},"metadata_checked_at":{"type":"integer"},"metadata_stale":{"type":"boolean"}});
     json!({"name":APP,"version":"0.1.0","publisher":"rhyven","platform":true,"description":"Discover and manage agent apps through the universal interface", "hosting":{"mode":"local"},"permissions":["marketplace.read","marketplace.manage_with_user_approval"],"trust":"Platform built-in",
         "objects":{"listing":{"immutable":true,"schema":input(fields,&["name","version","description","publisher","trust","permissions","hosting","stars_status","metadata_stale"])},"request":{"immutable":true,"schema":input(request_fields, &["request_id","operation","status","expires_at","target_workspace"]) }},
@@ -268,14 +276,17 @@ fn prepare(r: &Runtime, operation: &str, args: &Value) -> Result<Value> {
     let mut view = json!({"request_id":id,"operation":operation,"app":name,"version":p["version"],"publisher":p["publisher"],"publisher_label":catalog::publisher_label(p),"display_name":catalog::display_name(p),"repository":p["repository"],"stars":listing["data"]["stars"],"stars_status":listing["data"]["stars_status"],"stars_checked_at":listing["data"]["stars_checked_at"],"permissions":p["permissions"],"hosting":hosting,"trust":"Unverified","sha256":if target["kind"]=="local" {store::hash(p)} else {text(p,"sha256")?.into()},"target_workspace":r.root,"expires_at":expiry,"data_retained":true,"approval_instructions":"Ask the user before applying. MCP hosts with form elicitation prompt automatically. Otherwise the user runs rhyven --workspace PATH approve REQUEST_ID in their terminal."});
     let requirements = crate::requirements::check(p);
     view["requirements"] = json!({"status":requirements["status"],"summary":requirements["summary"],"detail":serde_json::to_string(&requirements)?});
-    view["execution"] = p
-        .get("execution")
-        .cloned()
-        .unwrap_or(json!({"driver":"declarative"}));
+    view["execution"] = execution_disclosure(p);
+    if let Some(deps) = p.get("dependencies") {
+        view["dependencies"] = json!(deps.as_object().into_iter().flatten().map(|(alias,pin)|json!({"alias":alias,"app":pin["app"],"version":pin["version"],"sha256":pin["sha256"]})).collect::<Vec<_>>());
+    }
     if crate::connector::enabled(p) {
         view["execution_warning"] = json!("Connector only: the external service must already exist. Calls may change external state or incur charges. The package hash pins the wrapper, not upstream code. No automatic retries or local backups of upstream data.");
     }
-    if crate::script::enabled(p) {
+    if p["permissions"]
+        .as_array()
+        .is_some_and(|v| v.contains(&json!("host.execute")))
+    {
         view["execution_warning"] = json!("host.execute runs unsandboxed code as your OS user, including filesystem, network and process access. Environments isolate dependencies only.");
     }
     if let Some(name) = crate::collections::scope(&r.root)?["collection"].as_str() {
@@ -296,6 +307,14 @@ fn apply_with(
     id: &str,
     download: impl FnOnce(&registry::Entry, bool) -> Result<Value>,
 ) -> Result<Value> {
+    apply_with_downloads(r, id, download, registry::fetch_reviewed_pallet)
+}
+fn apply_with_downloads(
+    r: &Runtime,
+    id: &str,
+    download: impl FnOnce(&registry::Entry, bool) -> Result<Value>,
+    download_pallet: impl FnOnce(&registry::PalletEntry, bool) -> Result<Value>,
+) -> Result<Value> {
     let _lock = lock(r)?;
     let (body, status, result) = stored(r, id)?;
     if status == "done" {
@@ -311,6 +330,24 @@ fn apply_with(
         "approval_required",
         "User approval is required; use host elicitation or the local approve command",
     )?;
+    if body["review"]["operation"] == "pallet_download" {
+        let e: registry::PalletEntry = serde_json::from_value(body["pallet_entry"].clone())?;
+        let selector = format!("{}@{}", e.name, e.version);
+        ensure(
+            registry::pallet_entry(&r.root, &selector)? == e,
+            "approval_stale",
+            "Listing changed; prepare again",
+        )?;
+        let p = download_pallet(&e, body["anonymous"].as_bool().unwrap_or(true))?;
+        let target = Runtime::new(text(&body, "pallet_root")?, &r.actor)?;
+        let mut result = crate::pallet::save_scoped(&target, &p, "collection")?;
+        result["scope"] = body["pallet_scope"].clone();
+        database(r)?.execute(
+            "UPDATE market_requests SET status='done',result=?2 WHERE id=?1",
+            params![id, result.to_string()],
+        )?;
+        return Ok(result);
+    }
     let name = text(&body["review"], "app")?;
     ensure(
         installed_digest(r, name)? == body["before"],
@@ -340,10 +377,7 @@ fn apply_with(
             "Hosting differs from approved disclosures",
         )?;
         ensure(
-            p.get("execution")
-                .cloned()
-                .unwrap_or(json!({"driver":"declarative"}))
-                == body["review"]["execution"],
+            execution_disclosure(&p) == body["review"]["execution"],
             "integrity",
             "Execution differs from approved disclosures",
         )?;
@@ -466,6 +500,32 @@ pub fn call(r: &Runtime, operation: &str, args: Value) -> Result<Value> {
                 &definition["input"],
             )?;
             match action {
+                "prepare_pallet" => prepare_pallet(r, &input),
+                "pallet_search" => {
+                    let entries = crate::registry::pallet_listings(&r.root)?;
+                    let q = input["query"].as_str().unwrap_or("").to_lowercase();
+                    Ok(json!(entries
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter(|p| format!("{} {}", p["name"], p["description"])
+                            .to_lowercase()
+                            .contains(&q))
+                        .collect::<Vec<_>>()))
+                }
+                "pallet_list" => crate::pallet::list(r),
+                "pallet_describe" => crate::pallet::describe(
+                    &crate::pallet::resolve(r, text(&input, "selector")?)?,
+                    input["export"].as_str(),
+                    input["if_hash"].as_str(),
+                ),
+                "match_plan" => crate::discovery::match_plan(r, input),
+                "inspect_candidate" => crate::discovery::inspect(
+                    r,
+                    text(&input, "session")?,
+                    text(&input, "candidate")?,
+                ),
+                "stack_report" => crate::composition::report(r, text(&input, "request_id")?),
                 "doctor" => Ok(crate::container::doctor()),
                 "prepare_install" => prepare(r, "install", &input),
                 "prepare_update" => prepare(r, "update", &input),
@@ -487,6 +547,49 @@ pub fn call(r: &Runtime, operation: &str, args: Value) -> Result<Value> {
             "Marketplace objects are read-only; use declared actions",
         )),
     }
+}
+
+fn execution_disclosure(p: &Value) -> Value {
+    let mut e = p
+        .get("execution")
+        .cloned()
+        .unwrap_or(json!({"driver":"declarative"}));
+    if let Some(artifacts) = e.get_mut("artifacts").and_then(Value::as_object_mut) {
+        for a in artifacts.values_mut() {
+            if let Some(fields) = a.as_object_mut() {
+                fields.remove("hex");
+            }
+        }
+    }
+    e
+}
+
+fn prepare_pallet(r: &Runtime, args: &Value) -> Result<Value> {
+    let _lock = lock(r)?;
+    let scope = text(args, "scope")?;
+    let root = crate::pallet::scope_root(r, scope)?;
+    let e = registry::pallet_entry(&r.root, text(args, "selector")?)?;
+    let meta = registry::metadata(&r.root)?;
+    let id = uuid::Uuid::new_v4().to_string();
+    let expiry = now() + 900;
+    let mut view = json!({"request_id":id,"operation":"pallet_download","app":e.name,"version":e.version,"repository":e.repository,"sha256":e.sha256,"permissions":[],"hosting":{"mode":"local"},"trust":"Unverified","target_workspace":root,"expires_at":expiry,"execution_warning":format!("Save source in {scope}. No code executes; later execution requires separate review."),"approval_instructions":"Ask the user, then use action_apply through MCP host elicitation or the human terminal approve command."});
+    view["stars"] = meta
+        .as_ref()
+        .map(|m| m["stars"][&e.repository]["count"].clone())
+        .unwrap_or(Value::Null);
+    view["stars_status"] = json!(if view["stars"].is_number() {
+        "cached"
+    } else {
+        "unavailable"
+    });
+    view["execution_warning"] = json!(format!("Save {} source under {} in {scope}. No code executes; later execution requires separate review.", e.language,e.license));
+    view.as_object_mut().unwrap().retain(|_, v| !v.is_null());
+    let body = json!({"review":view,"expires_at":expiry,"pallet_entry":e,"pallet_root":root,"pallet_scope":scope,"anonymous":meta.as_ref().and_then(|m|m["anonymous"].as_bool()).unwrap_or(true)});
+    database(r)?.execute(
+        "INSERT INTO market_requests(id,body,status) VALUES(?1,?2,'pending')",
+        params![id, body.to_string()],
+    )?;
+    review(r, &id)
 }
 
 #[cfg(test)]
@@ -659,5 +762,133 @@ mod tests {
             registry::verify_package(entry, &bytes)
         })
         .unwrap();
+    }
+}
+
+#[cfg(test)]
+mod pallet_download_tests {
+    use super::*;
+    use sha2::{Digest, Sha256};
+
+    fn fixture() -> (tempfile::TempDir, Runtime, Vec<u8>) {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().join("project");
+        std::fs::create_dir(&project).unwrap();
+        let mut r = Runtime::collection(dir.path().join("home"), "test", "agent").unwrap();
+        r.pallet_workspace = Some(project);
+        let p = crate::pallet::read(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/pallet-text"),
+        )
+        .unwrap();
+        let bytes = serde_json::to_vec(&p).unwrap();
+        let entry = json!({"name":p["name"],"version":p["version"],"description":p["description"],"language":p["language"],"license":p["license"],"repository":"example/text-kit","asset_id":1,"sha256":format!("{:x}",Sha256::digest(&bytes))});
+        let cache = crate::collections::registry_dir(&r.root).unwrap();
+        std::fs::create_dir_all(&cache).unwrap();
+        store::write(&cache.join("market-metadata.json"),&json!({"repository":"example/registry","ref":"main","anonymous":true,"index":{"format":1,"publishers":{"example":"example"},"apps":[],"pallets":[entry]},"stars":{}})).unwrap();
+        (dir, r, bytes)
+    }
+
+    #[test]
+    fn approved_source_download_pins_destination_and_reuses_without_redownload() {
+        for scope in ["workspace", "global"] {
+            let (_dir, mut r, bytes) = fixture();
+            let target = crate::pallet::scope_root(&r, scope).unwrap();
+            let request = prepare_pallet(
+                &r,
+                &json!({"selector":"example/text-kit@0.1.0","scope":scope}),
+            )
+            .unwrap();
+            schema::validate(request.clone(), &describe()["objects"]["request"]["schema"]).unwrap();
+            let id = request["request_id"].as_str().unwrap();
+            assert_eq!(
+                apply_with_downloads(
+                    &r,
+                    id,
+                    |_, _| panic!("app transport"),
+                    |_, _| panic!("download before approval")
+                )
+                .unwrap_err()
+                .code,
+                "approval_required"
+            );
+            decide(&r, id, request["review_digest"].as_str().unwrap(), true).unwrap();
+            // Reconnecting without a project must not redirect a reviewed download.
+            r.pallet_workspace = None;
+            let receipt = apply_with_downloads(
+                &r,
+                id,
+                |_, _| panic!("app transport"),
+                |e, anonymous| {
+                    assert!(anonymous);
+                    registry::verify_pallet(e, &bytes)
+                },
+            )
+            .unwrap();
+            assert_eq!(receipt["scope"], scope);
+            assert_eq!(
+                receipt,
+                apply_with_downloads(&r, id, |_, _| panic!("retry"), |_, _| panic!("retry"))
+                    .unwrap()
+            );
+            let reader = Runtime::new(target, "second-agent").unwrap();
+            let p = crate::pallet::resolve(&reader, "example/text-kit@0.1.0").unwrap();
+            assert_eq!(
+                crate::pallet::run(
+                    &p,
+                    "prepare_document",
+                    json!({"title":"  Customer   Release Notes!  "}),
+                    true,
+                    None
+                )
+                .unwrap(),
+                json!({"title":"Customer Release Notes!","slug":"customer-release-notes"})
+            );
+            assert!(r.apps().unwrap().as_array().unwrap().is_empty());
+        }
+    }
+
+    #[test]
+    fn tampered_download_is_not_saved_and_changed_listing_requires_new_consent() {
+        let (_dir, r, _bytes) = fixture();
+        let request = prepare_pallet(
+            &r,
+            &json!({"selector":"example/text-kit@0.1.0","scope":"global"}),
+        )
+        .unwrap();
+        let id = request["request_id"].as_str().unwrap();
+        decide(&r, id, request["review_digest"].as_str().unwrap(), true).unwrap();
+        assert_eq!(
+            apply_with_downloads(
+                &r,
+                id,
+                |_, _| panic!("app transport"),
+                |e, _| registry::verify_pallet(e, b"{}")
+            )
+            .unwrap_err()
+            .code,
+            "integrity"
+        );
+        assert!(crate::pallet::list(&r)
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .is_empty());
+        let path = crate::collections::registry_dir(&r.root)
+            .unwrap()
+            .join("market-metadata.json");
+        let mut cache: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        cache["index"]["pallets"][0]["asset_id"] = json!(2);
+        store::write(&path, &cache).unwrap();
+        assert_eq!(
+            apply_with_downloads(
+                &r,
+                id,
+                |_, _| panic!("app transport"),
+                |_, _| panic!("changed download")
+            )
+            .unwrap_err()
+            .code,
+            "approval_stale"
+        );
     }
 }

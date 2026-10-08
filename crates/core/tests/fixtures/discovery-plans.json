@@ -1,0 +1,152 @@
+[
+  {
+    "id": "case-01",
+    "need": "Check supplied config files for invalid JSON",
+    "expected": "rhyven/preflight-checker#action_run"
+  },
+  {
+    "id": "case-02",
+    "need": "Save immutable named version of validation checks",
+    "expected": "rhyven/preflight-checker#action_save_policy"
+  },
+  {
+    "id": "case-03",
+    "need": "Read saved policy using its hash",
+    "expected": "rhyven/preflight-checker#action_get_policy"
+  },
+  {
+    "id": "case-04",
+    "need": "Retrieve individual check results from previous run",
+    "expected": "rhyven/preflight-checker#action_get_run"
+  },
+  {
+    "id": "case-05",
+    "need": "List recent policy summaries",
+    "expected": "rhyven/preflight-checker#action_list_policies"
+  },
+  {
+    "id": "case-06",
+    "need": "Find recent persisted report summaries",
+    "expected": "rhyven/preflight-checker#action_list_runs"
+  },
+  {
+    "id": "case-07",
+    "need": "Record a newly observed failure and reproduction",
+    "expected": "rhyven/failure-to-regression#action_record_failure"
+  },
+  {
+    "id": "case-08",
+    "need": "Add regression case reproducing a failure",
+    "expected": "rhyven/failure-to-regression#action_add_regression"
+  },
+  {
+    "id": "case-09",
+    "need": "Mark a failure fixed with evaluation evidence",
+    "expected": "rhyven/failure-to-regression#action_mark_fixed"
+  },
+  {
+    "id": "case-10",
+    "need": "Reopen a previously fixed failure",
+    "expected": "rhyven/failure-to-regression#action_reopen"
+  },
+  {
+    "id": "case-11",
+    "need": "Save immutable suite containing regression cases",
+    "expected": "rhyven/workflow-evaluator#action_save_suite"
+  },
+  {
+    "id": "case-12",
+    "need": "Read full suite fixtures by hash",
+    "expected": "rhyven/workflow-evaluator#action_get_suite"
+  },
+  {
+    "id": "case-13",
+    "need": "Score observations against expected outcomes",
+    "expected": "rhyven/workflow-evaluator#action_evaluate"
+  },
+  {
+    "id": "case-14",
+    "need": "Compare baseline and candidate evaluations for regressions",
+    "expected": "rhyven/workflow-evaluator#action_compare"
+  },
+  {
+    "id": "case-15",
+    "need": "Read persisted scoring and source run identifiers",
+    "expected": "rhyven/workflow-evaluator#action_get_evaluation"
+  },
+  {
+    "id": "case-16",
+    "need": "List recent suite summaries",
+    "expected": "rhyven/workflow-evaluator#action_list_suites"
+  },
+  {
+    "id": "case-17",
+    "need": "List recent evaluation summaries",
+    "expected": "rhyven/workflow-evaluator#action_list_evaluations"
+  },
+  {
+    "id": "case-18",
+    "need": "Analyze a supplied snapshot without executing project code",
+    "expected": "rhyven/preflight-checker#action_run"
+  },
+  {
+    "id": "case-19",
+    "need": "Which test cases improved without regressions",
+    "expected": "rhyven/workflow-evaluator#action_compare"
+  },
+  {
+    "id": "case-20",
+    "need": "Save a failing example for regression testing",
+    "expected": "rhyven/failure-to-regression#action_add_regression"
+  },
+  {
+    "id": "case-21",
+    "need": "Store a new version of configuration checks",
+    "expected": "rhyven/preflight-checker#action_save_policy"
+  },
+  {
+    "id": "case-22",
+    "need": "Measure correctness of reports on a saved test suite",
+    "expected": "rhyven/workflow-evaluator#action_evaluate"
+  },
+  {
+    "id": "case-23",
+    "need": "Look up the scoring evidence from last evaluation",
+    "expected": "rhyven/workflow-evaluator#action_get_evaluation"
+  },
+  {
+    "id": "case-24",
+    "need": "Show failed checks from an earlier report",
+    "expected": "rhyven/preflight-checker#action_get_run"
+  },
+  {
+    "id": "case-25",
+    "need": "Keep the symptom and reproduction of a bug",
+    "expected": "rhyven/failure-to-regression#action_record_failure"
+  },
+  {
+    "id": "case-26",
+    "need": "Create a repeatable test fixture suite",
+    "expected": "rhyven/workflow-evaluator#action_save_suite"
+  },
+  {
+    "id": "case-27",
+    "need": "Browse stored validation reports",
+    "expected": "rhyven/preflight-checker#action_list_runs"
+  },
+  {
+    "id": "case-28",
+    "need": "Did the candidate policy improve the same test suite",
+    "expected": "rhyven/workflow-evaluator#action_compare"
+  },
+  {
+    "id": "case-29",
+    "need": "quasarx neutrinoz",
+    "expected": null
+  },
+  {
+    "id": "case-30",
+    "need": "xyzzzy teleportation",
+    "expected": null
+  }
+]

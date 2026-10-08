@@ -886,6 +886,7 @@ fn worker_loop(r: Runtime, app: String, rx: Receiver<Work>, logs: Logs) {
                         }
                         let caller = Runtime {
                             root: r.root.clone(),
+                            pallet_workspace: r.pallet_workspace.clone(),
                             actor: work.actor,
                         };
                         let result =

@@ -12,9 +12,18 @@ pub fn run_with_permissions(
     allow_container: bool,
     allow_host: bool,
 ) -> Result<Value> {
+    run_with_dependencies(package, &[], allow_container, allow_host)
+}
+/// Fixtures are validated and installed in dependency order in an isolated collection.
+pub fn run_with_dependencies(
+    package: &Value,
+    dependencies: &[Value],
+    allow_container: bool,
+    allow_host: bool,
+) -> Result<Value> {
     catalog::validate(package)?;
     ensure(!crate::container::enabled(package) || allow_container, "permission_review_required", "Container tests execute publisher code. Review the package and use app test --allow-container")?;
-    ensure(!crate::script::enabled(package) || allow_host, "permission_review_required", "Script tests run unsandboxed publisher code. Review the package and use app test --allow-host")?;
+    ensure(!(crate::script::enabled(package) || crate::native::enabled(package)) || allow_host, "permission_review_required", "Script tests run unsandboxed publisher code. Review the package and use app test --allow-host")?;
     ensure(
         package["hosting"]["mode"] == "local",
         "conformance",
@@ -22,6 +31,36 @@ pub fn run_with_permissions(
     )?;
     let dir = tempfile::tempdir()?;
     let runtime = Runtime::new(dir.path(), "conformance")?;
+    ensure(
+        dependencies.len() <= 32,
+        "conformance",
+        "Too many dependency fixtures",
+    )?;
+    for dependency in dependencies {
+        catalog::validate(dependency)?;
+        ensure(
+            dependency["hosting"]["mode"] == "local",
+            "conformance",
+            "Only local dependency fixtures are supported",
+        )?;
+        ensure(
+            !crate::container::enabled(dependency) || allow_container,
+            "permission_review_required",
+            "Dependency tests require --allow-container",
+        )?;
+        ensure(
+            !(crate::script::enabled(dependency) || crate::native::enabled(dependency))
+                || allow_host,
+            "permission_review_required",
+            "Dependency tests require --allow-host",
+        )?;
+        ensure(
+            !crate::services::enabled(dependency),
+            "conformance",
+            "Service dependencies require a separately managed integration test",
+        )?;
+        runtime.install(dependency, true, false)?;
+    }
     runtime.install(package, true, false)?;
     let _supervisor = if crate::services::enabled(package) {
         Some(crate::services::ScopedSupervisor::start(
@@ -97,4 +136,33 @@ fn references(v: &Value, results: &[Value]) -> Result<Value> {
         )),
         _ => Ok(v.clone()),
     }
+}
+
+/// Copy installed contracts, never live app data, for explicitly requested local tests.
+pub fn dependency_fixtures(runtime: &Runtime, package: &Value) -> Result<Vec<Value>> {
+    crate::composition::check_dependencies(runtime, package)?;
+    fn visit(
+        r: &Runtime,
+        p: &Value,
+        seen: &mut std::collections::BTreeSet<String>,
+        out: &mut Vec<Value>,
+    ) -> Result<()> {
+        for (_, pin) in p["dependencies"].as_object().into_iter().flatten() {
+            let name = pin["app"].as_str().unwrap();
+            if seen.insert(name.to_owned()) {
+                let child = crate::composition::installed(r, name)?;
+                visit(r, &child, seen, out)?;
+                out.push(child);
+            }
+        }
+        Ok(())
+    }
+    let mut out = Vec::new();
+    visit(
+        runtime,
+        package,
+        &mut std::collections::BTreeSet::new(),
+        &mut out,
+    )?;
+    Ok(out)
 }

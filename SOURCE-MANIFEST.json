@@ -238,7 +238,7 @@
     "examples/script-python/app.json": "d405153600829c0728df2fe38017bad8d7f2a7af0cdc947423c99e592918cfb8",
     "examples/script-python/main.py": "976bc635f34cfa1d8b1b78d2a675d9334c914f264ec8a146dd37a6a54ab8a265",
     "packaging/app-images.yml": "73f2dbc6c1711d73f8109ba5e45ea6c95cf4e38d619c440302ca627be8b2da84",
-    "packaging/current-validator.sha256": "6c30fecb2b66e8828702e0b198ac512dd9fee7c0a8f80f5010487ef71d34e0ca",
+    "packaging/current-validator.sha256": "eccd7ae42f8aff279c726a2d76450efdb467ca95235eb61cd4391df243f136cd",
     "packaging/installer-vm-acceptance.yml": "951a97a57b7a463c459470c96bc4544aadec9046626e406c9f3a68f0f8125560",
     "packaging/public-app-acceptance.yml": "dbe73fe357e8af40abc9577861dc8f9d5fb4bd8d4cce8d4b73e566bc3e999396",
     "packaging/public-source-files.json": "675bd92d6fda6f9eec112eaa55a23c751739165e1508ae3818112b2074049da4",

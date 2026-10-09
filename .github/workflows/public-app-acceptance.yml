@@ -26,10 +26,10 @@ jobs:
           RHYVEN_TEST_DOWNLOAD_ORIGIN: ${{ inputs.download_origin || 'https://rhyvenai.com' }}
         run: |
           for attempt in $(seq 1 80); do
-            if test "$(curl -fsSL --max-time 10 "$RHYVEN_TEST_DOWNLOAD_ORIGIN/VERSION" 2>/dev/null)" = '0.5.5'; then
+            if test "$(curl -fsSL --max-time 10 "$RHYVEN_TEST_DOWNLOAD_ORIGIN/VERSION" 2>/dev/null)" = '0.7.0'; then
               exit 0
             fi
-            echo "Waiting for the download origin to serve 0.5.5 ($attempt/80)"
+            echo "Waiting for the download origin to serve 0.7.0 ($attempt/80)"
             sleep 15
           done
           echo 'The runtime download origin is not ready; check DNS and the deployment.' >&2

@@ -4,7 +4,7 @@
   "files": {
     ".github/workflows/app-images.yml": "73f2dbc6c1711d73f8109ba5e45ea6c95cf4e38d619c440302ca627be8b2da84",
     ".github/workflows/installer-vm-acceptance.yml": "951a97a57b7a463c459470c96bc4544aadec9046626e406c9f3a68f0f8125560",
-    ".github/workflows/public-app-acceptance.yml": "d229145bbfb7d045ba252fb5021f90fce14a0e890c82b33acf1447fe61eccabb",
+    ".github/workflows/public-app-acceptance.yml": "eda3c3d76536dd736901a262165fe9faf054520b8aca0e25fa5c1b17d9b940c4",
     ".github/workflows/release-binaries.yml": "2150503ae3dce917708e476096ec143e0a113541172861e69a124d505ac51179",
     ".github/workflows/release-gate.yml": "25e6e7c7e874f78290edac92d5ed11db73435b18e136f983a6161a5e0541f173",
     ".github/workflows/security-audit.yml": "5d0aa92bdac44055aef2369596329c28bffda552ef84877c16b4d531eda08759",
@@ -241,7 +241,7 @@
     "packaging/app-images.yml": "73f2dbc6c1711d73f8109ba5e45ea6c95cf4e38d619c440302ca627be8b2da84",
     "packaging/current-validator.sha256": "fd11d2e229fa4e3945e31f98b1dd17a369a03cc340b1c2921ab3bd713879cf36",
     "packaging/installer-vm-acceptance.yml": "951a97a57b7a463c459470c96bc4544aadec9046626e406c9f3a68f0f8125560",
-    "packaging/public-app-acceptance.yml": "d229145bbfb7d045ba252fb5021f90fce14a0e890c82b33acf1447fe61eccabb",
+    "packaging/public-app-acceptance.yml": "eda3c3d76536dd736901a262165fe9faf054520b8aca0e25fa5c1b17d9b940c4",
     "packaging/public-source-files.json": "a0060e9fa0b6a235d4f937569318605dc7e0208e3c6499ba457e3cd4997b8ae7",
     "packaging/release-binaries.yml": "2150503ae3dce917708e476096ec143e0a113541172861e69a124d505ac51179",
     "packaging/release-gate.yml": "25e6e7c7e874f78290edac92d5ed11db73435b18e136f983a6161a5e0541f173",

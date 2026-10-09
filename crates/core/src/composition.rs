@@ -1,4 +1,9 @@
 //! Pinned, bounded cross-app actions. Every child uses the ordinary runtime path.
+/// Accept the legacy spelling for existing immutable packages.
+pub fn is_workflow(action: &serde_json::Value) -> bool {
+    matches!(action["operation"].as_str(), Some("workflow" | "stack"))
+}
+
 use crate::{catalog, error::ensure, schema, store, Error, Result, Runtime};
 use rusqlite::{params, OptionalExtension};
 use serde_json::{json, Value};
@@ -249,7 +254,7 @@ pub fn check_dependencies(r: &Runtime, p: &Value) -> Result<()> {
             .into_iter()
             .flatten()
             .map(|(_, a)| a)
-            .filter(|a| a["operation"] == "stack")
+            .filter(|a| is_workflow(a))
         {
             for s in a["steps"].as_array().unwrap() {
                 let d = &p["dependencies"][text(s, "dependency")?];

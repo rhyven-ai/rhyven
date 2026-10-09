@@ -6,16 +6,16 @@ or use declarative state apps. Python/Node script apps need their declared host
 runtime. Container apps need a compatible Docker engine.
 
 Download the package matching your distribution and CPU from the
-[0.6.0 release](https://github.com/rhyven-ai/rhyven/releases/tag/v0.6.0).
+[0.7.0 release](https://github.com/rhyven-ai/rhyven/releases/tag/v0.7.0).
 `uname -m` prints `x86_64` or `aarch64` on supported machines.
 
 | Distribution family | Package | Install downloaded file |
 | --- | --- | --- |
-| Debian, Ubuntu, Linux Mint, Pop!_OS | `.deb` | `sudo apt install ./rhyven-0.6.0-1-x86_64.deb` |
-| Fedora, RHEL-compatible systems | `.rpm` | `sudo dnf install ./rhyven-0.6.0-1-x86_64.rpm` |
-| openSUSE | `.rpm` | `sudo zypper install ./rhyven-0.6.0-1-x86_64.rpm` |
-| Arch, EndeavourOS, Manjaro | `.pkg.tar.zst` | `sudo pacman -U ./rhyven-0.6.0-1-x86_64.pkg.tar.zst` |
-| Alpine | `.apk` | `sudo apk add --allow-untrusted ./rhyven-0.6.0-1-x86_64.apk` |
+| Debian, Ubuntu, Linux Mint, Pop!_OS | `.deb` | `sudo apt install ./rhyven-0.7.0-1-x86_64.deb` |
+| Fedora, RHEL-compatible systems | `.rpm` | `sudo dnf install ./rhyven-0.7.0-1-x86_64.rpm` |
+| openSUSE | `.rpm` | `sudo zypper install ./rhyven-0.7.0-1-x86_64.rpm` |
+| Arch, EndeavourOS, Manjaro | `.pkg.tar.zst` | `sudo pacman -U ./rhyven-0.7.0-1-x86_64.pkg.tar.zst` |
+| Alpine | `.apk` | `sudo apk add --allow-untrusted ./rhyven-0.7.0-1-x86_64.apk` |
 
 Replace `x86_64` with `aarch64` for ARM64. Arch Linux ARM requires separate
 acceptance testing; an ARM64 package build is not a claim of official Arch ARM

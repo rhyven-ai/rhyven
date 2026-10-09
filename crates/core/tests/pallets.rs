@@ -286,3 +286,124 @@ fn marketplace_pallets_are_separate_verified_and_require_approval() {
     assert!(registry::fetch_pallet(&r, "example/text-kit@0.1.0", "global", false).is_err());
     assert!(pallet::list(&r).unwrap().as_array().unwrap().is_empty());
 }
+
+#[test]
+fn local_test_evidence_tracks_hash_coverage_failures_and_cached_discovery() {
+    let home = tempfile::tempdir().unwrap();
+    let r = Runtime::new(home.path(), "agent").unwrap();
+    let mut p = sample("python");
+    // An untested export must not inherit the passing examples of other functions.
+    p["exports"]["untested"] = p["exports"]["slug"].clone();
+    pallet::save(&r, &p).unwrap();
+    assert_eq!(
+        pallet::test_evidence(&r, &p, None).unwrap()["status"],
+        "not_run"
+    );
+    assert!(pallet::test_recorded(&r, &p, false, None).is_err());
+    assert_eq!(
+        pallet::test_evidence(&r, &p, None).unwrap()["status"],
+        "not_run"
+    );
+    let args = json!({"task":"evidence","revision":1,"steps":[{"id":"slug","need":"Convert text to lowercase URL slug"}],"permissions":[],"backends":["source"]});
+    let initial = discovery::match_plan(&r, args.clone()).unwrap();
+    let selected = initial["candidates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["export"] == "slug")
+        .unwrap();
+    let session = initial["session"].as_str().unwrap();
+    let id = selected["id"].as_str().unwrap();
+    assert_eq!(
+        discovery::inspect(&r, session, id).unwrap()["tests"]["status"],
+        "not_run"
+    );
+    let report = pallet::test_recorded(&r, &p, true, None).unwrap();
+    assert_eq!(report["passed_cases"], 4);
+    assert!(report["interpreter"]["version"]
+        .as_str()
+        .unwrap()
+        .contains("Python"));
+    assert_eq!(
+        pallet::test_evidence(&r, &p, Some("untested")).unwrap()["status"],
+        "not_covered"
+    );
+    let hash = agent_market_core::store::hash(&p);
+    let described = pallet::describe_recorded(&r, &p, None, Some(&hash)).unwrap();
+    assert_eq!(described["unchanged"], true);
+    assert_eq!(described["tests"]["status"], "passed");
+    let cached = discovery::match_plan(&r, args.clone()).unwrap();
+    assert_eq!(cached["cached"], true);
+    assert_eq!(cached["rounds"], initial["rounds"]);
+    assert_eq!(
+        cached["candidates"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["export"] == "slug")
+            .unwrap()["tests"]["status"],
+        "passed"
+    );
+    assert_eq!(
+        discovery::inspect(&r, session, id).unwrap()["tests"]["status"],
+        "passed"
+    );
+    // A later attempted run with an unavailable interpreter replaces the pass.
+    assert!(
+        pallet::test_recorded(&r, &p, true, Some(Path::new("/nonexistent/rhyven-python"))).is_err()
+    );
+    assert_eq!(
+        pallet::describe_recorded(&r, &p, None, Some(&hash)).unwrap()["tests"]["status"],
+        "failed"
+    );
+    assert_eq!(
+        discovery::inspect(&r, session, id).unwrap()["tests"]["status"],
+        "failed"
+    );
+    // Hashes include source and examples, independent of the advertised version.
+    p["files"]["textkit.py"] = json!("# changed source\n");
+    assert_eq!(
+        pallet::test_evidence(&r, &p, None).unwrap()["status"],
+        "not_run"
+    );
+    let isolated = tempfile::tempdir().unwrap();
+    let other = Runtime::new(isolated.path(), "other").unwrap();
+    assert_eq!(
+        pallet::test_evidence(&other, &sample("python"), None).unwrap()["status"],
+        "not_run"
+    );
+}
+
+#[test]
+fn passing_evidence_breaks_discovery_ties_without_crossing_user_homes() {
+    let home = tempfile::tempdir().unwrap();
+    let r = Runtime::collection(home.path(), "project", "agent").unwrap();
+    let global = Runtime::collection(home.path(), "global", "other-agent").unwrap();
+    let mut first = sample("python");
+    first["name"] = json!("example/aaa");
+    let mut tested = first.clone();
+    tested["name"] = json!("example/zzz");
+    pallet::save(&r, &first).unwrap();
+    pallet::save(&r, &tested).unwrap();
+    pallet::test_recorded(&r, &tested, true, None).unwrap();
+    assert_eq!(
+        pallet::test_evidence(&global, &tested, Some("slug")).unwrap()["status"],
+        "passed"
+    );
+    let args = json!({"task":"ranking","revision":1,"steps":[{"id":"slug","need":"lowercase URL slug"}],"permissions":[],"backends":["source"]});
+    let result = discovery::match_plan(&r, args).unwrap();
+    let slugs: Vec<_> = result["candidates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["export"] == "slug")
+        .collect();
+    assert_eq!(slugs.len(), 2);
+    assert_eq!(slugs[0]["pallet"], "example/zzz");
+    let isolated = tempfile::tempdir().unwrap();
+    let other = Runtime::collection(isolated.path(), "global", "other").unwrap();
+    assert_eq!(
+        pallet::test_evidence(&other, &tested, None).unwrap()["status"],
+        "not_run"
+    );
+}

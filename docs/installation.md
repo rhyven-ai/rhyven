@@ -303,9 +303,9 @@ prerequisites without installing dependencies or running publisher code.
 
 ## Included agent skills
 
-The 0.6.0 development binary includes seven skills and the usage rule, including
+The 0.7.0 binary includes seven skills and the usage rule, including
 composition authoring. Setup writes versioned files to
-`~/.rhyven/skills/0.6.0/` (or `$RHYVEN_HOME/skills/0.6.0/`) without downloading
+`~/.rhyven/skills/0.7.0/` (or `$RHYVEN_HOME/skills/0.7.0/`) without downloading
 additional files. This also works with offline installation.
 
 ```sh

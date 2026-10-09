@@ -1,4 +1,4 @@
-# Portable code libraries — 0.6.0
+# Portable code libraries — 0.7.0
 
 **Apps are complete applications. Pallets are reusable source libraries used to
 build them.** Declarative apps still depend on Rhyven's engine. Bricks, mortar
@@ -15,8 +15,8 @@ and portable stacks do not need Rhyven to execute their ordinary source code.
 | App workflow | An engine-managed sequence of calls to installed apps |
 
 The existing app-workflow feature remains available through app compose. Its
-operation is still named stack for compatibility, but it is not a portable code
-library. Existing app actions are now labeled app_action in discovery, not bricks.
+preferred operation is `workflow`. The old `stack` spelling is a deprecated
+alias and remains supported for existing packages. Neither is a portable code library. Existing app actions are now labeled app_action in discovery, not bricks.
 
 ## Reuse without regenerating source
 
@@ -304,3 +304,24 @@ Pallet listings require an accepted open-source license. The package must match
 all listing metadata. `registry-check` downloads and validates source and hashes,
 but never executes publisher tests. Existing entries are immutable; corrections
 require a new version. App and pallet listings remain separate types.
+
+## Local test evidence
+
+`pallet save` validates and stores source; it does not execute tests. Explicitly run
+`pallet test DIR --allow-host` after reviewing the source. Version 0.7.0 records the
+latest attempted run against the exact package SHA-256, including its timestamp,
+interpreter/version, platform, passed/total examples and per-export coverage.
+Failures replace previous passes; changed source or tests require a new run.
+An export with no examples is `not_covered`, not proven by other exports' tests.
+
+Evidence is local to your Rhyven home (or standalone collection), separate from
+the portable package. It is visible across that home's workspace/global libraries
+when their hashes match. It is not downloaded as publisher certification.
+Descriptions return fresh evidence even with `if_hash`; cached discovery refreshes
+evidence without spending another search or inspection. Existing shortlists retain
+their ordering; new searches prefer passing examples only when lexical scores tie,
+after compatibility filtering. An optional external ranker may reorder candidates.
+
+Tests exercise declared examples only. They do not establish security, complete
+correctness or compatibility with every host. Saved evidence describes a past run;
+it does not certify the current interpreter or dependency environment.

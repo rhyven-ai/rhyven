@@ -39,6 +39,13 @@ pub fn compose(r: &Runtime, definition: &Path, out: &Path) -> Result<Value> {
         *d = json!({"app":child["name"],"version":child["version"],"sha256":store::hash(&child)});
     }
     p["permissions"] = json!(permissions);
+    if let Some(actions) = p["actions"].as_object_mut() {
+        for action in actions.values_mut() {
+            if composition::is_workflow(action) {
+                action["operation"] = json!("workflow");
+            }
+        }
+    }
     catalog::validate(&p)?;
     composition::check_dependencies(r, &p)?;
     let mut file = std::fs::OpenOptions::new()

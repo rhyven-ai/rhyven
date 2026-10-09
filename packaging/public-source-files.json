@@ -792,5 +792,6 @@
   "third-party-notices/zerotrie-0.2.5/LICENSE": "third-party-notices/zerotrie-0.2.5/LICENSE",
   "third-party-notices/zerovec-0.11.8/LICENSE": "third-party-notices/zerovec-0.11.8/LICENSE",
   "third-party-notices/zerovec-derive-0.11.6/LICENSE": "third-party-notices/zerovec-derive-0.11.6/LICENSE",
-  "third-party-notices/zmij-1.0.23/LICENSE-MIT": "third-party-notices/zmij-1.0.23/LICENSE-MIT"
+  "third-party-notices/zmij-1.0.23/LICENSE-MIT": "third-party-notices/zmij-1.0.23/LICENSE-MIT",
+  "docs/release-0.7.0.md": "docs/release-0.7.0.md"
 }

@@ -622,7 +622,81 @@ pub fn run(
     export(p, &out)?;
     invoke(p, &out, name, args, interpreter)
 }
+// Evidence stays outside the portable package and is local to this user's home.
+fn evidence_db(r: &Runtime) -> Result<rusqlite::Connection> {
+    let target = if let Some(home) = crate::collections::home_for(&r.root)? {
+        Runtime::collection(home, "global", &r.actor)?
+    } else {
+        r.clone()
+    };
+    let db = store::open(&target.root)?;
+    db.execute_batch(
+        "CREATE TABLE IF NOT EXISTS pallet_tests(digest TEXT PRIMARY KEY, report TEXT NOT NULL)",
+    )?;
+    Ok(db)
+}
+pub fn test_evidence(r: &Runtime, p: &Value, export: Option<&str>) -> Result<Value> {
+    if let Some(name) = export {
+        ensure(
+            p["exports"].get(name).is_some(),
+            "not_found",
+            "Unknown pallet export",
+        )?;
+    }
+    let raw: Option<String> = evidence_db(r)?
+        .query_row(
+            "SELECT report FROM pallet_tests WHERE digest=?1",
+            [store::hash(p)],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let mut report = match raw {
+        Some(raw) => serde_json::from_str::<Value>(&raw)?,
+        None => return Ok(json!({"status":"not_run","origin":"local","certified":false})),
+    };
+    if let Some(name) = export {
+        let detail = report["exports"][name].clone();
+        report.as_object_mut().unwrap().remove("exports");
+        report["coverage"] = detail.clone();
+        if detail["total"] == 0 {
+            report["status"] = json!("not_covered");
+        } else if detail["passed"] != detail["total"] {
+            report["status"] = json!("failed");
+        }
+    }
+    if export.is_some() {
+        report["passed"] = json!(report["status"] == "passed");
+    }
+    Ok(report)
+}
+pub fn describe_recorded(
+    r: &Runtime,
+    p: &Value,
+    export: Option<&str>,
+    if_hash: Option<&str>,
+) -> Result<Value> {
+    let mut result = describe(p, export, if_hash)?;
+    // An unchanged contract does not imply unchanged test evidence.
+    result["tests"] = test_evidence(r, p, export)?;
+    Ok(result)
+}
 pub fn test(p: &Value, allow_host: bool, interpreter: Option<&Path>) -> Result<Value> {
+    test_inner(None, p, allow_host, interpreter)
+}
+pub fn test_recorded(
+    r: &Runtime,
+    p: &Value,
+    allow_host: bool,
+    interpreter: Option<&Path>,
+) -> Result<Value> {
+    test_inner(Some(r), p, allow_host, interpreter)
+}
+fn test_inner(
+    r: Option<&Runtime>,
+    p: &Value,
+    allow_host: bool,
+    interpreter: Option<&Path>,
+) -> Result<Value> {
     validate(p)?;
     ensure(
         allow_host,
@@ -631,26 +705,55 @@ pub fn test(p: &Value, allow_host: bool, interpreter: Option<&Path>) -> Result<V
     )?;
     let cases = p["tests"].as_array().unwrap();
     ensure(!cases.is_empty(), "pallet", "At least one test required")?;
-    let dir = tempfile::tempdir()?;
-    let out = dir.path().join("source");
-    export(p, &out)?;
-    for case in cases {
-        let result = invoke(
-            p,
-            &out,
-            text(case, "export")?,
-            case["args"].clone(),
-            interpreter,
-        )?;
-        ensure(
-            result == case["expect"],
-            "conformance",
-            format!("Output differs for {}", text(case, "export")?),
-        )?;
+    let mut coverage = serde_json::Map::new();
+    for name in p["exports"].as_object().unwrap().keys() {
+        coverage.insert(name.clone(), json!({"total":0,"passed":0}));
     }
-    Ok(
-        json!({"pallet":p["name"],"sha256":store::hash(p),"passed":true,"cases":cases.len(),"certified":false,"scope":"declared examples only"}),
-    )
+    for case in cases {
+        let row = &mut coverage[text(case, "export")?];
+        row["total"] = json!(row["total"].as_u64().unwrap() + 1);
+    }
+    let mut passed = 0;
+    let mut interpreter_info = json!(null);
+    let outcome = (|| -> Result<()> {
+        let program = match interpreter {
+            Some(path) => std::fs::canonicalize(path)?,
+            None => crate::script::executable(if p["language"] == "python" {
+                "python3"
+            } else {
+                "node"
+            })?,
+        };
+        let mut probe = Command::new(&program);
+        probe
+            .arg("--version")
+            .env_clear()
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default());
+        let version = crate::script::run(&mut probe, vec![], 15)?;
+        interpreter_info = json!({"path":program,"version":String::from_utf8_lossy(&version).trim(),"os":std::env::consts::OS,"arch":std::env::consts::ARCH});
+        let dir = tempfile::tempdir()?;
+        let out = dir.path().join("source");
+        export(p, &out)?;
+        for case in cases {
+            let name = text(case, "export")?;
+            let result = invoke(p, &out, name, case["args"].clone(), Some(&program))?;
+            ensure(
+                result == case["expect"],
+                "conformance",
+                format!("Output differs for {name}"),
+            )?;
+            passed += 1;
+            let row = &mut coverage[name];
+            row["passed"] = json!(row["passed"].as_u64().unwrap() + 1);
+        }
+        Ok(())
+    })();
+    let report = json!({"pallet":p["name"],"sha256":store::hash(p),"passed":outcome.is_ok(),"status":if outcome.is_ok(){"passed"}else{"failed"},"cases":cases.len(),"passed_cases":passed,"exports":coverage,"timestamp":crate::marketplace::now(),"interpreter":interpreter_info,"origin":"local","certified":false,"scope":"declared examples only","error_code":outcome.as_ref().err().map(|e| &e.code)});
+    if let Some(r) = r {
+        evidence_db(r)?.execute("INSERT INTO pallet_tests VALUES(?1,?2) ON CONFLICT(digest) DO UPDATE SET report=excluded.report", params![store::hash(p),report.to_string()])?;
+    }
+    outcome?;
+    Ok(report)
 }
 
 /// Vendor reviewed source into a complete script app. No library becomes an app.

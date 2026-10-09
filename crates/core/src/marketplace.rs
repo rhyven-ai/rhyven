@@ -44,7 +44,8 @@ pub fn describe() -> Value {
     actions.insert("pallet_describe".into(),json!({"description":"Read a saved library index or one typed export without loading source. Reuse contract_hash with if_hash.","input":input(json!({"selector":string,"export":string,"if_hash":string}), &["selector"])}));
     actions.insert("match_plan".into(),json!({"description":"Match a structured plan against bounded local capability metadata. No installation or execution; one explicit retry maximum.", "input":crate::discovery::input_schema()}));
     actions.insert("inspect_candidate".into(),json!({"description":"Read one shortlisted contract within the eight-inspection budget","input":input(json!({"session":string,"candidate":string}), &["session","candidate"])}));
-    actions.insert("stack_report".into(),json!({"description":"Read this actor's stack run report","input":input(json!({"request_id":string}), &["request_id"])}));
+    actions.insert("workflow_report".into(),json!({"description":"Read this actor's workflow run report","input":input(json!({"request_id":string}), &["request_id"])}));
+    actions.insert("stack_report".into(),json!({"description":"Deprecated alias for workflow_report","input":input(json!({"request_id":string}), &["request_id"])}));
     let long_text = json!({"type":"string"});
     let hosting = input(
         json!({"mode":string,"endpoint":long_text,"auth_env":string,"auth":long_text,"privacy":long_text,"account":long_text,"billing":long_text,"domains":{"type":"array","items":string}}),
@@ -514,7 +515,8 @@ pub fn call(r: &Runtime, operation: &str, args: Value) -> Result<Value> {
                         .collect::<Vec<_>>()))
                 }
                 "pallet_list" => crate::pallet::list(r),
-                "pallet_describe" => crate::pallet::describe(
+                "pallet_describe" => crate::pallet::describe_recorded(
+                    r,
                     &crate::pallet::resolve(r, text(&input, "selector")?)?,
                     input["export"].as_str(),
                     input["if_hash"].as_str(),
@@ -525,7 +527,9 @@ pub fn call(r: &Runtime, operation: &str, args: Value) -> Result<Value> {
                     text(&input, "session")?,
                     text(&input, "candidate")?,
                 ),
-                "stack_report" => crate::composition::report(r, text(&input, "request_id")?),
+                "workflow_report" | "stack_report" => {
+                    crate::composition::report(r, text(&input, "request_id")?)
+                }
                 "doctor" => Ok(crate::container::doctor()),
                 "prepare_install" => prepare(r, "install", &input),
                 "prepare_update" => prepare(r, "update", &input),

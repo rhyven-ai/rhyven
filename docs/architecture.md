@@ -1,6 +1,6 @@
 # Architecture
 
-The unpublished 0.6.0 branch adds [composable capabilities](composable-capabilities.md):
+Rhyven 0.6.0 introduced [composable capabilities](composable-capabilities.md):
 pinned cross-app stacks, bounded plan matching, local frames and native ELF actions.
 That document specifies engine workflows. [Portable pallets](portable-pallets.md)
 are separate source libraries used to build complete apps; saving one does not

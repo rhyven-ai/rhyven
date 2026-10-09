@@ -76,7 +76,7 @@ fn candidates(r: &Runtime) -> Result<Vec<Value>> {
             if entries.len() >= 5000 {
                 break;
             }
-            entries.push(json!({"id":format!("pallet:{scope}::{}@{}#{}",p["name"].as_str().unwrap(),p["version"].as_str().unwrap(),name),"source_kind":"pallet","scope":scope,"pallet":p["name"],"export":name,"version":p["version"],"package_hash":hash,"contract_hash":store::hash(e),"description":e["description"],"permissions":[],"execution_permissions":"consumer_defined","backend":"source","installed":false,"saved":true,"language":p["language"],"output_type":e["output"]["type"],"kind":e["kind"],"_input":e["input"],"_output":e["output"],"requirements_status":"caller_toolchain","keywords":e.get("keywords").cloned().unwrap_or(json!([]))}));
+            entries.push(json!({"id":format!("pallet:{scope}::{}@{}#{}",p["name"].as_str().unwrap(),p["version"].as_str().unwrap(),name),"source_kind":"pallet","tests":crate::pallet::test_evidence(r, &p, Some(name))?,"scope":scope,"pallet":p["name"],"export":name,"version":p["version"],"package_hash":hash,"contract_hash":store::hash(e),"description":e["description"],"permissions":[],"execution_permissions":"consumer_defined","backend":"source","installed":false,"saved":true,"language":p["language"],"output_type":e["output"]["type"],"kind":e["kind"],"_input":e["input"],"_output":e["output"],"requirements_status":"caller_toolchain","keywords":e.get("keywords").cloned().unwrap_or(json!([]))}));
         }
     }
     Ok(entries)
@@ -97,8 +97,12 @@ pub fn match_plan(r: &Runtime, args: Value) -> Result<Value> {
     let started = Instant::now();
     let entries = candidates(r)?;
     let ranker = crate::ranker::config(r).unwrap_or(json!({"configuration_error":true}));
+    let mut contracts = entries.clone();
+    for entry in &mut contracts {
+        entry.as_object_mut().unwrap().remove("tests");
+    }
     let revision = store::hash(&json!([
-        entries,
+        contracts,
         std::env::consts::OS,
         std::env::consts::ARCH,
         ranker
@@ -134,6 +138,13 @@ pub fn match_plan(r: &Runtime, args: Value) -> Result<Value> {
             value["inspections_remaining"] = json!(8u64.saturating_sub(reads));
             if args["retry"] != true || n >= 2 {
                 value["cached"] = json!(true);
+                for candidate in value["candidates"].as_array_mut().unwrap() {
+                    if let Some(current) = entries.iter().find(|e| e["id"] == candidate["id"]) {
+                        if let Some(tests) = current.get("tests") {
+                            candidate["tests"] = tests.clone();
+                        }
+                    }
+                }
                 if n >= 2 {
                     value["stop_reason"] = json!("round_budget_exhausted");
                 }
@@ -182,10 +193,12 @@ pub fn match_plan(r: &Runtime, args: Value) -> Result<Value> {
         let query = terms.join(" OR ");
         let mut matches = vec![];
         if !query.is_empty() {
-            let mut statement=db.prepare("SELECT id FROM capability_index WHERE capability_index MATCH ?1 ORDER BY bm25(capability_index),id LIMIT 20")?;
-            let rows = statement.query_map([query], |row| row.get::<_, String>(0))?;
-            for id in rows {
-                let id = id?;
+            let mut statement=db.prepare("SELECT id,bm25(capability_index) FROM capability_index WHERE capability_index MATCH ?1 ORDER BY bm25(capability_index),id LIMIT 20")?;
+            let rows = statement.query_map([query], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+            })?;
+            for row in rows {
+                let (id, score) = row?;
                 let entry = entries.iter().find(|e| e["id"] == id).unwrap();
                 if !entry["permissions"]
                     .as_array()
@@ -236,11 +249,24 @@ pub fn match_plan(r: &Runtime, args: Value) -> Result<Value> {
                         continue;
                     }
                 }
-                matches.push(entry.clone());
+                let mut candidate = entry.clone();
+                candidate["_score"] = json!(score);
+                matches.push(candidate);
             }
         }
 
+        // Evidence breaks lexical ties only; it never bypasses compatibility filters.
+        matches.sort_by(|a, b| {
+            a["_score"]
+                .as_f64()
+                .unwrap()
+                .total_cmp(&b["_score"].as_f64().unwrap())
+                .then_with(|| {
+                    (b["tests"]["status"] == "passed").cmp(&(a["tests"]["status"] == "passed"))
+                })
+        });
         for mut entry in matches.into_iter().take(3) {
+            entry.as_object_mut().unwrap().remove("_score");
             entry.as_object_mut().unwrap().remove("_input");
             entry.as_object_mut().unwrap().remove("_output");
             let id = entry["id"].as_str().unwrap().to_owned();
@@ -340,11 +366,15 @@ pub fn inspect(r: &Runtime, session: &str, id: &str) -> Result<Value> {
         )
         .optional()?
     {
-        return Ok(serde_json::from_str(&raw)?);
+        let mut description: Value = serde_json::from_str(&raw)?;
+        if entry["source_kind"] == "pallet" {
+            description["tests"] = crate::pallet::test_evidence(r, &p, entry["export"].as_str())?;
+        }
+        return Ok(description);
     }
     ensure(db.execute("UPDATE discovery_sessions SET inspections=inspections+1 WHERE key=?1 AND inspections<8",[session])?==1,"validation","Contract inspection budget exhausted; reuse saved descriptions or build the missing capability")?;
     let description = if entry["source_kind"] == "pallet" {
-        crate::pallet::describe(&p, entry["export"].as_str(), None)?
+        crate::pallet::describe_recorded(r, &p, entry["export"].as_str(), None)?
     } else {
         crate::tools::describe(&p, &json!({"function":entry["function"]}))?
     };

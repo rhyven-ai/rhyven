@@ -17,7 +17,7 @@
   "actions": {
     "verify": {
       "description": "Compare two policies on the same two cases and record a verified fix.",
-      "operation": "stack",
+      "operation": "workflow",
       "input": {
         "type": "object",
         "properties": {},

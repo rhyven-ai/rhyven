@@ -350,7 +350,7 @@ impl Runtime {
             "Rich queries currently require local hosting",
         )?;
         if operation == "execute"
-            && p["actions"][args["action"].as_str().unwrap_or("")]["operation"] == "stack"
+            && crate::composition::is_workflow(&p["actions"][args["action"].as_str().unwrap_or("")])
         {
             drop(tx);
             return crate::composition::call(self, &p, &args);

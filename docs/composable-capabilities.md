@@ -1,4 +1,4 @@
-# Composable capabilities — 0.6.0
+# Composable capabilities — 0.7.0
 
 Existing apps and the three-tool MCP contract
 remain compatible. REST and MCP dispatch through the same runtime.

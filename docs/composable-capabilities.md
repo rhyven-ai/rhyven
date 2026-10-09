@@ -11,7 +11,7 @@ stacks (composed functions). They have a separate format and local library store
 They are not installed apps.
 
 This document covers engine-managed app workflows and execution. A workflow's
-operation is still named stack, but it calls installed applications and depends
+preferred operation is `workflow` (`stack` is a deprecated compatibility alias). It calls installed applications and depends
 on the engine. Source pallets and portable stacks do not require that executor.
 
 Frames now distinguish portable pallet references from installed-app references.
@@ -90,9 +90,9 @@ Tests copy dependency contracts into an isolated collection, not their live
 state. Script/native fixtures require `app test --allow-host`; container
 fixtures require `--allow-container`. Persistent service dependency fixtures
 need a separately managed integration test. Package creation does not silently
-run stack dependencies. Activate using the existing reviewed installation flow.
+run workflow dependencies. Activate using the existing reviewed installation flow.
 
-A stack action has typed input/output, `operation:"stack"`, `steps` and
+An app workflow action has typed input/output, `operation:"workflow"`, `steps` and
 `result`. Each step names an `id`, dependency alias, action and argument mapping:
 
 ```json
@@ -119,18 +119,18 @@ an ordinary tested action. General static proof of nested binding compatibility
 is not implemented.
 
 Limits: 16 direct dependencies, graph size 32, depth four, 32 steps per action,
-32 items per iteration, 64 total child calls across nested stacks, 256 KiB per
+32 items per iteration, 64 total child calls across nested workflows, 256 KiB per
 child result and 1 MiB of intermediate values. A five-minute shared dispatch
 budget stops launching more children when their declared timeout cannot fit.
 It is not a hard preemptive deadline for every declarative operation.
 
 Dependencies must already be installed at their exact pins. Changes stop the
 stack; re-compose, test and review a new version. Platform management actions
-cannot be stack dependencies. Stacks cannot grant approval.
+cannot be workflow dependencies. Workflows cannot grant approval.
 
 ## State and failure recovery
 
-Stack runs and step outcomes live in the collection SQLite database, alongside
+Workflow runs and step outcomes live in the collection SQLite database, alongside
 ordinary backup/restore state. Records include actor, package pins, input/output
 hashes, child request IDs, status and errors. The final result is retained;
 intermediate payloads are not copied into the run log.
@@ -138,7 +138,7 @@ intermediate payloads are not copied into the run log.
 Supply a stable `request_id`. A completed identical retry returns its saved
 result. A changed request with that ID conflicts. A failed or interrupted run
 does not automatically replay possible side effects. Read
-`action_stack_report` with the request ID using the same actor, then reconcile
+`action_workflow_report` with the request ID using the same actor, then reconcile
 app state. Child app state remains accessible to other authorized agents in
 the collection.
 

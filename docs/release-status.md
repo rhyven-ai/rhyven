@@ -1,5 +1,9 @@
 # Release status
 
+Development version 0.7.0 adds local hash-bound pallet test evidence and the
+preferred `workflow` operation alias. See [0.7.0 changes](release-0.7.0.md).
+The currently published downloads remain 0.6.0.
+
 Rhyven 0.6.0 adds portable source libraries alongside complete headless apps.
 
 New in 0.6.0:

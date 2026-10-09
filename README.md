@@ -11,6 +11,10 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
+Development version **0.7.0** adds local test evidence for exact pallet hashes
+and the `workflow` operation name for app workflows. Existing `stack` operations
+remain compatible. See [0.7.0 changes](docs/release-0.7.0.md).
+
 Version **0.6.0** adds portable source libraries and reusable app composition. See
 [portable code libraries](docs/portable-pallets.md) for reusable bricks, mortar,
 stacks and pallets that can be imported without Rhyven. Complete apps remain

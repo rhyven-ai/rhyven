@@ -966,7 +966,8 @@ fn run() -> Result<()> {
                     selector,
                     export,
                     if_hash,
-                } => pallet::describe(
+                } => pallet::describe_recorded(
+                    &runtime,
                     &pallet::resolve(&runtime, &selector)?,
                     export.as_deref(),
                     if_hash.as_deref(),
@@ -978,7 +979,12 @@ fn run() -> Result<()> {
                     path,
                     allow_host,
                     interpreter,
-                } => pallet::test(&pallet::read(&path)?, allow_host, interpreter.as_deref())?,
+                } => pallet::test_recorded(
+                    &runtime,
+                    &pallet::read(&path)?,
+                    allow_host,
+                    interpreter.as_deref(),
+                )?,
                 PalletCommand::Run {
                     selector,
                     export,

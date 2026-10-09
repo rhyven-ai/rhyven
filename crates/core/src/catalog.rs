@@ -386,7 +386,7 @@ pub fn validate(p: &Value) -> Result<()> {
                 "Action keywords must be at most 16 nonempty strings of at most 64 bytes",
             )?;
         }
-        if action["operation"] == "stack" {
+        if crate::composition::is_workflow(action) {
             crate::composition::validate_action(p, action)?;
             continue;
         }

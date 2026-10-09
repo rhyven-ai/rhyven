@@ -208,3 +208,41 @@ fn plan_shapes_filter_before_ranking_and_report_remaining_budget() {
         7
     );
 }
+
+#[test]
+fn workflow_alias_preserves_execution_permissions_and_receipts() {
+    for operation in ["workflow", "stack"] {
+        let (_dir, r, p) = runtime();
+        let mut s = stack(&p);
+        s["actions"]["save"]["operation"] = json!(operation);
+        catalog::validate(&s).unwrap();
+        let definition = _dir.path().join("draft.json");
+        let output = _dir.path().join("composed.json");
+        std::fs::write(&definition, serde_json::to_vec(&s).unwrap()).unwrap();
+        agent_market_core::authoring::compose(&r, &definition, &output).unwrap();
+        assert_eq!(
+            catalog::read(&output).unwrap()["actions"]["save"]["operation"],
+            "workflow"
+        );
+        assert_eq!(
+            catalog::read(&definition).unwrap()["actions"]["save"]["operation"],
+            operation
+        );
+        r.install(&s, true, false).unwrap();
+        let args = json!({"app":"test/stack","action":"save","args":{"title":"alias"},"request_id":"alias"});
+        assert_eq!(r.call("execute", args.clone()).unwrap(), "alias");
+        assert_eq!(r.call("execute", args).unwrap(), "alias");
+        assert_eq!(
+            r.call("query", json!({"app":"test/notes","object":"note"}))
+                .unwrap()["total"],
+            1
+        );
+        let mut invalid = s.clone();
+        invalid["permissions"] = json!(["state.read", "app.call"]);
+        assert!(composition::check_dependencies(&r, &invalid).is_err());
+        invalid = s;
+        invalid["actions"]["save"]["steps"][0]["args"]["title"] =
+            json!({"$step":"future","path":"/x"});
+        assert!(catalog::validate(&invalid).is_err());
+    }
+}

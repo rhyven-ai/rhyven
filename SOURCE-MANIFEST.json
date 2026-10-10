@@ -298,7 +298,7 @@
     "qa/multi_mcp_benchmark.py": "db8bdf8a25c55139679485d19ef9b76cb30a9da9395b09c0f9a6108377c290e5",
     "qa/official_apps_check.py": "1b07d4705a7a63da536fe5d25ecbc1f21e080cb96626a2a6481319a21899d270",
     "qa/platform_polish_check.py": "121a5ae19674ecfd58259de81c812b1f0a2aa6f14ec59f45d9ea0120b4b57a68",
-    "qa/public_container_check.py": "d27fd7dbd1e19f5ec8667420942cae2394398024add3df21fb04d40ecf69bd10",
+    "qa/public_container_check.py": "ae7d459b8ac10284459ae9d1b16c82af58947c29892f012722a32451460491e6",
     "qa/public_registry_check.py": "a4f063597b4dddfc959ca642e69d0375745b5ad1cfba8a5cc5e57a570b343930",
     "qa/recovery_check.py": "912bc7033f0141067d64da8ad13b5784b55bd222aa7a835d716d50f686b791bc",
     "qa/render_terminal.py": "2544326ca69d05efda62ee9cb355aa0112f7075e5a80b4886503cc243d7e1454",

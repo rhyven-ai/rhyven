@@ -1,7 +1,7 @@
 """Real terminal refresh while another CLI client installs, publishes and removes.
 
 Usage: PYTHONPATH=/path/to/pyte python3 qa/tui_refresh_check.py BINARY OUTPUT.json
-All state is temporary. No registry/network access or Docker required.
+All state is temporary. Manual refresh may fetch public registry metadata; no Docker required.
 """
 import codecs
 import fcntl
@@ -62,18 +62,22 @@ with tempfile.TemporaryDirectory(prefix="rhyven-tui-refresh-") as workspace:
         return next(app["version"] for app in cli("list") if app["name"] == name)
 
     try:
-        wait_for("Auto-refresh 2s")
+        wait_for("r refresh marketplace")
+        assert "Auto-refresh" not in text()
         press(b"\t")
         wait_for("No matching apps")
         press(b"?")
         wait_for("Refresh and app updates")
-        assert "does not install updates or contact GitHub" in text()
+        assert "Press r to reload local state" in text()
+        assert "never installs apps" in text()
         press(b"\x1b")
 
-        # Do not send any TUI input while waiting for external changes.
+        # External changes become visible after the user requests refresh.
         cli("install", "rhyven/work-management", "--accept-permissions")
+        press(b"r")
         wait_for("Work Management")
         cli("install", "rhyven/inventory", "--accept-permissions")
+        press(b"r")
         wait_for("Inventory")
         wait_for("2 apps")
         press(b"\r")
@@ -87,12 +91,15 @@ with tempfile.TemporaryDirectory(prefix="rhyven-tui-refresh-") as workspace:
         path = Path(workspace) / "new-inventory.json"
         path.write_text(json.dumps(package))
         cli("app", "publish", str(path))
+        press(b"r")
         wait_for(f"v{old_version} → v0.4.0")
         assert version("rhyven/inventory") == old_version, "Refresh installed an update"
         press(b"ku")
         wait_for("Review app update")
         assert "recovery backup" in text()
-        assert "Added permissions: none" in text()
+        if "Added permissions: none" not in text():
+            press(b"\x1b[6~")
+        wait_for("Added permissions: none")
         cells = [[{"text": screen.buffer[y][x].data, "fg": screen.buffer[y][x].fg,
                    "bg": screen.buffer[y][x].bg, "bold": screen.buffer[y][x].bold}
                   for x in range(120)] for y in range(38)]
@@ -105,12 +112,13 @@ with tempfile.TemporaryDirectory(prefix="rhyven-tui-refresh-") as workspace:
         assert list((Path(workspace) / ".rhyven/recovery").iterdir()), "Update must retain its backup"
 
         cli("remove", "rhyven/inventory")
+        press(b"r")
         wait_for("1 apps")
         assert "Inventory" not in "\n".join(screen.display[15:31])
         press(b"q")
         assert process.wait(timeout=5) == 0
         assert termios.tcgetattr(slave) == original, "Terminal mode was not restored"
-        print("PASS: idle TUI refresh sees external install, update availability and removal; selection retained; update consent, backup and help verified.")
+        print("PASS: manual TUI refresh sees external install, update availability and removal; selection retained; update consent, backup and help verified.")
     finally:
         if process.poll() is None:
             process.kill()

@@ -315,7 +315,7 @@
     "qa/test_public_app_export.py": "ff144600b17f731f328bbe122f04116f1420511c76c300e2fccb76885f6790de",
     "qa/test_public_engine_export.py": "c9e083ac575134563ececefb6e4d9ff3e01f58a92bb6f69ee3d17c497d3495f3",
     "qa/tui_check.py": "e7c869ab960d2123c927ac9dc8e14f106040e5d8f5d4986fab247cb5d74fb654",
-    "qa/tui_refresh_check.py": "17b88df505e6edc679e7d2429419832d0d23ca3cb7c58641ff7ee2063776440d",
+    "qa/tui_refresh_check.py": "0e499939b4ce6ccf1c51660ab425cba7fa52503cdf57256b46a0039e0593fa20",
     "qa/universal_market_check.py": "7c6809ed4cfea9798522d649e780c32ee0d9af58ddbbd56f50c88c036f7b947a",
     "scripts/export-public-apps.py": "85c5d0d1b9ffdd6cba9140a587110f1837d71cead4a806a708941845b65cf31c",
     "scripts/export-public-engine.py": "4f98ae315b619ee49434eed37c3ded4f596107cd7cf57ac085c79fc363d87a44",

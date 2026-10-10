@@ -1,5 +1,6 @@
 """Exercise 0.8 apps through the three-tool MCP interface in isolated collections.
 Usage: python3 qa/apps_080_check.py BINARY [change-verifier|onboarding-monitor IMAGE_ID_FILE]
+Use --published instead of IMAGE_ID_FILE to test approved public packages.
 No model calls, external notifications or publication occur.
 """
 import json
@@ -12,7 +13,8 @@ from universal_market_check import Client
 
 binary = str(Path(sys.argv[1]).resolve())
 app = sys.argv[2] if len(sys.argv) > 2 else 'design-review'
-image = Path(sys.argv[3]).read_text().strip() if len(sys.argv) > 3 else None
+published = len(sys.argv) > 3 and sys.argv[3] == '--published'
+image = ('published' if app != 'design-review' else None) if published else (Path(sys.argv[3]).read_text().strip() if len(sys.argv) > 3 else None)
 
 with tempfile.TemporaryDirectory(prefix='rhyven-080-app-') as directory:
     home = Path(directory)
@@ -20,12 +22,15 @@ with tempfile.TemporaryDirectory(prefix='rhyven-080-app-') as directory:
         p = subprocess.run([binary, '--home', directory, '--collection', 'trial', *args], capture_output=True, text=True, timeout=180)
         assert p.returncode == 0, (args, p.stdout, p.stderr)
         return json.loads(p.stdout)
-    path = home/'app.json'
-    command = ['app','package','apps/'+app,'--out',str(path)]
-    if image:
-        command += ['--image',image]
-    cli(*command)
-    cli('install',str(path),'--accept-permissions')
+    if published:
+        cli('registry-refresh','rhyven-ai/registry','--anonymous')
+    else:
+        path = home/'app.json'
+        command = ['app','package','apps/'+app,'--out',str(path)]
+        if image:
+            command += ['--image',image]
+        cli(*command)
+        cli('install',str(path),'--accept-permissions')
     cli('install','rhyven/work-management','--accept-permissions')
     cli('install','rhyven/project-knowledge','--accept-permissions')
     daemon = False
@@ -38,6 +43,9 @@ with tempfile.TemporaryDirectory(prefix='rhyven-080-app-') as directory:
         other = Client(home/'collections/trial',actor='reviewer',response_timeout=45)
         clients += [lead,other]
         category = 'rhyven/'+app
+        if published:
+            request = lead.call('rhyven/marketplace','action_prepare_install',{'app':category})
+            lead.call('rhyven/marketplace','action_apply',{'request_id':request['request_id']},consent=True)
         assert any(a['name']==category for a in lead.tool('rhyven_categories',{})['apps'])
         assert lead.tool('rhyven_describe',{'category':category})['functions']
         if app=='design-review':

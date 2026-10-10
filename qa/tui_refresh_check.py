@@ -58,6 +58,18 @@ with tempfile.TemporaryDirectory(prefix="rhyven-tui-refresh-") as workspace:
         os.write(master, keys)
         pump()
 
+    def review_text():
+        return " ".join(text().replace("│", " ").split())
+
+    def find_in_review(fragment):
+        # Host requirements can change the wrapped height of the review.
+        for _ in range(6):
+            pump()
+            if fragment in review_text():
+                return
+            press(b"\x1b[6~")
+        raise AssertionError(f"Missing {fragment!r} in review:\n{text()}")
+
     def version(name):
         return next(app["version"] for app in cli("list") if app["name"] == name)
 
@@ -96,10 +108,8 @@ with tempfile.TemporaryDirectory(prefix="rhyven-tui-refresh-") as workspace:
         assert version("rhyven/inventory") == old_version, "Refresh installed an update"
         press(b"ku")
         wait_for("Review app update")
-        assert "recovery backup" in text()
-        if "Added permissions: none" not in text():
-            press(b"\x1b[6~")
-        wait_for("Added permissions: none")
+        find_in_review("recovery backup")
+        find_in_review("Added permissions: none")
         cells = [[{"text": screen.buffer[y][x].data, "fg": screen.buffer[y][x].fg,
                    "bg": screen.buffer[y][x].bg, "bold": screen.buffer[y][x].bold}
                   for x in range(120)] for y in range(38)]

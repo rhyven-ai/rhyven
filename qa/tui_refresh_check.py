@@ -1,7 +1,7 @@
 """Real terminal refresh while another CLI client installs, publishes and removes.
 
 Usage: PYTHONPATH=/path/to/pyte python3 qa/tui_refresh_check.py BINARY OUTPUT.json
-All state is temporary. Manual refresh may fetch public registry metadata; no Docker required.
+All state is temporary. Registry downloads are tested separately; no network or Docker required.
 """
 import codecs
 import fcntl
@@ -26,6 +26,14 @@ with tempfile.TemporaryDirectory(prefix="rhyven-tui-refresh-") as workspace:
         result = subprocess.run([binary, "--workspace", workspace, *args], capture_output=True, text=True, timeout=30)
         assert result.returncode == 0, result.stderr
         return json.loads(result.stdout)
+
+    # Keep a catalog job lock while testing local reloads. This exercises the
+    # cached view during a busy refresh without downloading the public catalog
+    # again for every isolated UI fixture and consuming GitHub's anonymous quota.
+    state = Path(workspace) / ".rhyven"
+    state.mkdir(exist_ok=True)
+    catalog_lock = (state / "catalog-refresh.lock").open("a+")
+    fcntl.flock(catalog_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 38, 120, 0, 0))
@@ -135,3 +143,4 @@ with tempfile.TemporaryDirectory(prefix="rhyven-tui-refresh-") as workspace:
             process.wait()
         os.close(master)
         os.close(slave)
+        catalog_lock.close()

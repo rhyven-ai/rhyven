@@ -7,9 +7,11 @@ The candidate adds declarative file actions, Design Review, Change Verifier and
 Customer Onboarding Monitor. Pallet library tooling is retired without deleting
 saved source. See [release notes](release-0.8.0.md) and [upgrade notes](migration-0.8.md).
 
-Local Rust tests, lints, parser checks, app unit tests and Design Review through
-MCP have passed. Container image scans and live Docker acceptance remain release
-gates. No model cost or quality improvement is claimed.
+Rust tests, lints, parser checks and app tests passed. The three new apps passed
+MCP integration checks; both container apps passed Docker restart and security
+checks. Upgrade checks preserved records and backups from 0.5.5, 0.6.0 and 0.7.0.
+Signed download and distro acceptance remain the final publication gates.
+No model cost or quality improvement is claimed.
 
 ## Retained runtime features
 

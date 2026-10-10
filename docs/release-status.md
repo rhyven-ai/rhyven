@@ -1,16 +1,21 @@
 # Release status
 
-0.8.0 is in release validation. The currently published release remains 0.7.0
-until signed downloads, app images and acceptance checks are complete.
+Signed 0.8.0 downloads and app packages are published. See the
+[GitHub release](https://github.com/rhyven-ai/rhyven/releases/tag/v0.8.0)
+for its current release designation and assets.
 
-The candidate adds declarative file actions, Design Review, Change Verifier and
+This release adds declarative file actions, Design Review, Change Verifier and
 Customer Onboarding Monitor. Pallet library tooling is retired without deleting
 saved source. See [release notes](release-0.8.0.md) and [upgrade notes](migration-0.8.md).
 
 Rust tests, lints, parser checks and app tests passed. The three new apps passed
 MCP integration checks; both container apps passed Docker restart and security
 checks. Upgrade checks preserved records and backups from 0.5.5, 0.6.0 and 0.7.0.
-Signed download and distro acceptance remain the final publication gates.
+The exact signed packages passed ten Linux installation checks. Anonymous
+public installs and MCP use passed for all three new apps and the existing
+documentation and messaging apps. The live site passed browser and accessibility
+checks. Fresh Ubuntu VM acceptance is maintained in the
+[public installation workflow](https://github.com/rhyven-ai/rhyven/actions/workflows/public-app-acceptance.yml).
 No model cost or quality improvement is claimed.
 
 ## Retained runtime features

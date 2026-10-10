@@ -1,28 +1,7 @@
 #![cfg(target_os = "linux")]
-use agent_market_core::{authoring, catalog, native, tools, Runtime};
+use agent_market_core::{catalog, native, tools, Runtime};
 use serde_json::{json, Value};
 use std::{path::Path, process::Command};
-
-#[test]
-fn frames_preview_apply_and_refuse_overwrites_or_traversal() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("frame.json");
-    let mut f = json!({"format":"rhyven.frame/1","name":"test/frame","version":"0.1.0","files":{"src/main.py":"print('hello')"},"pallets":["test/notes@0.1.0"]});
-    std::fs::write(&path, f.to_string()).unwrap();
-    let out = dir.path().join("project");
-    assert_eq!(
-        authoring::frame(&path, &out, false).unwrap()["applied"],
-        false
-    );
-    assert!(!out.exists());
-    authoring::frame(&path, &out, true).unwrap();
-    assert!(out.join("frame-provenance.json").exists());
-    assert!(authoring::frame(&path, &out, true).is_err());
-    f["files"] = json!({"../escape":"bad"});
-    std::fs::write(&path, f.to_string()).unwrap();
-    assert!(authoring::frame(&path, &dir.path().join("another"), true).is_err());
-    assert!(!dir.path().join("escape").exists());
-}
 
 fn native_package(binary: &Path) -> Value {
     let mut p =

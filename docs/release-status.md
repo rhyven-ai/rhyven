@@ -1,28 +1,30 @@
 # Release status
 
-Version 0.7.0 adds local hash-bound pallet test evidence and the
-preferred `workflow` operation alias. See [0.7.0 changes](release-0.7.0.md).
-The current release is 0.7.0.
+Signed 0.8.0 downloads and app packages are published. See the
+[GitHub release](https://github.com/rhyven-ai/rhyven/releases/tag/v0.8.0)
+for its current release designation and assets.
 
-Rhyven 0.6.0 adds portable source libraries alongside complete headless apps.
+This release adds declarative file actions, Design Review, Change Verifier and
+Customer Onboarding Monitor. Pallet library tooling is retired without deleting
+saved source. See [release notes](release-0.8.0.md) and [upgrade notes](migration-0.8.md).
 
-New in 0.6.0:
+Rust tests, lints, parser checks and app tests passed. The three new apps passed
+MCP integration checks; both container apps passed Docker restart and security
+checks. Upgrade checks preserved records and backups from 0.5.5, 0.6.0 and 0.7.0.
+The exact signed packages passed ten Linux installation checks. Anonymous
+public installs and MCP use passed for all three new apps and the existing
+documentation and messaging apps. The live site passed browser and accessibility
+checks. Fresh Ubuntu VM acceptance is maintained in the
+[public installation workflow](https://github.com/rhyven-ai/rhyven/actions/workflows/public-app-acceptance.yml).
+No model cost or quality improvement is claimed.
 
-- Bricks, mortar and portable stacks are ordinary reusable functions, grouped
-  into versioned pallets. Python and JavaScript have built-in test launchers;
-  other source languages use their own toolchains.
-- Workspace and user-global libraries, explicit promotion and scope-aware
-  discovery. Bundled app dependencies retain exact versions and content hashes.
-- A separate Pallets marketplace view with approved source downloads through
-  the TUI or the existing three-tool MCP interface.
-- Bounded plan-based discovery, cached contracts, frames and engine app workflows.
-- Native Linux executable actions with explicit host-execution permission.
-- A bundled composition skill and updated usage guidance.
+## Retained runtime features
 
-See [portable libraries](portable-pallets.md), [app workflows](composable-capabilities.md)
-and [live pallet acceptance](pallet-marketplace-acceptance.md). The live acceptance
-used a minimal MCP client and the actual TUI on Linux; it did not claim a live
-Codex session or measured model-token savings.
+- Bounded plan matching, cached contracts and app workflows.
+- Python/JavaScript scripts, native executable actions, containers and services.
+- Shared collections, approvals, backups, migration recovery and runtime upgrades.
+
+## Earlier releases
 
 New in 0.5.5:
 

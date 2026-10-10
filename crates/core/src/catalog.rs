@@ -79,7 +79,7 @@ pub fn validate(p: &Value) -> Result<()> {
             "Embedded files require script execution",
         )?;
     }
-    crate::pallet::validate_libraries(p)?;
+    crate::vendored::validate_libraries(p)?;
     crate::updates::validate(p)?;
     crate::composition::validate(p)?;
     let composition = crate::composition::enabled(p);
@@ -127,6 +127,8 @@ pub fn validate(p: &Value) -> Result<()> {
     let allowed = [
         "state.read",
         "state.write",
+        "files.read",
+        "files.write",
         "network.connect",
         "container.execute",
         "host.execute",
@@ -260,7 +262,14 @@ pub fn validate(p: &Value) -> Result<()> {
         .as_object()
         .ok_or_else(|| Error::new("package", "objects required"))?;
     ensure(
-        (executable || connector || composition || !objects.is_empty()) && objects.len() <= 32,
+        (executable
+            || connector
+            || composition
+            || p["actions"]
+                .as_object()
+                .is_some_and(|a| a.values().any(crate::files::is_action))
+            || !objects.is_empty())
+            && objects.len() <= 32,
         "package",
         "Provide 1..32 objects",
     )?;
@@ -388,6 +397,10 @@ pub fn validate(p: &Value) -> Result<()> {
         }
         if crate::composition::is_workflow(action) {
             crate::composition::validate_action(p, action)?;
+            continue;
+        }
+        if crate::files::is_action(action) {
+            crate::files::validate_action(p, action)?;
             continue;
         }
         if connector {

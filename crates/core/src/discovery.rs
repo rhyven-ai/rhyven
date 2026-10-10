@@ -11,7 +11,7 @@ pub fn input_schema() -> Value {
         "task":text,"revision":{"type":"integer","minimum":1},"retry":{"type":"boolean","default":false},
         "steps":{"type":"array","maxItems":12,"items":{"type":"object","properties":{"id":text,"need":text,"input_fields":shape,"output_fields":shape,"output_type":{"type":"string","enum":["object","array","string","number","integer","boolean"]}},"required":["id","need"],"additionalProperties":false}},
         "permissions":{"type":"array","maxItems":16,"items":{"type":"string"}},
-        "backends":{"type":"array","maxItems":5,"items":{"type":"string","enum":["declarative","script","container","native","source"]}}
+        "backends":{"type":"array","maxItems":5,"items":{"type":"string","enum":["declarative","script","container","native"]}}
     },"required":["task","revision","steps","permissions","backends"],"additionalProperties":false})
 }
 fn db(r: &Runtime) -> Result<rusqlite::Connection> {
@@ -70,15 +70,6 @@ fn candidates(r: &Runtime) -> Result<Vec<Value>> {
             entries.push(json!({"id":format!("{name}@{version}#action_{action}"),"category":name,"function":format!("action_{action}"),"version":version,"package_hash":package_hash,"contract_hash":store::hash(a),"description":a["description"].as_str().unwrap_or("").chars().take(240).collect::<String>(),"permissions":p["permissions"],"backend":crate::execution::driver(&p),"installed":installed,"output_type":output["type"],"kind":"app_action","source_kind":"app","_input":a["input"],"_output":output,"requirements_status":"not_checked","keywords":a.get("keywords").cloned().unwrap_or(json!([]))}));
         }
     }
-    for (scope, p) in crate::pallet::scoped_packages(r)? {
-        let hash = store::hash(&p);
-        for (name, e) in p["exports"].as_object().unwrap() {
-            if entries.len() >= 5000 {
-                break;
-            }
-            entries.push(json!({"id":format!("pallet:{scope}::{}@{}#{}",p["name"].as_str().unwrap(),p["version"].as_str().unwrap(),name),"source_kind":"pallet","tests":crate::pallet::test_evidence(r, &p, Some(name))?,"scope":scope,"pallet":p["name"],"export":name,"version":p["version"],"package_hash":hash,"contract_hash":store::hash(e),"description":e["description"],"permissions":[],"execution_permissions":"consumer_defined","backend":"source","installed":false,"saved":true,"language":p["language"],"output_type":e["output"]["type"],"kind":e["kind"],"_input":e["input"],"_output":e["output"],"requirements_status":"caller_toolchain","keywords":e.get("keywords").cloned().unwrap_or(json!([]))}));
-        }
-    }
     Ok(entries)
 }
 pub fn match_plan(r: &Runtime, args: Value) -> Result<Value> {
@@ -97,12 +88,8 @@ pub fn match_plan(r: &Runtime, args: Value) -> Result<Value> {
     let started = Instant::now();
     let entries = candidates(r)?;
     let ranker = crate::ranker::config(r).unwrap_or(json!({"configuration_error":true}));
-    let mut contracts = entries.clone();
-    for entry in &mut contracts {
-        entry.as_object_mut().unwrap().remove("tests");
-    }
     let revision = store::hash(&json!([
-        contracts,
+        entries,
         std::env::consts::OS,
         std::env::consts::ARCH,
         ranker
@@ -138,13 +125,6 @@ pub fn match_plan(r: &Runtime, args: Value) -> Result<Value> {
             value["inspections_remaining"] = json!(8u64.saturating_sub(reads));
             if args["retry"] != true || n >= 2 {
                 value["cached"] = json!(true);
-                for candidate in value["candidates"].as_array_mut().unwrap() {
-                    if let Some(current) = entries.iter().find(|e| e["id"] == candidate["id"]) {
-                        if let Some(tests) = current.get("tests") {
-                            candidate["tests"] = tests.clone();
-                        }
-                    }
-                }
                 if n >= 2 {
                     value["stop_reason"] = json!("round_budget_exhausted");
                 }
@@ -166,10 +146,7 @@ pub fn match_plan(r: &Runtime, args: Value) -> Result<Value> {
                 entry["id"].as_str().unwrap(),
                 format!(
                     "{} {} {} {}",
-                    entry.get("pallet").unwrap_or(&entry["category"]),
-                    entry.get("export").unwrap_or(&entry["function"]),
-                    entry["description"],
-                    entry["keywords"]
+                    &entry["category"], &entry["function"], entry["description"], entry["keywords"]
                 )
             ],
         )?;
@@ -255,15 +232,11 @@ pub fn match_plan(r: &Runtime, args: Value) -> Result<Value> {
             }
         }
 
-        // Evidence breaks lexical ties only; it never bypasses compatibility filters.
         matches.sort_by(|a, b| {
             a["_score"]
                 .as_f64()
                 .unwrap()
                 .total_cmp(&b["_score"].as_f64().unwrap())
-                .then_with(|| {
-                    (b["tests"]["status"] == "passed").cmp(&(a["tests"]["status"] == "passed"))
-                })
         });
         for mut entry in matches.into_iter().take(3) {
             entry.as_object_mut().unwrap().remove("_score");
@@ -331,17 +304,12 @@ pub fn inspect(r: &Runtime, session: &str, id: &str) -> Result<Value> {
         .find(|e| e["id"] == id)
         .ok_or_else(|| Error::new("validation", "Candidate is not in this shortlist"))?;
 
-    let p = if entry["source_kind"] == "pallet" {
-        crate::pallet::resolve(
-            r,
-            &format!(
-                "{}::{}@{}",
-                entry["scope"].as_str().unwrap(),
-                entry["pallet"].as_str().unwrap(),
-                entry["version"].as_str().unwrap()
-            ),
-        )?
-    } else if entry["installed"] == true {
+    ensure(
+        entry["source_kind"] != "pallet",
+        "unsupported_operation",
+        "Pallet discovery was retired; start a new app search",
+    )?;
+    let p = if entry["installed"] == true {
         crate::composition::installed(r, entry["category"].as_str().unwrap())?
     } else {
         crate::catalog::resolve(
@@ -366,18 +334,11 @@ pub fn inspect(r: &Runtime, session: &str, id: &str) -> Result<Value> {
         )
         .optional()?
     {
-        let mut description: Value = serde_json::from_str(&raw)?;
-        if entry["source_kind"] == "pallet" {
-            description["tests"] = crate::pallet::test_evidence(r, &p, entry["export"].as_str())?;
-        }
+        let description: Value = serde_json::from_str(&raw)?;
         return Ok(description);
     }
     ensure(db.execute("UPDATE discovery_sessions SET inspections=inspections+1 WHERE key=?1 AND inspections<8",[session])?==1,"validation","Contract inspection budget exhausted; reuse saved descriptions or build the missing capability")?;
-    let description = if entry["source_kind"] == "pallet" {
-        crate::pallet::describe_recorded(r, &p, entry["export"].as_str(), None)?
-    } else {
-        crate::tools::describe(&p, &json!({"function":entry["function"]}))?
-    };
+    let description = crate::tools::describe(&p, &json!({"function":entry["function"]}))?;
     db.execute(
         "INSERT INTO discovery_contracts VALUES(?1,?2,?3)",
         params![session, id, description.to_string()],

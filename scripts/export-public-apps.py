@@ -32,8 +32,15 @@ GROUPS = {
     'examples/container-service-python': ('LICENSE', 'NOTICE', 'README.md', '.dockerignore',
                                           'Dockerfile', 'app.json', 'main.py', 'rhyven_service.py'),
 }
+for _app, _extra in {
+    'design-review': ('main.py', 'tests/test_reviews.py'),
+    'change-verifier': ('main.py', 'pytest_worker.py', 'rhyven_service.py', 'Dockerfile', '.dockerignore', 'tests/test_verifier.py'),
+    'onboarding-monitor': ('main.py', 'rhyven_service.py', 'Dockerfile', '.dockerignore', 'tests/test_monitor.py'),
+}.items():
+    GROUPS['apps/' + _app] = ('LICENSE', 'NOTICE', 'README.md', 'app.json', *_extra)
+
 SKILLS = ('use-rhyven', 'publish-rhyven-app', 'build-rhyven-declarative-app',
-          'build-rhyven-composition', 'build-rhyven-script-app', 'build-rhyven-container-app', 'build-rhyven-service-app')
+          'build-rhyven-script-app', 'build-rhyven-container-app', 'build-rhyven-service-app')
 # Fail with filenames only. Never echo potentially sensitive matched text.
 FORBIDDEN = (
     re.compile(r'(?i)scorn(?:saber|556)|rhyven-market|rhyven-prototype'),

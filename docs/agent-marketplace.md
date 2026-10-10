@@ -1,10 +1,8 @@
 # Agent-native marketplace and the three-tool interface
 
 Rhyven 0.6.0 introduced [composable capabilities](composable-capabilities.md):
-pinned cross-app stacks, bounded plan matching, local frames and native ELF actions.
-That document specifies engine workflows. [Portable pallets](portable-pallets.md)
-are separate source libraries used to build complete apps; saving one does not
-install an app. Existing app behavior remains compatible.
+app workflows, bounded app discovery and native executable actions. See
+[0.8 upgrade notes](migration-0.8.md) for retired library tooling.
 
 The source-built `target/release/rhyven` exposes exactly:
 
@@ -154,6 +152,4 @@ provide per-user roles or protect against an administrator impersonating consent
 ## Portable libraries
 
 The Pallets view distributes source libraries separately from installed apps.
-Agents can use `action_pallet_search`, `action_prepare_pallet` and the existing
-`action_apply` approval flow. Choose workspace or global storage explicitly.
-See [portable pallets](portable-pallets.md#marketplace-pallets).
+Pallet marketplace actions are retired in 0.8. Existing saved source is retained.

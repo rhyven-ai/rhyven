@@ -76,9 +76,6 @@ pub fn launch(runtime: &Runtime) -> Result<(PathBuf, Vec<String>)> {
             runtime.root.to_string_lossy().into_owned(),
         ]
     };
-    if let Some(project) = &runtime.pallet_workspace {
-        args.extend(["--project".into(), project.to_string_lossy().into_owned()]);
-    }
     args.extend(["--actor".into(), runtime.actor.clone(), "mcp".into()]);
     Ok((std::env::current_exe()?, args))
 }

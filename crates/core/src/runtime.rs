@@ -11,7 +11,6 @@ use std::{
 pub struct Runtime {
     pub root: PathBuf,
     pub actor: String,
-    pub pallet_workspace: Option<PathBuf>,
 }
 impl Runtime {
     pub fn collection(home: impl AsRef<Path>, name: &str, actor: &str) -> Result<Self> {
@@ -29,7 +28,6 @@ impl Runtime {
         Ok(Self {
             root,
             actor: actor.into(),
-            pallet_workspace: None,
         })
     }
     pub fn init(&self) -> Result<Value> {
@@ -383,6 +381,13 @@ impl Runtime {
                 return crate::services::call(self, &p, &args);
             }
             return crate::execution::call(&self.root, &p, &self.actor, &args);
+        }
+        if operation == "execute"
+            && crate::files::is_action(&p["actions"][args["action"].as_str().unwrap_or("")])
+        {
+            let result = crate::files::call(self, &tx, &p, &args)?;
+            tx.commit()?;
+            return Ok(result);
         }
         let mut actual_op = operation.to_owned();
         let mut actual = args.clone();

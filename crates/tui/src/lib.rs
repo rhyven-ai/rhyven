@@ -36,11 +36,6 @@ pub struct Model {
     pub message: String,
     pub scroll: u16,
     pub pane: usize,
-    pallets: Vec<Value>,
-    pallet_mode: bool,
-    pallet_selected: usize,
-    pallet_scope: Option<String>,
-
     list_area: Cell<Rect>,
     nav_area: Cell<Rect>,
     search_area: Cell<Rect>,
@@ -65,7 +60,7 @@ impl Model {
         let mut model = Self { scope: scope["collection"].as_str().map(|n| format!("Collection: {n}")).unwrap_or_else(|| format!("Workspace: {}", runtime.root.display())), packages: vec![], selected: 0, query: String::new(), review: false,
             message: "Click / Enter details · i install · u update app · x remove (Installed) · ? help · q quit".into(),
             list_area: Cell::new(Rect::default()), nav_area: Cell::new(Rect::default()), search_area: Cell::new(Rect::default()), popup_area: Cell::new(Rect::default()), list_offset: Cell::new(0),
-            scroll: 0, pane: 0, pallets: vec![], pallet_mode: false, pallet_selected: 0, pallet_scope: None, searching: false, installed_only: false, installed: vec![],
+            scroll: 0, pane: 0, searching: false, installed_only: false, installed: vec![],
             installed_packages: vec![],
             star_labels: std::collections::BTreeMap::new(), pending: None, service_output: String::new(),
             refresh_error: None, catalog_job: None, catalog_status: Value::Null, requirements_job: None, requirements: Default::default() };
@@ -113,10 +108,6 @@ impl Model {
                 )
             })
             .collect();
-        self.pallets = agent_market_core::registry::pallet_listings(&runtime.root)?
-            .as_array()
-            .unwrap()
-            .clone();
         self.packages = latest.into_values().collect();
         self.installed_packages = installed_packages;
         self.installed = installed;
@@ -142,9 +133,6 @@ impl Model {
         }
     }
     fn tick(&mut self, runtime: &Runtime) {
-        if self.pallet_scope.is_some() {
-            return;
-        }
         if let Some(result) = self
             .catalog_job
             .as_ref()
@@ -326,19 +314,6 @@ impl Model {
         self.visible().get(self.selected).map(|p| (*p).clone())
     }
     pub fn mouse(&mut self, event: MouseEvent, runtime: &Runtime) -> Result<()> {
-        if self.pallet_mode {
-            match event.kind {
-                MouseEventKind::ScrollDown => {
-                    self.key(KeyCode::Down, runtime)?;
-                }
-                MouseEventKind::ScrollUp => {
-                    self.key(KeyCode::Up, runtime)?;
-                }
-                _ => (),
-            }
-            return Ok(());
-        }
-
         let inside = |r: Rect| r.contains((event.column, event.row).into());
         if self.review || self.pane != 0 {
             match event.kind {
@@ -366,9 +341,6 @@ impl Model {
                 } else if inside(self.nav_area.get()) {
                     let row = event.row - self.nav_area.get().y;
                     match row {
-                        12 => {
-                            self.key(KeyCode::Char('p'), runtime)?;
-                        }
                         1 | 3 => {
                             self.installed_only = row == 3;
                             self.selected = 0;
@@ -413,86 +385,6 @@ impl Model {
         Ok(())
     }
     pub fn key(&mut self, key: KeyCode, runtime: &Runtime) -> Result<bool> {
-        if self.pallet_mode {
-            if let Some(scope) = self.pallet_scope.clone() {
-                match key {
-                    KeyCode::Char('y') => {
-                        if let Some(p) = self.pallets.get(self.pallet_selected) {
-                            let selector = format!(
-                                "{}@{}",
-                                p["name"].as_str().unwrap(),
-                                p["version"].as_str().unwrap()
-                            );
-                            let result = (|| {
-                                let current = agent_market_core::registry::pallet_entry(
-                                    &runtime.root,
-                                    &selector,
-                                )?;
-                                agent_market_core::error::ensure(
-                                    serde_json::to_value(&current)?["sha256"] == p["sha256"]
-                                        && current.repository == p["repository"].as_str().unwrap()
-                                        && current.asset_id == p["asset_id"].as_u64().unwrap(),
-                                    "approval_stale",
-                                    "Listing changed; refresh and review again",
-                                )?;
-                                let package = agent_market_core::registry::fetch_reviewed_pallet(
-                                    &current,
-                                    agent_market_core::registry::metadata(&runtime.root)?
-                                        .and_then(|m| m["anonymous"].as_bool())
-                                        .unwrap_or(true),
-                                )?;
-                                agent_market_core::pallet::save_scoped(runtime, &package, &scope)
-                            })();
-                            self.message = match result {
-                                Ok(_) => format!("Saved {selector} in {scope}; no source executed"),
-                                Err(e) => e.to_string(),
-                            };
-                        }
-                        self.pallet_scope = None;
-                    }
-                    KeyCode::Char('n') | KeyCode::Esc => self.pallet_scope = None,
-                    _ => (),
-                }
-            } else {
-                match key {
-                    KeyCode::Esc | KeyCode::Char('p') | KeyCode::Tab => self.pallet_mode = false,
-                    KeyCode::Char('q') => return Ok(true),
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        self.pallet_selected =
-                            (self.pallet_selected + 1).min(self.pallets.len().saturating_sub(1))
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        self.pallet_selected = self.pallet_selected.saturating_sub(1)
-                    }
-                    KeyCode::Char('w') | KeyCode::Char('g') if !self.pallets.is_empty() => {
-                        if key == KeyCode::Char('w') && runtime.pallet_workspace.is_none() {
-                            self.message = "Workspace not bound. Restart with rhyven --project /path/to/project".into();
-                        } else {
-                            self.pallet_scope = Some(
-                                if key == KeyCode::Char('w') {
-                                    "workspace"
-                                } else {
-                                    "global"
-                                }
-                                .into(),
-                            );
-                        }
-                    }
-                    KeyCode::Char('r') => {
-                        self.pallet_mode = false;
-                        self.key(KeyCode::Char('r'), runtime)?;
-                        self.pallet_mode = true;
-                    }
-                    _ => (),
-                }
-            }
-            return Ok(false);
-        }
-        if key == KeyCode::Char('p') && !self.review && !self.searching {
-            self.pallet_mode = true;
-            return Ok(false);
-        }
-
         if self.review {
             match key {
                 KeyCode::Char('y') => {
@@ -764,71 +656,6 @@ fn render_logo(frame: &mut Frame, area: Rect) {
 }
 
 pub fn render(frame: &mut Frame, model: &Model, _installed: &[String]) {
-    if model.pallet_mode {
-        let rows =
-            Layout::vertical([Constraint::Percentage(40), Constraint::Min(5)]).split(frame.area());
-        let items: Vec<ListItem> = model
-            .pallets
-            .iter()
-            .map(|p| {
-                ListItem::new(clean(&format!(
-                    "{} @ {} — {}",
-                    p["name"].as_str().unwrap(),
-                    p["version"].as_str().unwrap(),
-                    p["description"].as_str().unwrap()
-                )))
-            })
-            .collect();
-        let mut selected = ListState::default();
-        selected.select(Some(model.pallet_selected));
-        frame.render_stateful_widget(
-            List::new(items)
-                .block(panel().title(" Marketplace / Pallets "))
-                .highlight_style(Style::default().fg(CYAN)),
-            rows[0],
-            &mut selected,
-        );
-        let detail = model
-            .pallets
-            .get(model.pallet_selected)
-            .map(|p| {
-                format!(
-                    "{}
-
-Language: {} · License: {}
-Source: {}
-Trust: Unverified · Stars: {}
-SHA-256: {}
-
-Source libraries for building apps. Downloading does not execute code or install an app.",
-                    p["description"].as_str().unwrap(),
-                    p["language"],
-                    p["license"],
-                    p["repository"],
-                    p["stars"],
-                    p["sha256"]
-                )
-            })
-            .unwrap_or_else(|| {
-                "No pallets listed in the cached registry. Press r to refresh.".into()
-            });
-        let prompt = model
-            .pallet_scope
-            .as_ref()
-            .map(|s| format!("Save this source library to {s}? y confirm / n cancel"))
-            .unwrap_or_else(|| {
-                "↑/↓ select · w download to workspace · g download globally · r refresh · Esc apps"
-                    .into()
-            });
-        frame.render_widget(
-            Paragraph::new(clean(&format!("{detail}\n\n{prompt}\n\n{}", model.message)))
-                .wrap(Wrap { trim: false })
-                .block(panel()),
-            rows[1],
-        );
-        return;
-    }
-
     let area = frame.area();
     model.list_area.set(Rect::default());
     model.nav_area.set(Rect::default());
@@ -917,7 +744,6 @@ Source libraries for building apps. Downloading does not execute code or install
             Line::raw(" ×  Remove       [x]"),
             Line::raw(""),
             Line::raw(" ?  Update help  [?]"),
-            Line::raw(" ▦  Pallets      [p]"),
         ];
         frame.render_widget(
             Paragraph::new(nav).style(Style::default().fg(MUTED)).block(
@@ -1619,25 +1445,5 @@ mod tests {
         let backend = ratatui::backend::TestBackend::new(100, 30);
         let mut t = ratatui::Terminal::new(backend).unwrap();
         t.draw(|f| render(f, &m, &[])).unwrap();
-    }
-}
-
-#[cfg(test)]
-mod pallet_view_tests {
-    use super::*;
-    #[test]
-    fn empty_pallet_marketplace_renders_and_returns_to_apps() {
-        let dir = tempfile::tempdir().unwrap();
-        let runtime = Runtime::new(dir.path(), "test").unwrap();
-        let mut model = Model::new(&runtime).unwrap();
-        model.key(KeyCode::Char('p'), &runtime).unwrap();
-        assert!(model.pallet_mode);
-        let backend = ratatui::backend::TestBackend::new(100, 30);
-        let mut terminal = ratatui::Terminal::new(backend).unwrap();
-        terminal.draw(|f| render(f, &model, &[])).unwrap();
-        model.key(KeyCode::Char('g'), &runtime).unwrap();
-        assert!(model.pallet_scope.is_none());
-        model.key(KeyCode::Esc, &runtime).unwrap();
-        assert!(!model.pallet_mode);
     }
 }

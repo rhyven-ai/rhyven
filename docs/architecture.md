@@ -1,10 +1,8 @@
 # Architecture
 
 Rhyven 0.6.0 introduced [composable capabilities](composable-capabilities.md):
-pinned cross-app stacks, bounded plan matching, local frames and native ELF actions.
-That document specifies engine workflows. [Portable pallets](portable-pallets.md)
-are separate source libraries used to build complete apps; saving one does not
-install an app. Existing app behavior remains compatible.
+app workflows, bounded app discovery and native executable actions. See
+[0.8 upgrade notes](migration-0.8.md) for retired library tooling.
 
 Rhyven loads installable app contracts into a transport-independent runtime.
 Local declarative apps, container actions and persistent services share discovery

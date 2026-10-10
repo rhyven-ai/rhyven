@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix="rv-public-containers-") as folder:
     try:
         for category in (documentation, messaging):
             listing = client.call(market, "object_listing_get", {"id": category})["data"]
-            assert listing["repository"] == "rhyven-ai/registry", listing
+            assert listing["repository"] == "rhyven-ai/rhyven", listing
             assert listing["publisher_label"] == "Rhyven", listing
             request = client.call(market, "action_prepare_install", {"app": category})
             image = request["execution"]["image"]

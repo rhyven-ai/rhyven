@@ -3,11 +3,17 @@ name: Publication security audit
 on:
   workflow_call:
     inputs:
+      app:
+        type: string
+        default: all
       test_jdtls_candidate:
         type: boolean
         default: false
   workflow_dispatch:
     inputs:
+      app:
+        type: string
+        default: all
       test_jdtls_candidate:
         type: boolean
         default: false
@@ -21,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [messaging, repo-documentation-tool]
+        app: ${{ fromJSON(inputs.app == 'change-verifier' && '["change-verifier"]' || inputs.app == 'onboarding-monitor' && '["onboarding-monitor"]' || inputs.app == 'starter-runner' && '["starter-runner"]' || inputs.app == 'messaging' && '["messaging"]' || inputs.app == 'repo-documentation-tool' && '["repo-documentation-tool"]' || '["messaging","repo-documentation-tool","change-verifier","onboarding-monitor"]') }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -49,8 +55,15 @@ jobs:
           APP: ${{ matrix.app }}
         run: |
           docker build --pull --iidfile /tmp/app.id -t rhyven-audit:local "apps/$APP"
-          python3 -m unittest discover -s "apps/$APP/tests" -v
-          if [ "$APP" = messaging ]; then
+          python3 -m venv "$RUNNER_TEMP/app-tests"
+          "$RUNNER_TEMP/app-tests/bin/pip" install pytest==8.3.5
+          "$RUNNER_TEMP/app-tests/bin/python" -m unittest discover -s "apps/$APP/tests" -v
+          python3 qa/apps_080_check.py target/release/rhyven
+          if [ "$APP" = change-verifier ] || [ "$APP" = onboarding-monitor ]; then
+            python3 qa/apps_080_check.py target/release/rhyven "$APP" /tmp/app.id
+          elif [ "$APP" = starter-runner ]; then
+            python3 apps/starter-runner/tests/integration.py target/release/rhyven /tmp/app.id
+          elif [ "$APP" = messaging ]; then
             python3 qa/official_apps_check.py target/release/rhyven /tmp/app.id
           else
             python3 apps/repo-documentation-tool/tests/integration.py target/release/rhyven /tmp/app.id

@@ -1,28 +1,23 @@
 # Release status
 
-Version 0.7.0 adds local hash-bound pallet test evidence and the
-preferred `workflow` operation alias. See [0.7.0 changes](release-0.7.0.md).
-The current release is 0.7.0.
+0.8.0 is in release validation. The currently published release remains 0.7.0
+until signed downloads, app images and acceptance checks are complete.
 
-Rhyven 0.6.0 adds portable source libraries alongside complete headless apps.
+The candidate adds declarative file actions, Design Review, Change Verifier and
+Customer Onboarding Monitor. Pallet library tooling is retired without deleting
+saved source. See [release notes](release-0.8.0.md) and [upgrade notes](migration-0.8.md).
 
-New in 0.6.0:
+Local Rust tests, lints, parser checks, app unit tests and Design Review through
+MCP have passed. Container image scans and live Docker acceptance remain release
+gates. No model cost or quality improvement is claimed.
 
-- Bricks, mortar and portable stacks are ordinary reusable functions, grouped
-  into versioned pallets. Python and JavaScript have built-in test launchers;
-  other source languages use their own toolchains.
-- Workspace and user-global libraries, explicit promotion and scope-aware
-  discovery. Bundled app dependencies retain exact versions and content hashes.
-- A separate Pallets marketplace view with approved source downloads through
-  the TUI or the existing three-tool MCP interface.
-- Bounded plan-based discovery, cached contracts, frames and engine app workflows.
-- Native Linux executable actions with explicit host-execution permission.
-- A bundled composition skill and updated usage guidance.
+## Retained runtime features
 
-See [portable libraries](portable-pallets.md), [app workflows](composable-capabilities.md)
-and [live pallet acceptance](pallet-marketplace-acceptance.md). The live acceptance
-used a minimal MCP client and the actual TUI on Linux; it did not claim a live
-Codex session or measured model-token savings.
+- Bounded plan matching, cached contracts and app workflows.
+- Python/JavaScript scripts, native executable actions, containers and services.
+- Shared collections, approvals, backups, migration recovery and runtime upgrades.
+
+## Earlier releases
 
 New in 0.5.5:
 

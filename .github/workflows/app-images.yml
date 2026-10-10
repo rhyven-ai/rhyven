@@ -15,7 +15,7 @@ on:
         description: App images to build and test
         type: choice
         default: all
-        options: [all, repo-documentation-tool, messaging, starter-runner]
+        options: [all, repo-documentation-tool, messaging, starter-runner, change-verifier, onboarding-monitor]
 permissions:
   contents: read
 jobs:
@@ -25,6 +25,7 @@ jobs:
       contents: read
     uses: ./.github/workflows/security-audit.yml
     with:
+      app: ${{ inputs.app }}
       test_jdtls_candidate: ${{ inputs.test_jdtls_candidate }}
   images:
     if: ${{ !inputs.audit_only && github.repository == 'rhyven-ai/rhyven' }}
@@ -36,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJSON(inputs.app == 'starter-runner' && '["starter-runner"]' || inputs.app == 'messaging' && '["messaging"]' || inputs.app == 'repo-documentation-tool' && '["repo-documentation-tool"]' || '["repo-documentation-tool","messaging","starter-runner"]') }}
+        app: ${{ fromJSON(inputs.app == 'change-verifier' && '["change-verifier"]' || inputs.app == 'onboarding-monitor' && '["onboarding-monitor"]' || inputs.app == 'starter-runner' && '["starter-runner"]' || inputs.app == 'messaging' && '["messaging"]' || inputs.app == 'repo-documentation-tool' && '["repo-documentation-tool"]' || '["repo-documentation-tool","messaging","starter-runner","change-verifier","onboarding-monitor"]') }}
     env:
       GH_TOKEN: ${{ github.token }}
       APP: ${{ matrix.app }}
@@ -71,8 +72,12 @@ jobs:
           printf '%s\n' "$image" > image-name.txt
       - name: Test app behavior and runtime integration
         run: |
-          python3 -m unittest discover -s "apps/$APP/tests" -v
-          if [ "$APP" = repo-documentation-tool ]; then
+          python3 -m venv "$RUNNER_TEMP/image-tests"
+          "$RUNNER_TEMP/image-tests/bin/pip" install pytest==8.3.5
+          "$RUNNER_TEMP/image-tests/bin/python" -m unittest discover -s "apps/$APP/tests" -v
+          if [ "$APP" = change-verifier ] || [ "$APP" = onboarding-monitor ]; then
+            python3 qa/apps_080_check.py runtime/rhyven-linux-x86_64 "$APP" image.id
+          elif [ "$APP" = repo-documentation-tool ]; then
             python3 apps/repo-documentation-tool/tests/integration.py runtime/rhyven-linux-x86_64 image.id
           elif [ "$APP" = starter-runner ]; then
             python3 apps/starter-runner/tests/integration.py runtime/rhyven-linux-x86_64 image.id

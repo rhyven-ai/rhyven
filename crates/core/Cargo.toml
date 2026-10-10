@@ -8,6 +8,10 @@ repository.workspace = true
 
 [dependencies]
 libc = "0.2"
+base64 = "0.22"
+csv = "1.4"
+quick-xml = "0.38"
+zip = { version = "4", default-features = false, features = ["deflate"] }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

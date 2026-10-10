@@ -33,4 +33,6 @@ pub mod discovery;
 pub mod native;
 pub mod ranker;
 
-pub mod pallet;
+mod vendored;
+
+pub mod files;

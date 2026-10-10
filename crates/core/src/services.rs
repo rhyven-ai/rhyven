@@ -469,7 +469,6 @@ pub(crate) fn callback(r: &Runtime, p: &Value, generation: &str, message: &Value
     );
     let scoped = Runtime {
         root: r.root.clone(),
-        pallet_workspace: r.pallet_workspace.clone(),
         actor,
     };
     scoped.call("rhyven_call", json!({"category":message["category"],"function":message["function"],"args":message["args"]}))

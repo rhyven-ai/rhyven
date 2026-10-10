@@ -11,20 +11,15 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
-Version **0.7.0** adds local test evidence for exact pallet hashes
-and the `workflow` operation name for app workflows. Existing `stack` operations
-remain compatible. See [0.7.0 changes](docs/release-0.7.0.md).
+Version **0.8.0** adds declarative file operations and three apps for code review,
+change verification and customer onboarding. It retires pallet library tooling
+while retaining app workflows and native execution. See [release notes](docs/release-0.8.0.md)
+and [upgrade notes](docs/migration-0.8.md).
 
-Version **0.6.0** adds portable source libraries and reusable app composition. See
-[portable code libraries](docs/portable-pallets.md) for reusable bricks, mortar,
-stacks and pallets that can be imported without Rhyven. Complete apps remain
-separate; [app workflows](docs/composable-capabilities.md) provide engine-managed
-composition, bounded discovery, frames and native executable actions. The installer below downloads the current signed release.
-
-Version **0.7.0** supports Linux x86-64 and ARM64. Native Windows and macOS
+Version **0.8.0** supports Linux x86-64 and ARM64. Native Windows and macOS
 are not supported release targets. Individual app images may support fewer architectures.
 
-The signed **0.7.0** installer and platform binaries are available at
+The signed **0.8.0** installer and platform binaries are available at
 [rhyvenai.com](https://rhyvenai.com). App versions and container image digests
 are released independently.
 See [installation](docs/installation.md) and [release status](docs/release-status.md).
@@ -173,13 +168,13 @@ knowledge and human questions. It requires Docker and your own model endpoint.
 [User Questions](apps/user-questions/README.md) is a separate declarative app
 usable by either path. General apps remain independent of the starter.
 
-## Reusable code for your agent
+## Apps that work together
 
-Save tested functions as pallets, compose them into workflows, and bundle them
-into complete apps. Keep project helpers in a workspace or share libraries across
-your agents. Each useful addition gives future tasks a tested starting point.
+Use [Design Review](apps/design-review/README.md) to collect proposals through your
+harness, then [Change Verifier](apps/change-verifier/README.md) to check a fix.
+Save results in work and knowledge apps so another agent can continue.
+[Customer Onboarding Monitor](apps/onboarding-monitor/README.md) tracks incoming
+documents, replies and deadlines for an agent to review.
 
-Open the TUI and press **p** to browse pallets, or read the
-[portable library guide](docs/portable-pallets.md). The example
-[`rhyven/text-kit`](https://github.com/rhyven-ai/text-kit) works through Rhyven and
-as ordinary Python source. Downloading source never grants execution permission.
+Custom apps can use [declarative file operations](docs/files.md) and
+[app workflows](docs/composable-capabilities.md) through the same three tools.

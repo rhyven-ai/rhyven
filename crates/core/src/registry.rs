@@ -61,26 +61,6 @@ pub struct Index {
     pub pallets: Vec<PalletEntry>,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct PalletIndex {
-    format: u32,
-    pallets: Vec<PalletEntry>,
-}
-fn merge_pallet_index(mut index: Index, bytes: Option<&[u8]>) -> Result<Index> {
-    if let Some(bytes) = bytes {
-        let extra: PalletIndex = serde_json::from_slice(bytes)?;
-        ensure(
-            extra.format == 1 && index.pallets.is_empty(),
-            "registry",
-            "Use either embedded pallets or pallets.json, not both",
-        )?;
-        index.pallets = extra.pallets;
-    }
-    validate(&index, None)?;
-    Ok(index)
-}
-
 fn repository(s: &str) -> bool {
     let parts: Vec<_> = s.split('/').collect();
     parts.len() == 2
@@ -298,18 +278,8 @@ pub fn read_index(path: &Path) -> Result<Index> {
         "Index exceeds 1 MiB",
     )?;
     let index = serde_json::from_slice(&std::fs::read(path)?)?;
-    let sidecar = path.with_file_name("pallets.json");
-    let extra = if sidecar.exists() {
-        ensure(
-            std::fs::metadata(&sidecar)?.len() <= MAX,
-            "registry",
-            "Pallet index exceeds 1 MiB",
-        )?;
-        Some(std::fs::read(sidecar)?)
-    } else {
-        None
-    };
-    merge_pallet_index(index, extra.as_deref())
+    validate(&index, None)?;
+    Ok(index)
 }
 
 fn token(anonymous: bool) -> Option<String> {
@@ -412,17 +382,10 @@ impl Github {
         url.query_pairs_mut().append_pair("ref", branch);
         let index: Index =
             serde_json::from_slice(&self.get(url, "application/vnd.github.raw+json")?)?;
-        let mut sidecar = Url::parse(&format!(
-            "https://api.github.com/repos/{repo}/contents/pallets.json"
-        ))
-        .unwrap();
-        sidecar.query_pairs_mut().append_pair("ref", branch);
-        merge_pallet_index(
-            index,
-            self.get_optional(sidecar, "application/vnd.github.raw+json")?
-                .as_deref(),
-        )
+        validate(&index, None)?;
+        Ok(index)
     }
+
     fn package(&self, e: &Entry) -> Result<Value> {
         let url = Url::parse(&format!(
             "https://api.github.com/repos/{}/releases/assets/{}",
@@ -530,9 +493,6 @@ pub fn check(path: &Path, base: Option<&Path>, anonymous: bool) -> Result<Value>
     let base = base.map(read_index).transpose()?;
     validate(&index, base.as_ref())?;
     let client = Github::new(anonymous)?;
-    for e in &index.pallets {
-        download_pallet(&client, e)?;
-    }
     for e in &index.apps {
         let p = client.package(e)?;
         if e.hosting == "local"
@@ -676,12 +636,7 @@ pub fn refresh(root: &Path, repo: &str, branch: &str, anonymous: bool) -> Result
     }
     let checked_at = crate::marketplace::now();
     let mut stars = serde_json::Map::new();
-    for repository in index
-        .apps
-        .iter()
-        .map(|e| &e.repository)
-        .chain(index.pallets.iter().map(|e| &e.repository))
-    {
+    for repository in index.apps.iter().map(|e| &e.repository) {
         if stars.contains_key(repository) {
             continue;
         }
@@ -702,7 +657,7 @@ pub fn refresh(root: &Path, repo: &str, branch: &str, anonymous: bool) -> Result
         &value,
     )?;
     Ok(
-        json!({"refreshed":repo,"listings":index.apps.len(),"pallets":index.pallets.len(),"package_downloads":0,"checked_at":checked_at}),
+        json!({"refreshed":repo,"listings":index.apps.len(),"package_downloads":0,"checked_at":checked_at}),
     )
 }
 
@@ -872,113 +827,9 @@ pub fn resolve_install(root: &Path, selector: &str, accepted: bool) -> Result<Va
 }
 
 /// Pallets use the same GitHub asset transport, but never enter the app catalog.
-pub fn pallet_listings(root: &Path) -> Result<Value> {
-    let cache = metadata(root)?.or_else(|| read_cache(root).ok());
-    let Some(cache) = cache else {
-        return Ok(json!([]));
-    };
-    let index: Index = serde_json::from_value(cache["index"].clone())?;
-    validate(&index, None)?;
-    Ok(json!(index
-        .pallets
-        .iter()
-        .map(|e| {
-            let mut v = serde_json::to_value(e).unwrap();
-            v["kind"] = json!("pallet");
-            v["trust"] = json!("Unverified");
-            v["stars"] = cache["stars"][&e.repository]["count"].clone();
-            v
-        })
-        .collect::<Vec<_>>()))
-}
-pub fn verify_pallet(e: &PalletEntry, bytes: &[u8]) -> Result<Value> {
-    ensure(
-        bytes.len() as u64 <= MAX && format!("{:x}", Sha256::digest(bytes)) == e.sha256,
-        "integrity",
-        "Pallet release SHA-256 mismatch",
-    )?;
-    let p: Value = serde_json::from_slice(bytes)?;
-    crate::pallet::validate(&p)?;
-    ensure(
-        p["name"] == e.name
-            && p["version"] == e.version
-            && p["description"] == e.description
-            && p["language"] == e.language
-            && p["license"] == e.license,
-        "integrity",
-        "Pallet metadata differs from registry",
-    )?;
-    Ok(p)
-}
-fn download_pallet(client: &Github, e: &PalletEntry) -> Result<Value> {
-    let url = Url::parse(&format!(
-        "https://api.github.com/repos/{}/releases/assets/{}",
-        e.repository, e.asset_id
-    ))
-    .unwrap();
-    verify_pallet(e, &client.get(url, "application/octet-stream")?)
-}
-pub fn fetch_pallet(
-    r: &crate::Runtime,
-    selector: &str,
-    scope: &str,
-    accepted: bool,
-) -> Result<Value> {
-    ensure(
-        accepted,
-        "approval_required",
-        "Review source metadata and explicitly accept the download; no source will be executed",
-    )?;
-    let e = pallet_entry(&r.root, selector)?;
-    let anonymous = metadata(&r.root)?
-        .and_then(|m| m["anonymous"].as_bool())
-        .unwrap_or(true);
-    let p = download_pallet(&Github::new(anonymous)?, &e)?;
-    crate::pallet::save_scoped(r, &p, scope)
-}
-
-pub fn fetch_reviewed_pallet(e: &PalletEntry, anonymous: bool) -> Result<Value> {
-    download_pallet(&Github::new(anonymous)?, e)
-}
-pub fn pallet_entry(root: &Path, selector: &str) -> Result<PalletEntry> {
-    let entries = pallet_listings(root)?;
-    let mut e = entries
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|p| {
-            format!(
-                "{}@{}",
-                p["name"].as_str().unwrap(),
-                p["version"].as_str().unwrap()
-            ) == selector
-        })
-        .cloned()
-        .ok_or_else(|| Error::new("not_found", "Pallet not listed; use name@version"))?;
-    for key in ["kind", "trust", "stars"] {
-        e.as_object_mut().unwrap().remove(key);
-    }
-    Ok(serde_json::from_value(e)?)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn separate_pallet_index_keeps_legacy_apps_readable() {
-        let (index, _) = fixture();
-        let original = serde_json::to_value(&index).unwrap();
-        assert!(original.get("pallets").is_none());
-        assert_eq!(
-            merge_pallet_index(index.clone(), None).unwrap().apps,
-            index.apps
-        );
-        let merged =
-            merge_pallet_index(index.clone(), Some(br#"{"format":1,"pallets":[]}"#)).unwrap();
-        assert_eq!(merged.apps, index.apps);
-        assert!(merge_pallet_index(index.clone(), Some(br#"{"format":2,"pallets":[]}"#)).is_err());
-        assert!(merge_pallet_index(index, Some(b"invalid")).is_err());
-    }
     #[test]
     fn collections_reuse_verified_release_and_detect_corruption() {
         let d = tempfile::tempdir().unwrap();

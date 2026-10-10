@@ -73,7 +73,7 @@ jobs:
       - name: Test app behavior and runtime integration
         run: |
           python3 -m venv "$RUNNER_TEMP/image-tests"
-          "$RUNNER_TEMP/image-tests/bin/pip" install pytest==8.3.5
+          "$RUNNER_TEMP/image-tests/bin/pip" install pytest==9.0.3
           "$RUNNER_TEMP/image-tests/bin/python" -m unittest discover -s "apps/$APP/tests" -v
           if [ "$APP" = change-verifier ] || [ "$APP" = onboarding-monitor ]; then
             python3 qa/apps_080_check.py runtime/rhyven-linux-x86_64 "$APP" image.id

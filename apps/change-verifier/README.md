@@ -20,7 +20,7 @@ unfinished work becomes `interrupted`; explicitly run it again to retry. Only on
 comparison runs at a time. Each stage has a 1–30 second timeout. Up to 100
 comparisons are stored per collection. Backups include its SQLite reports.
 
-The image includes Python and pytest 8.3.5. It runs a fixed pytest command with
+The image includes Python and pytest 9.0.3. It runs a fixed pytest command with
 plugin autoload disabled and no project config file. It does not accept shell
 commands. Projects needing other dependencies require a separately reviewed
 image. Supply existing tests in the candidate; an empty suite is inconclusive.
@@ -40,7 +40,7 @@ Knowledge. The calling agent remains responsible for interpreting the result.
 
 ```sh
 python3 -m unittest discover -s apps/change-verifier/tests -v
-# The test environment must have pytest==8.3.5 installed.
+# The test environment must have pytest==9.0.3 installed.
 docker build -t change-verifier ./apps/change-verifier
 # Package with the immutable image digest returned by your registry:
 rhyven app package apps/change-verifier --image ghcr.io/OWNER/change-verifier@sha256:DIGEST --out change-verifier.rhyven.json

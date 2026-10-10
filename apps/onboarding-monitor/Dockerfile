@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ARG BASE=python:3.12-alpine
 FROM ${BASE}
+RUN apk upgrade --no-cache zlib
 # This service has no third-party Python dependencies. Do not ship an unused installer.
 RUN python -m pip uninstall -y pip
 WORKDIR /app

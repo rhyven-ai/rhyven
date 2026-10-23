@@ -1,12 +1,24 @@
 # Release status
 
-The source version is **0.9.0**. It adds Wobbegong retrieval, serving-engine
-identity, saved-connection probes, request reports, bounded audit change reads
-and `app check`. See [0.9 release notes](release-0.9.0.md) and
-[upgrade notes](migration-0.9.md). Signed 0.9.0 binaries and installer publication
-are a separate release step; the published downloads described below are 0.8.0.
+Signed **0.9.0** binaries and Linux packages are published at
+[rhyvenai.com](https://rhyvenai.com) and in the
+[GitHub release](https://github.com/rhyven-ai/rhyven/releases/tag/v0.9.0).
+The source, website and installer identify 0.9.0.
 
-## Published 0.8.0 distribution
+This release adds Wobbegong retrieval, serving-engine identity, saved-connection
+probes, request reports, bounded audit change reads and `app check`. See
+[release notes](release-0.9.0.md) and [upgrade notes](migration-0.9.md).
+
+Validation includes 112 Rust tests, workspace lints, portable x86-64/ARM64 builds,
+MCP/REST and collection checks, container isolation and persistent-service acceptance.
+The exact signed packages passed all ten Linux installation jobs, including native
+ARM64 Wobbegong queries and retained state after removal/reinstallation. The website
+passed browser, accessibility and security checks; its deployed preview installer
+verified the release and installed 0.9.0. All ten earlier website release directories
+remain available with their original signed bytes. No model cost or retrieval-quality
+improvement is claimed.
+
+## Earlier 0.8.0 distribution
 
 Signed 0.8.0 downloads and app packages are published. See the
 [GitHub release](https://github.com/rhyven-ai/rhyven/releases/tag/v0.8.0)

@@ -65,6 +65,7 @@ pub fn backup(runtime: &Runtime, out: &Path) -> Result<Value> {
     copy.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;")?;
     drop(copy);
     let scope = collections::scope(&runtime.root)?;
+    crate::wobbegong::backup(runtime, temp.path())?;
     let total = crate::recovery_archive::write(&state, &snapshot, out, scope.clone())?;
     Ok(json!({"backup":out,"format":3,"bytes":total,"scope":scope}))
 }
@@ -72,6 +73,12 @@ pub fn backup(runtime: &Runtime, out: &Path) -> Result<Value> {
 pub(crate) fn safe_path(path: &str, directory: bool) -> bool {
     if path == "state.sqlite3" && !directory {
         return true;
+    }
+    if path == ".wobbegong" {
+        return directory;
+    }
+    if path == ".wobbegong/wobbegong.db" {
+        return !directory;
     }
     let parts: Vec<_> = path.split('/').collect();
     !parts.is_empty()

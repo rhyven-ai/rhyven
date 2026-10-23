@@ -364,6 +364,15 @@ fn handle(
     let scoped = Runtime::new(&runtime.root, &actor)?;
     let privileged = management.is_some()
         && headers.get("x-rhyven-management").map(String::as_str) == management;
+    // These exact routes only inspect the serving collection. Package management
+    // and all other marketplace actions retain the separate credential gate.
+    let inspection = ["connection_info", "request_report", "changes"]
+        .iter()
+        .any(|name| {
+            let path = path.trim_matches('/');
+            path == format!("categories/rhyven/marketplace/functions/action_{name}")
+                || path == format!("apps/rhyven/marketplace/actions/{name}")
+        });
     let response = if path.starts_with("/approvals/") {
         if !privileged {
             Err(Error::new("permission", "Management credential required"))
@@ -389,6 +398,7 @@ fn handle(
                 .trim_matches('/')
                 .starts_with("categories/rhyven/marketplace/functions/action_"))
             && !privileged
+            && !inspection
     {
         Err(Error::new(
             "permission",

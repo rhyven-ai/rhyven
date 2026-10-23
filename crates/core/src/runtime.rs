@@ -70,6 +70,9 @@ impl Runtime {
         if name == crate::marketplace::APP {
             return Ok(crate::marketplace::describe());
         }
+        if name == crate::wobbegong::APP {
+            return Ok(crate::wobbegong::manifest());
+        }
         if name == crate::services::APP {
             return Ok(crate::services::manifest());
         }
@@ -114,7 +117,9 @@ impl Runtime {
     pub(crate) fn install_direct(&self, p: &Value, accepted: bool, update: bool) -> Result<Value> {
         let _maintenance = crate::maintenance::lock(&self.root)?;
         ensure(
-            p["name"] != crate::marketplace::APP && p["name"] != crate::services::APP,
+            p["name"] != crate::marketplace::APP
+                && p["name"] != crate::services::APP
+                && p["name"] != crate::wobbegong::APP,
             "permission",
             "Reserved platform capability",
         )?;
@@ -178,7 +183,9 @@ impl Runtime {
     pub fn uninstall(&self, name: &str) -> Result<Value> {
         let _maintenance = crate::maintenance::lock(&self.root)?;
         ensure(
-            name != crate::marketplace::APP && name != crate::services::APP,
+            name != crate::marketplace::APP
+                && name != crate::services::APP
+                && name != crate::wobbegong::APP,
             "permission",
             "Reserved platform capability",
         )?;
@@ -191,8 +198,11 @@ impl Runtime {
         } else {
             None
         };
-        let db = store::open(&self.root)?;
-        db.execute("UPDATE apps SET active=0 WHERE name=?1", [name])?;
+        let mut db = store::open(&self.root)?;
+        let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        tx.execute("UPDATE apps SET active=0 WHERE name=?1", [name])?;
+        tx.execute("INSERT INTO events(app,event) VALUES(?1,?2)",params![name,json!({"operation":"uninstall","actor":self.actor,"time":now(),"data_retained":true}).to_string()])?;
+        tx.commit()?;
         Ok(json!({"uninstalled":name,"data_retained":true}))
     }
     pub fn call(&self, operation: &str, args: Value) -> Result<Value> {
@@ -209,7 +219,7 @@ impl Runtime {
                     Ok(json!({"name":app["name"],"description":app["description"],"version":app["version"],"contract_hash":crate::tools::contract_hash(&package)}))
                 }).collect::<Result<_>>()?;
                 return Ok(
-                    json!({"rhyven_protocol":1,"collection":collections::scope(&self.root)?["collection"],"workspace":self.root,"apps":apps}),
+                    json!({"rhyven_protocol":1,"collection":collections::scope(&self.root)?["collection"],"workspace":self.root,"engine":crate::inspection::identity(self)?,"apps":apps}),
                 );
             }
             "rhyven_describe" => {
@@ -239,6 +249,9 @@ impl Runtime {
             "rhyven_call" => return crate::tools::invoke(self, args),
             _ => (),
         }
+        if args["app"] == crate::wobbegong::APP {
+            return crate::wobbegong::dispatch(self, operation, args);
+        }
         if args["app"] == crate::services::APP {
             catalog::keys(&args, &["app", "action", "args", "request_id"])?;
             return crate::services::dispatch(self, operation, args);
@@ -263,6 +276,9 @@ impl Runtime {
                 apps.as_array_mut()
                     .unwrap()
                     .push(crate::services::summary());
+                apps.as_array_mut()
+                    .unwrap()
+                    .push(crate::wobbegong::summary());
                 if collections::home_for(&self.root)?.is_some() {
                     for app in apps.as_array_mut().unwrap() {
                         app["scope"] = collections::scope(&self.root)?;
@@ -628,6 +644,14 @@ impl Runtime {
             tx.execute(
                 "INSERT INTO receipts(actor,request,fingerprint,result) VALUES(?1,?2,?3,?4)",
                 params![self.actor, request, fingerprint, result.to_string()],
+            )?;
+            crate::inspection::context(
+                &tx,
+                &self.actor,
+                request,
+                p["name"].as_str().unwrap(),
+                operation,
+                "raw",
             )?;
         }
         tx.commit()?;

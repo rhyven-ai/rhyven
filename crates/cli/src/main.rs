@@ -3,6 +3,7 @@ mod import;
 mod setup;
 mod skills;
 mod upgrade;
+mod wobbegong;
 use agent_market_core::{
     catalog, conformance, error::ensure, http, registry, store, tools::AgentSession, Result,
     Runtime,
@@ -62,6 +63,16 @@ enum AppCommand {
         #[arg(long, default_value="declarative", value_parser=["declarative", "container", "service", "python", "javascript"])]
         runtime: String,
     },
+    /// Validate and test a draft in temporary state, optionally writing a tested package.
+    Check {
+        path: PathBuf,
+        #[arg(long)]
+        out: Option<PathBuf>,
+        #[arg(long)]
+        allow_container: bool,
+        #[arg(long)]
+        allow_host: bool,
+    },
     /// Validate the app contract.
     Validate { path: PathBuf },
     /// Run isolated app behavior tests.
@@ -99,6 +110,17 @@ impl From<AppCommand> for Command {
             AppCommand::ImportMcp(options) => Self::ImportMcp(options),
             AppCommand::ImportOpenapi(options) => Self::ImportOpenapi(options),
             AppCommand::Init { name, dir, runtime } => Self::New { name, dir, runtime },
+            AppCommand::Check {
+                path,
+                out,
+                allow_container,
+                allow_host,
+            } => Self::Check {
+                path,
+                out,
+                allow_container,
+                allow_host,
+            },
             AppCommand::Validate { path } => Self::Validate { path },
             AppCommand::Test {
                 path,
@@ -154,6 +176,11 @@ enum DaemonCommand {
 }
 #[derive(Subcommand)]
 enum Command {
+    /// Ingest and query local source data through Wobbegong BM25 search.
+    Wobbegong {
+        #[command(subcommand)]
+        command: wobbegong::Command,
+    },
     /// Pin installed app dependencies and write an app workflow draft; never installs.
     Compose {
         #[arg(long)]
@@ -322,6 +349,16 @@ enum Command {
         dir: PathBuf,
         #[arg(long, default_value="declarative", value_parser=["declarative", "container", "service", "python", "javascript"])]
         runtime: String,
+    },
+    #[command(hide = true)]
+    Check {
+        path: PathBuf,
+        #[arg(long)]
+        out: Option<PathBuf>,
+        #[arg(long)]
+        allow_container: bool,
+        #[arg(long)]
+        allow_host: bool,
     },
     #[command(hide = true)]
     Validate {
@@ -532,6 +569,7 @@ fn run() -> Result<()> {
         command => command,
     };
     let value = match command {
+        Command::Wobbegong { command } => wobbegong::run(&runtime, command)?,
         Command::ImportMcp(options) => import::mcp(options)?,
         Command::ImportOpenapi(options) => import::openapi(options)?,
         Command::Connect(options) => connect::run(&runtime, options)?,
@@ -802,6 +840,32 @@ fn run() -> Result<()> {
         Command::Validate { path } => {
             let p = catalog::read(&path)?;
             json!({"valid":true,"name":p["name"],"sha256":store::hash(&p),"certified":false})
+        }
+        Command::Check {
+            path,
+            out,
+            allow_container,
+            allow_host,
+        } => {
+            if let Some(out) = &out {
+                ensure(
+                    !out.exists(),
+                    "io",
+                    "Output already exists; choose a new package path",
+                )?;
+            }
+            let package = catalog::read(&path)?;
+            let fixtures = conformance::dependency_fixtures(&runtime, &package)?;
+            let tests = conformance::run_with_dependencies(
+                &package,
+                &fixtures,
+                allow_container,
+                allow_host,
+            )?;
+            if let Some(out) = &out {
+                write_new(out, &serde_json::to_vec_pretty(&package)?)?;
+            }
+            json!({"valid":true,"app":package["name"],"sha256":store::hash(&package),"tests":tests,"package":out,"state":"temporary; discarded after testing","installed":false})
         }
         Command::Test {
             path,

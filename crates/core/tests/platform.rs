@@ -84,7 +84,7 @@ fn all_apps_conform_and_empty_runtime_has_three_stable_tools() {
             .as_array()
             .unwrap()
             .len(),
-        7
+        8
     );
     assert_eq!(tools, session.definitions());
     for p in catalog::bundled() {
@@ -99,7 +99,11 @@ fn all_apps_conform_and_empty_runtime_has_three_stable_tools() {
         .collect();
     assert_eq!(
         names,
-        vec![json!("rhyven/marketplace"), json!("rhyven/runtime")]
+        vec![
+            json!("rhyven/marketplace"),
+            json!("rhyven/runtime"),
+            json!("rhyven/wobbegong")
+        ]
     );
     for app in categories["apps"].as_array().unwrap() {
         assert_eq!(app["contract_hash"].as_str().unwrap().len(), 64);

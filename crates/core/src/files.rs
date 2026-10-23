@@ -394,6 +394,7 @@ pub fn call(r: &Runtime, db: &Connection, p: &Value, request: &Value) -> Result<
             "INSERT INTO receipts(actor,request,fingerprint,result) VALUES(?1,?2,?3,?4)",
             params![r.actor, id, fingerprint, result.to_string()],
         )?;
+        crate::inspection::context(db, &r.actor, id, app, op, "raw")?;
     }
     Ok(result)
 }

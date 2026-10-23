@@ -2,7 +2,7 @@
 use crate::{catalog, collections, error::ensure, schema, store, Error, Result, Runtime};
 use serde_json::{json, Value};
 use std::path::Path;
-const PARTS: [&str; 2] = ["state.sqlite3", "containers"];
+const PARTS: [&str; 3] = ["state.sqlite3", "containers", ".wobbegong"];
 pub fn validate(p: &Value) -> Result<()> {
     if let Some(action) = p.get("health_action") {
         ensure(

@@ -42,6 +42,9 @@ pub fn describe() -> Value {
     actions.insert("inspect_candidate".into(),json!({"description":"Read one shortlisted contract within the eight-inspection budget","input":input(json!({"session":string,"candidate":string}), &["session","candidate"])}));
     actions.insert("workflow_report".into(),json!({"description":"Read this actor's workflow run report","input":input(json!({"request_id":string}), &["request_id"])}));
     actions.insert("stack_report".into(),json!({"description":"Deprecated alias for workflow_report","input":input(json!({"request_id":string}), &["request_id"])}));
+    actions.insert("connection_info".into(),json!({"description":"Identify the serving engine process, version, executable, actor and collection; never infer these from a local CLI", "input":input(json!({}), &[])}));
+    actions.insert("request_report".into(),json!({"description":"Inspect this actor's durable receipt and workflow evidence without retrying; unknown outcomes remain unknown", "input":input(json!({"request_id":{"type":"string","minLength":1,"maxLength":128}}), &["request_id"])}));
+    actions.insert("changes".into(),json!({"description":"Read bounded collection audit summaries since a cursor. Polling only; does not wake agents or observe external app changes", "input":input(json!({"after":{"type":"integer","minimum":0},"limit":{"type":"integer","minimum":1,"maximum":100},"app":{"type":"string"}}), &[])}));
     let long_text = json!({"type":"string"});
     let hosting = input(
         json!({"mode":string,"endpoint":long_text,"auth_env":string,"auth":long_text,"privacy":long_text,"account":long_text,"billing":long_text,"domains":{"type":"array","items":string}}),
@@ -485,6 +488,9 @@ pub fn call(r: &Runtime, operation: &str, args: Value) -> Result<Value> {
                 "workflow_report" | "stack_report" => {
                     crate::composition::report(r, text(&input, "request_id")?)
                 }
+                "connection_info" => crate::inspection::identity(r),
+                "request_report" => crate::inspection::request_report(r, input),
+                "changes" => crate::inspection::changes(r, input),
                 "doctor" => Ok(crate::container::doctor()),
                 "prepare_install" => prepare(r, "install", &input),
                 "prepare_update" => prepare(r, "update", &input),

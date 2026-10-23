@@ -77,7 +77,7 @@ pub fn run_with_dependencies(
         "conformance",
         "At least one contract case required",
     )?;
-    for case in cases {
+    for (index, case) in cases.iter().enumerate() {
         catalog::keys(case, &["operation", "args", "expect", "error"])?;
         let mut args = references(&case["args"], &results)?;
         args["app"] = package["name"].clone();
@@ -93,12 +93,28 @@ pub fn run_with_dependencies(
             )?;
             results.push(json!({"error":code}));
         } else {
-            let result = result?;
+            let result = result.map_err(|e| {
+                Error::new(
+                    &e.code,
+                    format!(
+                        "Case {} ({}) failed: {}",
+                        index + 1,
+                        case["operation"].as_str().unwrap_or("unknown"),
+                        e.message
+                    ),
+                )
+            })?;
             for (path, expected) in case["expect"].as_object().into_iter().flatten() {
                 ensure(
                     at(&result, path) == Some(expected),
                     "conformance",
-                    format!("Expectation failed: {path}"),
+                    format!(
+                        "Case {} ({}) expectation failed at {path}: expected {}, received {}",
+                        index + 1,
+                        case["operation"].as_str().unwrap_or("unknown"),
+                        expected,
+                        at(&result, path).unwrap_or(&Value::Null)
+                    ),
                 )?;
             }
             results.push(result);

@@ -92,6 +92,11 @@ fn python_calls_validate_results_preserve_receipts_and_recover_collection_data()
     let result = r.call("rhyven_call", args.clone()).unwrap();
     assert_eq!(result["words"], 2);
     assert_eq!(result["calls"], 1);
+    let report =
+        agent_market_core::inspection::request_report(&r, json!({"request_id":"retry-me"}))
+            .unwrap();
+    assert_eq!(report["status"], "complete");
+    assert_eq!(report["result"], result);
     assert_eq!(result, r.call("rhyven_call", args).unwrap());
     assert_eq!(call(&r, &p, None).unwrap()["calls"], 2);
     let other = Runtime::collection(home.path(), "two", "another-agent").unwrap();
@@ -167,6 +172,10 @@ fn failed_or_invalid_results_cannot_be_blindly_retried() {
         p["files"]["main.py"] = json!(source);
         r.install(&p, true, false).unwrap();
         assert!(call(&r, &p, Some("failed")).is_err());
+        let report =
+            agent_market_core::inspection::request_report(&r, json!({"request_id":"failed"}))
+                .unwrap();
+        assert_eq!(report["status"], "unknown");
         assert_eq!(
             call(&r, &p, Some("failed")).unwrap_err().code,
             "script_incomplete"

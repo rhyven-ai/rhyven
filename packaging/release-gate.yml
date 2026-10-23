@@ -25,6 +25,7 @@ jobs:
           python3 qa/universal_market_check.py target/release/rhyven
           python3 qa/shared_runtime_check.py target/release/rhyven
           python3 qa/collections_check.py target/release/rhyven
+          python3 qa/connection_check.py target/release/rhyven
           python3 qa/knowledge_merge_check.py target/release/rhyven
           python3 qa/connector_check.py target/release/rhyven
       - name: Distribution and source exports
@@ -39,11 +40,13 @@ jobs:
         run: |
           docker build --iidfile /tmp/example.id examples/container-python
           docker build --iidfile /tmp/probe.id qa/fixtures/container-probe
+          docker build --iidfile /tmp/service.id examples/container-service-python
       - name: Container isolation and recovery
         run: |
           python3 qa/container_check.py target/release/rhyven /tmp/example.id
           python3 qa/container_limits_check.py target/release/rhyven /tmp/probe.id
           python3 qa/recovery_check.py target/release/rhyven /tmp/probe.id
+          python3 qa/service_check.py target/release/rhyven /tmp/service.id
       - name: Optional starter apps
         run: |
           python3 -m unittest discover -s apps/starter-runner/tests -v

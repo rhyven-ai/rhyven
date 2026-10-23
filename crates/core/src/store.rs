@@ -35,6 +35,7 @@ pub fn open(root: &Path) -> Result<Connection> {
       CREATE TABLE IF NOT EXISTS records (app TEXT NOT NULL, object TEXT NOT NULL, id TEXT PRIMARY KEY, record TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS records_scope ON records(app,object);
       CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, app TEXT NOT NULL, event TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS receipt_context (actor TEXT NOT NULL, request TEXT NOT NULL, app TEXT NOT NULL, operation TEXT NOT NULL, encoding TEXT NOT NULL, PRIMARY KEY(actor,request));
       CREATE TABLE IF NOT EXISTS receipts (actor TEXT NOT NULL, request TEXT NOT NULL, fingerprint TEXT NOT NULL, result TEXT NOT NULL, PRIMARY KEY(actor,request));")?;
     Ok(db)
 }

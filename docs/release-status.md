@@ -1,5 +1,13 @@
 # Release status
 
+The source version is **0.9.0**. It adds Wobbegong retrieval, serving-engine
+identity, saved-connection probes, request reports, bounded audit change reads
+and `app check`. See [0.9 release notes](release-0.9.0.md) and
+[upgrade notes](migration-0.9.md). Signed 0.9.0 binaries and installer publication
+are a separate release step; the published downloads described below are 0.8.0.
+
+## Published 0.8.0 distribution
+
 Signed 0.8.0 downloads and app packages are published. See the
 [GitHub release](https://github.com/rhyven-ai/rhyven/releases/tag/v0.8.0)
 for its current release designation and assets.

@@ -720,7 +720,9 @@ impl Engine {
                 return saved;
             }
             if let Some(id) = request_id(args)? {
-                store::open(&r.root)?.execute(
+                let mut db = store::open(&r.root)?;
+                let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+                tx.execute(
                     "INSERT INTO receipts(actor,request,fingerprint,result) VALUES(?1,?2,?3,?4)",
                     params![
                         r.actor,
@@ -729,6 +731,15 @@ impl Engine {
                         json!({"status":"pending"}).to_string()
                     ],
                 )?;
+                crate::inspection::context(
+                    &tx,
+                    &r.actor,
+                    id,
+                    p["name"].as_str().unwrap(),
+                    action,
+                    "envelope",
+                )?;
+                tx.commit()?;
             }
         }
         let id = uuid::Uuid::new_v4().simple().to_string();

@@ -36,3 +36,7 @@ pub mod ranker;
 mod vendored;
 
 pub mod files;
+
+pub mod inspection;
+
+pub mod wobbegong;

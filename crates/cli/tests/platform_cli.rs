@@ -17,6 +17,142 @@ fn cli(root: &std::path::Path, args: &[&str]) -> Value {
     );
     serde_json::from_slice(&output.stdout).unwrap()
 }
+
+#[test]
+fn draft_check_packages_tested_content_without_changing_installed_state() {
+    let d = tempfile::tempdir().unwrap();
+    let root = d.path().join("workspace");
+    let draft = d.path().join("draft");
+    cli(
+        &root,
+        &[
+            "app",
+            "init",
+            "test/check",
+            "--dir",
+            draft.to_str().unwrap(),
+        ],
+    );
+    let out = d.path().join("tested.json");
+    let result = cli(
+        &root,
+        &[
+            "app",
+            "check",
+            draft.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(result["valid"], true);
+    assert_eq!(result["tests"]["passed"], true);
+    assert_eq!(result["installed"], false);
+    assert!(out.exists());
+    assert_eq!(cli(&root, &["list"]), json!([]));
+    let mut package: Value = serde_json::from_slice(&std::fs::read(&out).unwrap()).unwrap();
+    package["tests"][0]["expect"] = json!({"data.title":"intentionally wrong"});
+    let broken = d.path().join("broken.json");
+    std::fs::write(&broken, package.to_string()).unwrap();
+    let missing = d.path().join("must-not-exist.json");
+    let failure = Command::new(env!("CARGO_BIN_EXE_rhyven"))
+        .arg("--workspace")
+        .arg(&root)
+        .args(["app", "check"])
+        .arg(&broken)
+        .arg("--out")
+        .arg(&missing)
+        .output()
+        .unwrap();
+    assert!(!failure.status.success());
+    assert!(!missing.exists());
+    let error: Value = serde_json::from_slice(&failure.stderr).unwrap();
+    assert!(error["message"].as_str().unwrap().contains("Case 1"));
+}
+
+#[test]
+fn configured_probe_uses_saved_scope_and_preserves_client_settings() {
+    let d = tempfile::tempdir().unwrap();
+    let root = d.path().join("cli-workspace");
+    let saved = d.path().join("configured-workspace");
+    let config = d.path().join("client.json");
+    let text = json!({"mcpServers":{"rhyven":{"command":env!("CARGO_BIN_EXE_rhyven"),
+        "args":["--workspace",saved,"--actor","configured-actor","mcp"],
+        "env":{"RHYVEN_TEST_SECRET":"never-print-this-value"}}},"unrelated":true})
+    .to_string();
+    std::fs::write(&config, &text).unwrap();
+    let result = cli(
+        &root,
+        &[
+            "connect",
+            "--client",
+            "generic",
+            "--check",
+            "--configured",
+            "--config",
+            config.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(result["verification"]["workspace"], json!(saved));
+    assert_eq!(
+        result["verification"]["serving_engine"]["actor"],
+        "configured-actor"
+    );
+    assert_eq!(
+        result["verification"]["serving_engine"]["version"],
+        env!("CARGO_PKG_VERSION")
+    );
+    assert_eq!(result["client_session_verified"], false);
+    assert!(!result.to_string().contains("never-print-this-value"));
+    assert_eq!(std::fs::read_to_string(&config).unwrap(), text);
+    let toml = d.path().join("config.toml");
+    let text = format!(
+        "[mcp_servers.rhyven]\ncommand = {}\nargs = [\"--workspace\",{},\"mcp\"]\n",
+        json!(env!("CARGO_BIN_EXE_rhyven")),
+        json!(saved)
+    );
+    std::fs::write(&toml, &text).unwrap();
+    let result = cli(
+        &root,
+        &[
+            "connect",
+            "--client",
+            "codex",
+            "--check",
+            "--configured",
+            "--config",
+            toml.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(result["verification"]["workspace"], json!(saved));
+    assert_eq!(std::fs::read_to_string(&toml).unwrap(), text);
+}
+
+#[test]
+fn wobbegong_cli_ingests_selected_files_without_host_path_access_in_mcp() {
+    let d = tempfile::tempdir().unwrap();
+    let root = d.path().join("workspace");
+    let file = d.path().join("notes.md");
+    std::fs::write(&file, "Wobbegongfile acceptance works.").unwrap();
+    assert_eq!(
+        cli(
+            &root,
+            &[
+                "wobbegong",
+                "ingest-files",
+                file.to_str().unwrap(),
+                "--source",
+                "notes"
+            ]
+        )["committed"],
+        true
+    );
+    let result = cli(&root, &["wobbegong", "query", "wobbegongfile"]);
+    assert_eq!(result["items"][0]["reference"], json!(file));
+    assert!(result["items"][0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("acceptance"));
+}
 #[test]
 fn license_is_available_without_initializing_state() {
     let d = tempfile::tempdir().unwrap();

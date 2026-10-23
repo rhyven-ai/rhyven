@@ -57,10 +57,10 @@ async def main():
                 assert {t.name for t in tools} == {"rhyven_categories", "rhyven_describe", "rhyven_call"}
                 for tool in tools:
                     Draft202012Validator.check_schema(tool.inputSchema)
-                assert [a["name"] for a in value(await universal(session, "list_apps", {}))["apps"]] == ["rhyven/marketplace", "rhyven/runtime"]
+                assert [a["name"] for a in value(await universal(session, "list_apps", {}))["apps"]] == ["rhyven/marketplace", "rhyven/runtime", "rhyven/wobbegong"]
                 for package in ["rhyven/work-management", "rhyven/project-knowledge", "rhyven/error-management", "rhyven/ci-management", "rhyven/inventory"]:
                     command(root, "install", package, "--accept-permissions")
-                assert len(value(await universal(session, "list_apps", {}))["apps"]) == 7
+                assert len(value(await universal(session, "list_apps", {}))["apps"]) == 8
                 assert [t.name for t in (await session.list_tools()).tools] == [t.name for t in tools]
                 contract = value(await universal(session, "describe_app", {"app": "rhyven/work-management"}))
                 assert "task" in contract["contract"]["objects"]

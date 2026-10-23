@@ -22,6 +22,9 @@ pub struct Options {
     /// Check the generated MCP connection without modifying client configuration.
     #[arg(long)]
     pub check: bool,
+    /// Probe the saved client entry instead of a newly generated configuration.
+    #[arg(long, requires="check", conflicts_with_all=["server", "print", "replace"])]
+    pub configured: bool,
     /// Explicit client settings file; required for Cline and useful for agent profiles.
     #[arg(long)]
     pub config: Option<PathBuf>,
@@ -37,7 +40,7 @@ pub struct Options {
     #[arg(long, default_value = "RHYVEN_SERVE_TOKEN", requires = "server")]
     pub token_env: String,
     /// Fail verification if the remote server reports a different collection.
-    #[arg(long, requires = "server")]
+    #[arg(long)]
     pub expect_collection: Option<String>,
 }
 
@@ -47,6 +50,7 @@ impl Options {
             client: "generic".into(),
             print: true,
             check: false,
+            configured: false,
             config: None,
             name: "rhyven".into(),
             replace: false,
@@ -101,6 +105,9 @@ pub fn run(runtime: &Runtime, options: Options) -> Result<Value> {
         "configuration",
         "Invalid token environment variable name",
     )?;
+    if options.configured {
+        return check_configured(&options);
+    }
     let (exe, mut args) = launch(runtime)?;
     let local_collection = collections::scope(&runtime.root)?["collection"].clone();
     let mut environment = Vec::<String>::new();
@@ -185,7 +192,7 @@ pub fn run(runtime: &Runtime, options: Options) -> Result<Value> {
         ensure(
             verified["collection"] == expected.as_str(),
             "collection",
-            "Remote collection differs from --expect-collection; client configuration unchanged",
+            "Serving collection differs from --expect-collection; client configuration unchanged",
         )?;
     }
     result["collection"] = verified["collection"].clone();
@@ -558,10 +565,147 @@ fn merge_hermes(text: &str, name: &str, servers: &Value) -> Result<Vec<u8>> {
     Ok(output.into_bytes())
 }
 
+fn check_configured(options: &Options) -> Result<Value> {
+    let path = config_path(options)?;
+    let text = fs::read_to_string(&path)?;
+    let entry: Value = if options.client == "codex" {
+        let doc: toml_edit::DocumentMut = text
+            .parse()
+            .map_err(|_| Error::new("configuration", "Invalid client TOML"))?;
+        let table = doc
+            .get("mcp_servers")
+            .and_then(|t| t.get(&options.name))
+            .and_then(|t| t.as_table_like())
+            .ok_or_else(|| Error::new("configuration", "Named MCP entry not found"))?;
+        let mut entry = json!({});
+        for key in ["command", "cwd"] {
+            if let Some(value) = table.get(key) {
+                entry[key] = json!(value
+                    .as_str()
+                    .ok_or_else(|| Error::new("configuration", "Invalid MCP command or cwd"))?);
+            }
+        }
+        if let Some(value) = table.get("enabled") {
+            ensure(
+                value.as_bool() == Some(true),
+                "configuration",
+                "Named MCP entry is disabled or invalid",
+            )?;
+        }
+        if let Some(array) = table.get("args") {
+            let array = array
+                .as_array()
+                .ok_or_else(|| Error::new("configuration", "MCP args must be an array"))?;
+            let args = array
+                .iter()
+                .map(|v| {
+                    v.as_str()
+                        .map(String::from)
+                        .ok_or_else(|| Error::new("configuration", "MCP args must be strings"))
+                })
+                .collect::<Result<Vec<_>>>()?;
+            entry["args"] = json!(args);
+        }
+        if let Some(env) = table.get("env") {
+            let env = env
+                .as_table_like()
+                .ok_or_else(|| Error::new("configuration", "MCP env must be a table"))?;
+            let mut values = serde_json::Map::new();
+            for (key, value) in env.iter() {
+                values.insert(
+                    key.into(),
+                    json!(value.as_str().ok_or_else(|| Error::new(
+                        "configuration",
+                        "MCP env values must be strings"
+                    ))?),
+                );
+            }
+            entry["env"] = json!(values);
+        }
+        entry
+    } else {
+        let doc: Value = match options.client.as_str() {
+            "hermes" => serde_yaml_ng::from_str(&text)
+                .map_err(|_| Error::new("configuration", "Invalid client YAML"))?,
+            "openclaw" => json5::from_str(&text)
+                .map_err(|_| Error::new("configuration", "Invalid client JSON5"))?,
+            _ => serde_json::from_str(&text)
+                .map_err(|_| Error::new("configuration", "Invalid client JSON"))?,
+        };
+        let servers = match options.client.as_str() {
+            "hermes" => &doc["mcp_servers"],
+            "openclaw" => &doc["mcp"]["servers"],
+            "vscode" => &doc["servers"],
+            _ => &doc["mcpServers"],
+        };
+        servers
+            .get(&options.name)
+            .cloned()
+            .ok_or_else(|| Error::new("configuration", "Named MCP entry not found"))?
+    };
+    ensure(
+        entry["enabled"] != false && entry["disabled"] != true,
+        "configuration",
+        "Named MCP entry is disabled",
+    )?;
+    let command = entry["command"]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| {
+            Error::new(
+                "configuration",
+                "Configured verification requires a stdio command",
+            )
+        })?;
+    let args = entry.get("args").cloned().unwrap_or(json!([]));
+    let args: Vec<String> = serde_json::from_value(args)
+        .map_err(|_| Error::new("configuration", "MCP args must be strings"))?;
+    let env = entry.get("env").cloned().unwrap_or(json!({}));
+    let env: std::collections::BTreeMap<String, String> = serde_json::from_value(env)
+        .map_err(|_| Error::new("configuration", "MCP env values must be strings"))?;
+    let cwd = entry
+        .get("cwd")
+        .map(|v| {
+            v.as_str()
+                .map(PathBuf::from)
+                .ok_or_else(|| Error::new("configuration", "Invalid MCP cwd"))
+        })
+        .transpose()?;
+    let mut verified = probe_entry(Path::new(command), &args, cwd.as_deref(), &env)?;
+    if let Some(expected) = &options.expect_collection {
+        ensure(
+            verified["collection"] == expected.as_str(),
+            "collection",
+            "Configured server collection differs from --expect-collection",
+        )?;
+    }
+    verified["probe_scope"] =
+        json!("saved client entry; separate process, not the running client session");
+    Ok(
+        json!({"status":"verified","verification_source":"saved client entry","client":options.client,
+        "name":options.name,"config_path":path,"configured_command":command,"configuration_changed":false,
+        "collection":verified["collection"],"server_verified":true,"client_session_verified":false,
+        "environment":"current process environment with configured env overrides; client inheritance may differ",
+        "verification":verified}),
+    )
+}
+
 /// Probe the actual executable/transport, not a second in-process dispatch path.
 fn probe(exe: &Path, args: &[String]) -> Result<Value> {
-    let mut child = Command::new(exe)
-        .args(args)
+    probe_entry(exe, args, None, &std::collections::BTreeMap::new())
+}
+fn probe_entry(
+    exe: &Path,
+    args: &[String],
+    cwd: Option<&Path>,
+    env: &std::collections::BTreeMap<String, String>,
+) -> Result<Value> {
+    let mut command = Command::new(exe);
+    command.args(args).envs(env);
+    if let Some(cwd) = cwd {
+        command.current_dir(cwd);
+    }
+    let mut child = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -638,7 +782,7 @@ fn probe(exe: &Path, args: &[String]) -> Result<Value> {
                 "Discovery omitted collection or apps",
             )?;
             Ok(
-                json!({"server":initialize["serverInfo"],"protocol":initialize["protocolVersion"],"tools":names,"collection":discovery["collection"],"apps":discovery["apps"],"check":"initialize, tools/list, rhyven_categories"}),
+                json!({"server":initialize["serverInfo"],"protocol":initialize["protocolVersion"],"tools":names,"collection":discovery["collection"],"workspace":discovery["workspace"],"serving_engine":discovery["engine"],"identity_available":discovery["engine"].is_object(),"apps":discovery["apps"],"probe_scope":"generated configuration; not the running client session","check":"initialize, tools/list, rhyven_categories"}),
             )
         };
         let _ = tx.send(check());

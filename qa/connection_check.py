@@ -136,6 +136,11 @@ with tempfile.TemporaryDirectory(prefix="rv-connect-") as temporary:
         prefix[-1] = "beta"
         value = cli("connect", "--check", "--server", endpoint, "--expect-collection", "alpha", env=env)
         assert value["collection"] == "alpha" and value["server_verified"]
+        engine = value["verification"]["serving_engine"]
+        assert engine["process_id"] == server.pid
+        assert engine["scope"]["collection"] == "alpha"
+        assert engine["version"] == cli("call", "rhyven_categories", "{}")["engine"]["version"]
+        assert value["verification"]["workspace"] != cli("call", "rhyven_categories", "{}")["workspace"]
         path = root / "remote.toml"
         assert cli("connect", "--client", "codex", "--config", str(path), "--server", endpoint, "--expect-collection", "beta", env=env, ok=False)["code"] == "collection"
         assert not path.exists()

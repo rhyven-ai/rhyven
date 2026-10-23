@@ -11,12 +11,12 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
-Version **0.8.0** adds declarative file operations and three apps for code review,
-change verification and customer onboarding. It retires pallet library tooling
-while retaining app workflows and native execution. See [release notes](docs/release-0.8.0.md)
-and [upgrade notes](docs/migration-0.8.md).
+The source version is **0.9.0**, adding Wobbegong local BM25 retrieval, serving
+engine diagnostics, request inspection, audit change queries and an isolated app
+check command. See [release notes](docs/release-0.9.0.md) and
+[upgrade notes](docs/migration-0.9.md).
 
-Version **0.8.0** supports Linux x86-64 and ARM64. Native Windows and macOS
+Linux x86-64 and ARM64 remain the release targets. Native Windows and macOS
 are not supported release targets. Individual app images may support fewer architectures.
 
 The signed **0.8.0** installer and platform binaries are available at
@@ -178,3 +178,16 @@ documents, replies and deadlines for an agent to review.
 
 Custom apps can use [declarative file operations](docs/files.md) and
 [app workflows](docs/composable-capabilities.md) through the same three tools.
+
+## Local retrieval and development inspection
+
+These features are included in the 0.9.0 source.
+
+[Wobbegong](docs/wobbegong.md) indexes selected files and local app records for
+BM25 search through the existing agent interface. Each collection owns a
+`.wobbegong/wobbegong.db`; ingestion commits before content becomes queryable.
+
+Use `rhyven app check PATH` to validate and test drafts in temporary state.
+Connection diagnostics, request reports and a bounded audit change feed help
+agents inspect the serving runtime and continue work. See
+[development and inspection](docs/development-and-inspection.md).

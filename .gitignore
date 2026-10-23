@@ -26,3 +26,6 @@ __pycache__/
 # The public engine excludes website source and local deployment state.
 /website/
 /.wrangler/
+
+# Local retrieval state.
+.wobbegong/

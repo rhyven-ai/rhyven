@@ -155,7 +155,9 @@ pub fn call(root: &Path, p: &Value, actor: &str, arguments: &Value) -> Result<Va
         .as_ref()
         .map(|_| crate::container::Cleanup(instance_name));
     if let Some(request) = request {
-        let changed = store::open(root)?.execute(
+        let mut db = store::open(root)?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let changed = tx.execute(
             "INSERT OR IGNORE INTO receipts(actor,request,fingerprint,result) VALUES(?1,?2,?3,?4)",
             params![
                 actor,
@@ -169,6 +171,8 @@ pub fn call(root: &Path, p: &Value, actor: &str, arguments: &Value) -> Result<Va
             "idempotency_conflict",
             "request_id was claimed by another invocation",
         )?;
+        crate::inspection::context(&tx, actor, request, name, action, "envelope")?;
+        tx.commit()?;
     }
     let bytes = format!("{payload}\n").into_bytes();
     let timeout = e["timeout_seconds"].as_u64().unwrap_or(30);

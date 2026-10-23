@@ -182,6 +182,16 @@ pub(crate) fn write(state: &Path, snapshot: &Path, out: &Path, scope: Value) -> 
         &mut count,
         &mut total,
     )?;
+    let index = snapshot.parent().unwrap().join(".wobbegong");
+    if index.exists() {
+        add(
+            &mut writer,
+            snapshot.parent().unwrap(),
+            &index,
+            &mut count,
+            &mut total,
+        )?;
+    }
     if state.join("containers").exists() {
         add(
             &mut writer,

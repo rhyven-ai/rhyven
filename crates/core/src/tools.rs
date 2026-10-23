@@ -131,7 +131,7 @@ fn contract_tools(p: &Value) -> Vec<Tool> {
             json!({"app":app,"action":name}),
         ));
     }
-    if crate::connector::enabled(p) {
+    if crate::connector::enabled(p) || p["name"] == crate::wobbegong::APP {
         for t in &mut tools {
             t.definition["inputSchema"]["properties"]
                 .as_object_mut()

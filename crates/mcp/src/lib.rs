@@ -280,9 +280,10 @@ mod tests {
         let apps = replies[3]["result"]["structuredContent"]["apps"]
             .as_array()
             .unwrap();
-        assert_eq!(apps.len(), 2);
+        assert_eq!(apps.len(), 3);
         assert_eq!(apps[0]["name"], "rhyven/marketplace");
         assert_eq!(apps[1]["name"], "rhyven/runtime");
+        assert_eq!(apps[2]["name"], "rhyven/wobbegong");
         assert!(apps
             .iter()
             .all(|a| a["contract_hash"].as_str().is_some_and(|s| s.len() == 64)));

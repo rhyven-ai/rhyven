@@ -119,11 +119,22 @@ with tempfile.TemporaryDirectory(prefix="rhyven-shared-") as temp:
         wait(port)
         assert api(port, "GET", "/apps", auth="wrong")[0] == 401
         status, apps = api(port, "GET", "/apps")
-        assert status == 200 and [app["name"] for app in apps] == ["rhyven/work-management", "rhyven/marketplace", "rhyven/runtime"]
+        assert status == 200 and [app["name"] for app in apps] == ["rhyven/work-management", "rhyven/marketplace", "rhyven/runtime", "rhyven/wobbegong"]
         status, task = api(port, "POST", "/apps/rhyven/work-management/objects/task", {"data": {"title": "Created by direct HTTP"}, "request_id": "http-create"}, actor="client-a")
         assert status == 200 and task["revision"] == 1
         status, retry = api(port, "POST", "/apps/rhyven/work-management/objects/task", {"data": {"title": "Created by direct HTTP"}, "request_id": "http-create"}, actor="client-a")
         assert status == 200 and retry == task
+        status, report = api(port, "POST", "/categories/rhyven/marketplace/functions/action_request_report", {"request_id":"http-create"}, actor="client-a")
+        assert status == 200 and report["status"] == "complete" and report["result"] == task
+        status, other = api(port, "POST", "/categories/rhyven/marketplace/functions/action_request_report", {"request_id":"http-create"}, actor="client-b")
+        assert status == 200 and other["status"] == "not_recorded"
+        status, changes = api(port, "POST", "/categories/rhyven/marketplace/functions/action_changes", {"after":0,"app":"rhyven/work-management","limit":1})
+        assert status == 200 and changes["items"] and "data" not in changes["items"][0]
+        status, ingest = api(port, "POST", "/categories/rhyven/wobbegong/functions/action_ingest_files", {"source":"rest","documents":[{"id":"note","text":"Wobbegongremote retrieval"}]})
+        assert status == 200 and ingest["committed"]
+        status, matches = api(port, "POST", "/categories/rhyven/wobbegong/functions/action_query", {"search":"wobbegongremote"})
+        assert status == 200 and matches["items"][0]["source"] == "files:rest"
+
         status, conflict = api(port, "PATCH", f"/apps/rhyven/work-management/objects/task/{task['id']}", {"patch": {"title": "stale"}, "expected_revision": 2}, actor="client-b")
         assert status == 409 and conflict["code"] == "revision_conflict"
         status, fetched = api(port, "GET", f"/apps/rhyven/work-management/objects/task/{task['id']}", actor="client-b")

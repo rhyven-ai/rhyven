@@ -87,6 +87,9 @@ with tempfile.TemporaryDirectory(prefix="rv-svc-") as tmp:
         assert call("status")["ticks"] > initial["ticks"]
         one = call("increment", {"amount": 3, "request_id": "once"})
         assert one["calls"] == 3
+        report = cli("call", "rhyven_call", json.dumps({"category":"rhyven/marketplace", "function":"action_request_report", "args":{"request_id":"once"}}))
+        assert report["status"] == "complete" and report["result"] == one
+
         assert call("increment", {"amount": 3, "request_id": "once"}) == one
         call("increment", {"amount": 4, "request_id": "once"}, error="idempotency_conflict")
         call("increment", {"amount": "bad"}, error="validation")

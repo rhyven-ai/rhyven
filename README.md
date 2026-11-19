@@ -18,7 +18,7 @@ through installed app actions. See the [0.9.5 guide](docs/release-0.9.5.md).
 Linux x86-64 and ARM64 remain the release targets. Native Windows and macOS
 are not supported release targets. Individual app images may support fewer architectures.
 
-The signed **0.9.0** installer and platform binaries are available at
+The signed **0.9.5** installer and platform binaries are available at
 [rhyvenai.com](https://rhyvenai.com). App versions and container image digests
 are released independently.
 See [installation](docs/installation.md) and [release status](docs/release-status.md).

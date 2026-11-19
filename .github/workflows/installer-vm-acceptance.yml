@@ -9,6 +9,7 @@ on:
         options:
           - https://rhyvenai.com
           - https://rhyven.pages.dev
+          - https://release-candidate.rhyven.pages.dev
   workflow_call:
     inputs:
       download_origin:

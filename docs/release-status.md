@@ -1,6 +1,10 @@
 # Release status
 
-The local 0.9.5 source build and its verification notes are documented in [the guide](release-0.9.5.md) and [verification results](verification-0.9.5.md).
+## Rhyven 0.9.5
+
+Agents can claim a task, save a checkpoint and hand it off. Each harness connection can add cited passages from the collection to a prompt. See the [release guide](release-0.9.5.md) and [verification results](verification-0.9.5.md).
+
+The [0.9.5 release](https://github.com/rhyven-ai/rhyven/releases/tag/v0.9.5) includes signed Linux x86-64 and ARM64 binaries, DEB, RPM, APK and Arch packages, and Design Review 0.1.1. Repository File Ingestion 0.4.0 is available separately. The installer is at [rhyvenai.com](https://rhyvenai.com).
 
 ## Published 0.9.0 distribution
 

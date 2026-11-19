@@ -1,6 +1,6 @@
 # Rhyven 0.9.5 release plan
 
-**Status:** Implemented in the local source build. See [verification results](verification-0.9.5.md). The release goal is for a second agent to finish interrupted work in a shared collection using evidence recorded by the first.
+**Status:** Implemented in 0.9.5. See [verification results](verification-0.9.5.md). The release goal is for a second agent to finish interrupted work in a shared collection using evidence recorded by the first.
 
 ## 1. Atomic task claims
 

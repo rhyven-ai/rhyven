@@ -9,7 +9,7 @@ schemas and bounded operations for declarative apps, Docker for custom actions,
 or supervised containers for persistent services. Installing an app requires
 no app-specific MCP server or changes to the runtime.
 
-Build your own task view or choose which sources reach an agent’s prompt. The walkthrough includes editable code and the data contract for each example. [Customize Rhyven](https://rhyvenai.com/#customize).
+Find an example for each way to customize agent workflows, search, apps, connections and deployment. The task view and prompt filter include working code and data contracts. [Customize Rhyven](https://rhyvenai.com/#customize).
 
 ## Status
 

@@ -24,6 +24,13 @@ else: sys.exit(22)
         p = subprocess.run([str(installed),*args],env=env,capture_output=True,text=True,timeout=40)
         assert (p.returncode == 0) == ok,(p.stdout,p.stderr)
         return json.loads(p.stdout) if ok else p
+    # A successful stop must support immediate restart and removal of a disposable home.
+    socket = root / 'home/supervisor/control.sock'
+    for _ in range(2):
+        cli('daemon', 'start')
+        assert socket.exists()
+        assert cli('daemon', 'stop')['stopped'] is True
+        assert not socket.exists()
     assert cli('upgrade','--check')['update_available'] is False
     version=subprocess.check_output([str(binary),'--version'],text=True).strip().split()[-1]
     major,minor,patch=map(int,version.split('-')[0].split('.'))

@@ -1,4 +1,5 @@
 mod connect;
+mod context;
 mod import;
 mod setup;
 mod skills;
@@ -176,7 +177,20 @@ enum DaemonCommand {
 }
 #[derive(Subcommand)]
 enum Command {
-    /// Ingest and query local source data through Wobbegong BM25 search.
+    /// Reassign a managed task as the local collection operator, invalidating its previous lease.
+    ReassignTask {
+        id: String,
+        #[arg(long)]
+        owner: String,
+        #[arg(long)]
+        expected_revision: u64,
+    },
+    /// Configure or preview prompt enrichment for a harness connection.
+    Context {
+        #[command(subcommand)]
+        command: context::Command,
+    },
+    /// Wobbegong Collection Search. Index sources for manual search and prompt enrichment.
     Wobbegong {
         #[command(subcommand)]
         command: wobbegong::Command,
@@ -569,6 +583,12 @@ fn run() -> Result<()> {
         command => command,
     };
     let value = match command {
+        Command::ReassignTask {
+            id,
+            owner,
+            expected_revision,
+        } => agent_market_core::team::operator_reassign(&runtime, &id, &owner, expected_revision)?,
+        Command::Context { command } => context::run(&runtime, command)?,
         Command::Wobbegong { command } => wobbegong::run(&runtime, command)?,
         Command::ImportMcp(options) => import::mcp(options)?,
         Command::ImportOpenapi(options) => import::openapi(options)?,

@@ -303,8 +303,8 @@ prerequisites without installing dependencies or running publisher code.
 
 ## Included agent skills
 
-The 0.9.0 source builds a binary with six skills and the usage rule. Setup writes versioned files to
-`~/.rhyven/skills/0.9.0/` (or `$RHYVEN_HOME/skills/0.9.0/`) without downloading
+The 0.9.5 source builds a binary with six skills and the usage rule. Setup writes versioned files to
+`~/.rhyven/skills/0.9.5/` (or `$RHYVEN_HOME/skills/0.9.5/`) without downloading
 additional files. This also works with offline installation.
 
 ```sh

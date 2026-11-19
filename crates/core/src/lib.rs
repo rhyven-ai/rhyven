@@ -21,6 +21,7 @@ pub mod schema;
 pub mod script;
 pub mod services;
 pub mod store;
+pub mod team;
 pub mod tools;
 pub use error::{Error, Result};
 pub use runtime::Runtime;
@@ -35,6 +36,7 @@ pub mod ranker;
 
 mod vendored;
 
+pub mod enrichment;
 pub mod files;
 
 pub mod inspection;

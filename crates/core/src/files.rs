@@ -468,11 +468,11 @@ fn xlsx(bytes: &[u8], options: &Value) -> Result<Vec<Value>> {
     let mut names = std::collections::BTreeSet::new();
     for i in 0..zip.len() {
         let entry = zip.by_index(i).map_err(invalid)?;
-        let name = entry.name();
+        let name = entry.name().map_err(invalid)?;
         ensure(
-            names.insert(name.to_owned())
+            names.insert(name.to_string())
                 && !name.contains('\\')
-                && Path::new(name)
+                && Path::new(name.as_ref())
                     .components()
                     .all(|p| matches!(p, Component::Normal(_))),
             "file_invalid",

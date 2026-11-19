@@ -48,6 +48,8 @@ pub struct Model {
     star_labels: std::collections::BTreeMap<String, String>,
     pending: Option<(Operation, Value)>,
     service_output: String,
+    team_rows: Vec<Value>,
+    team_offset: usize,
     refresh_error: Option<String>,
     catalog_job: Option<std::sync::mpsc::Receiver<Result<Value>>>,
     catalog_status: Value,
@@ -58,11 +60,11 @@ impl Model {
     pub fn new(runtime: &Runtime) -> Result<Self> {
         let scope = agent_market_core::collections::scope(&runtime.root)?;
         let mut model = Self { scope: scope["collection"].as_str().map(|n| format!("Collection: {n}")).unwrap_or_else(|| format!("Workspace: {}", runtime.root.display())), packages: vec![], selected: 0, query: String::new(), review: false,
-            message: "Click / Enter details · i install · u update app · x remove (Installed) · ? help · q quit".into(),
+            message: "Click / Enter details · i install · u update app · x remove (Installed) · t tasks · ? help · q quit".into(),
             list_area: Cell::new(Rect::default()), nav_area: Cell::new(Rect::default()), search_area: Cell::new(Rect::default()), popup_area: Cell::new(Rect::default()), list_offset: Cell::new(0),
             scroll: 0, pane: 0, searching: false, installed_only: false, installed: vec![],
             installed_packages: vec![],
-            star_labels: std::collections::BTreeMap::new(), pending: None, service_output: String::new(),
+            star_labels: std::collections::BTreeMap::new(), pending: None, team_rows:Vec::new(), team_offset:0, service_output: String::new(),
             refresh_error: None, catalog_job: None, catalog_status: Value::Null, requirements_job: None, requirements: Default::default() };
         model.reload(runtime);
         Ok(model)
@@ -314,6 +316,17 @@ impl Model {
         self.visible().get(self.selected).map(|p| (*p).clone())
     }
     pub fn mouse(&mut self, event: MouseEvent, runtime: &Runtime) -> Result<()> {
+        if self.pane == 6 {
+            match event.kind {
+                MouseEventKind::ScrollDown => {
+                    self.team_offset =
+                        (self.team_offset + 3).min(self.team_rows.len().saturating_sub(1))
+                }
+                MouseEventKind::ScrollUp => self.team_offset = self.team_offset.saturating_sub(3),
+                _ => (),
+            }
+            return Ok(());
+        }
         let inside = |r: Rect| r.contains((event.column, event.row).into());
         if self.review || self.pane != 0 {
             match event.kind {
@@ -385,6 +398,44 @@ impl Model {
         Ok(())
     }
     pub fn key(&mut self, key: KeyCode, runtime: &Runtime) -> Result<bool> {
+        if !self.searching && !self.review && (self.pane == 6 || key == KeyCode::Char('t')) {
+            match key {
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    self.pane = 0;
+                    return Ok(false);
+                }
+                KeyCode::Down => {
+                    self.team_offset = self
+                        .team_offset
+                        .saturating_add(1)
+                        .min(self.team_rows.len().saturating_sub(1))
+                }
+                KeyCode::Up => self.team_offset = self.team_offset.saturating_sub(1),
+                KeyCode::Char('t' | 'r') => {
+                    self.team_rows.clear();
+                    loop {
+                        let args = serde_json::json!({"category":"rhyven/work-management","function":"action_ownership","args":{"offset":self.team_rows.len(),"limit":100}});
+                        match runtime.call("rhyven_call", args) {
+                            Ok(page) => {
+                                let rows = page["items"].as_array().unwrap();
+                                self.team_rows.extend(rows.iter().cloned());
+                                if rows.len() < 100 {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                self.message = e.to_string();
+                                return Ok(false);
+                            }
+                        }
+                    }
+                    self.team_offset = self.team_offset.min(self.team_rows.len().saturating_sub(1));
+                    self.pane = 6;
+                }
+                _ => (),
+            }
+            return Ok(false);
+        }
         if self.review {
             match key {
                 KeyCode::Char('y') => {
@@ -657,6 +708,36 @@ fn render_logo(frame: &mut Frame, area: Rect) {
 
 pub fn render(frame: &mut Frame, model: &Model, _installed: &[String]) {
     let area = frame.area();
+    if model.pane == 6 {
+        use ratatui::widgets::{Row, Table};
+        let rows = model.team_rows.iter().skip(model.team_offset).map(|row| {
+            Row::new(vec![
+                row["task"].as_str().unwrap_or(""),
+                row["current_owner"].as_str().unwrap_or("Unclaimed"),
+                row["status"].as_str().unwrap_or(""),
+            ])
+        });
+        let table = Table::new(
+            rows,
+            [
+                Constraint::Percentage(50),
+                Constraint::Percentage(30),
+                Constraint::Percentage(20),
+            ],
+        )
+        .header(
+            Row::new(["Task", "Current owner", "Status"])
+                .style(Style::default().add_modifier(Modifier::BOLD)),
+        )
+        .block(
+            Block::bordered()
+                .title(" Task ownership ")
+                .title_bottom(" ↑/↓ scroll · r refresh · Esc back "),
+        );
+        frame.render_widget(table, area);
+        return;
+    }
+
     model.list_area.set(Rect::default());
     model.nav_area.set(Rect::default());
     model.search_area.set(Rect::default());
@@ -743,6 +824,7 @@ pub fn render(frame: &mut Frame, model: &Model, _installed: &[String]) {
             Line::raw(" ↑  Update app   [u]"),
             Line::raw(" ×  Remove       [x]"),
             Line::raw(""),
+            Line::raw("    Tasks        [t]"),
             Line::raw(" ?  Update help  [?]"),
         ];
         frame.render_widget(
@@ -1085,6 +1167,33 @@ mod tests {
             .iter()
             .map(|c| c.symbol())
             .collect()
+    }
+    #[test]
+    fn ownership_screen_uses_public_claim_state() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime = Runtime::new(temp.path(), "reader").unwrap();
+        let pkg = catalog::bundled()
+            .into_iter()
+            .find(|p| p["name"] == "rhyven/work-management")
+            .unwrap();
+        runtime.install(&pkg, true, false).unwrap();
+        let task=runtime.call("create",serde_json::json!({"app":pkg["name"],"object":"task","data":{"title":"A pending change"}})).unwrap();
+        let mut m = Model::new(&runtime).unwrap();
+        m.key(KeyCode::Char('t'), &runtime).unwrap();
+        assert!(screen(&m).contains("Unclaimed"));
+        runtime
+            .call(
+                "execute",
+                serde_json::json!({"app":pkg["name"],"action":"claim","args":{"id":task["id"]}}),
+            )
+            .unwrap();
+        m.key(KeyCode::Char('r'), &runtime).unwrap();
+        let visible = screen(&m);
+        for expected in ["Current owner", "A pending change", "reader", "in_progress"] {
+            assert!(visible.contains(expected));
+        }
+        m.key(KeyCode::Esc, &runtime).unwrap();
+        assert_ne!(m.pane, 6);
     }
     #[test]
     fn background_sync_preserves_view_suppresses_duplicates_and_reports_failure() {

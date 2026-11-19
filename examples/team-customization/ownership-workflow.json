@@ -1,0 +1,114 @@
+{
+  "format": 2,
+  "name": "example/ownership-report",
+  "version": "0.1.0",
+  "publisher": "example",
+  "description": "Group one page of collection tasks by current owner.",
+  "hosting": {
+    "mode": "local"
+  },
+  "permissions": [],
+  "dependencies": {
+    "work": "rhyven/work-management",
+    "report": "example/team-customization"
+  },
+  "objects": {},
+  "actions": {
+    "group": {
+      "description": "Group tasks by current owner.",
+      "operation": "workflow",
+      "input": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "owner": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tasks": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "owner",
+                "tasks"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "groups"
+        ],
+        "additionalProperties": false
+      },
+      "steps": [
+        {
+          "id": "page",
+          "dependency": "work",
+          "action": "ownership",
+          "args": {
+            "offset": {
+              "$input": "/offset"
+            }
+          }
+        },
+        {
+          "id": "groups",
+          "dependency": "report",
+          "action": "group_owners",
+          "args": {
+            "items": {
+              "$step": "page",
+              "path": "/items"
+            }
+          }
+        }
+      ],
+      "result": {
+        "$step": "groups",
+        "path": ""
+      }
+    }
+  },
+  "guide": "Compose against installed dependencies before installation. Use offset to read further pages of 100 tasks.",
+  "tests": [
+    {
+      "operation": "execute",
+      "args": {
+        "action": "group",
+        "args": {
+          "offset": 0
+        }
+      },
+      "expect": {
+        "groups": []
+      }
+    }
+  ]
+}

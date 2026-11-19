@@ -22,6 +22,9 @@ pub struct Options {
     /// Check the generated MCP connection without modifying client configuration.
     #[arg(long)]
     pub check: bool,
+    /// Generate a prompt to submit in the actual harness to verify excerpt delivery.
+    #[arg(long, requires = "check")]
+    pub test_prompt: Option<String>,
     /// Probe the saved client entry instead of a newly generated configuration.
     #[arg(long, requires="check", conflicts_with_all=["server", "print", "replace"])]
     pub configured: bool,
@@ -50,6 +53,7 @@ impl Options {
             client: "generic".into(),
             print: true,
             check: false,
+            test_prompt: None,
             configured: false,
             config: None,
             name: "rhyven".into(),
@@ -187,7 +191,7 @@ pub fn run(runtime: &Runtime, options: Options) -> Result<Value> {
     if options.print {
         return Ok(result);
     }
-    let verified = probe(&exe, &args)?;
+    let verified = probe_entry(&exe, &args, None, &Default::default(), &options)?;
     if let Some(expected) = &options.expect_collection {
         ensure(
             verified["collection"] == expected.as_str(),
@@ -197,6 +201,7 @@ pub fn run(runtime: &Runtime, options: Options) -> Result<Value> {
     }
     result["collection"] = verified["collection"].clone();
     result["server_verified"] = json!(true);
+    result["diagnostics"] = verified["diagnostics"].clone();
     result["verification"] = verified;
     result["status"] = json!("verified");
     if !options.check && options.client != "generic" {
@@ -671,7 +676,7 @@ fn check_configured(options: &Options) -> Result<Value> {
                 .ok_or_else(|| Error::new("configuration", "Invalid MCP cwd"))
         })
         .transpose()?;
-    let mut verified = probe_entry(Path::new(command), &args, cwd.as_deref(), &env)?;
+    let mut verified = probe_entry(Path::new(command), &args, cwd.as_deref(), &env, options)?;
     if let Some(expected) = &options.expect_collection {
         ensure(
             verified["collection"] == expected.as_str(),
@@ -682,7 +687,7 @@ fn check_configured(options: &Options) -> Result<Value> {
     verified["probe_scope"] =
         json!("saved client entry; separate process, not the running client session");
     Ok(
-        json!({"status":"verified","verification_source":"saved client entry","client":options.client,
+        json!({"status":"verified","diagnostics":verified["diagnostics"],"verification_source":"saved client entry","client":options.client,
         "name":options.name,"config_path":path,"configured_command":command,"configuration_changed":false,
         "collection":verified["collection"],"server_verified":true,"client_session_verified":false,
         "environment":"current process environment with configured env overrides; client inheritance may differ",
@@ -691,15 +696,21 @@ fn check_configured(options: &Options) -> Result<Value> {
 }
 
 /// Probe the actual executable/transport, not a second in-process dispatch path.
-fn probe(exe: &Path, args: &[String]) -> Result<Value> {
-    probe_entry(exe, args, None, &std::collections::BTreeMap::new())
-}
 fn probe_entry(
     exe: &Path,
     args: &[String],
     cwd: Option<&Path>,
     env: &std::collections::BTreeMap<String, String>,
+    options: &Options,
 ) -> Result<Value> {
+    let (client, connection, test_prompt) = (
+        options.client.clone(),
+        options.name.clone(),
+        options.test_prompt.clone(),
+    );
+    let expected_collection = options.expect_collection.clone();
+    let probe_command = exe.to_path_buf();
+    let invoking_executable = std::env::current_exe()?;
     let mut command = Command::new(exe);
     command.args(args).envs(env);
     if let Some(cwd) = cwd {
@@ -714,7 +725,7 @@ fn probe_entry(
     let mut output = BufReader::new(child.stdout.take().unwrap());
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
-        let mut check = || -> Result<Value> {
+        let check = || -> Result<Value> {
             fn exchange(
                 input: &mut impl Write,
                 output: &mut impl BufRead,
@@ -781,8 +792,46 @@ fn probe_entry(
                 "connection",
                 "Discovery omitted collection or apps",
             )?;
+            if let Some(expected) = expected_collection.as_deref() {
+                ensure(
+                    discovery["collection"] == expected,
+                    "collection",
+                    "Serving collection differs from --expect-collection",
+                )?;
+            }
+            let expected_alias = agent_market_core::enrichment::tool_alias(&client, &connection);
+            let mut status_args = json!({"connection":connection});
+            if let Some(prompt) = test_prompt {
+                status_args["test_prompt"] = json!(prompt);
+            }
+            let mut status = Value::Null;
+            if discovery["apps"]
+                .as_array()
+                .is_some_and(|apps| apps.iter().any(|app| app["name"] == "rhyven/wobbegong"))
+            {
+                let response = exchange(
+                    &mut input,
+                    &mut output,
+                    4,
+                    "tools/call",
+                    json!({"name":"rhyven_call","arguments":{"category":"rhyven/wobbegong","function":"action_connection_status","args":status_args}}),
+                );
+                if let Ok(response) = response {
+                    status = response["structuredContent"].clone();
+                }
+            }
+            ensure(
+                status_args.get("test_prompt").is_none() || status["submit_in_harness"].is_string(),
+                "connection",
+                "Serving engine could not start the requested excerpt test",
+            )?;
+            let alias = status
+                .pointer("/live_test/tool")
+                .and_then(Value::as_str)
+                .unwrap_or(&expected_alias);
+            let diagnostics = json!({"invoking_executable":invoking_executable,"invoking_version":env!("CARGO_PKG_VERSION"),"probe_command":probe_command,"executable":discovery["engine"]["executable"],"version":discovery["engine"]["version"],"actor":discovery["engine"]["actor"],"collection":discovery["collection"],"connection":connection,"tool_alias":alias,"alias_source":if status.pointer("/live_test/tool").is_some_and(Value::is_string){"live adapter"}else{"host convention"},"enrichment":status});
             Ok(
-                json!({"server":initialize["serverInfo"],"protocol":initialize["protocolVersion"],"tools":names,"collection":discovery["collection"],"workspace":discovery["workspace"],"serving_engine":discovery["engine"],"identity_available":discovery["engine"].is_object(),"apps":discovery["apps"],"probe_scope":"generated configuration; not the running client session","check":"initialize, tools/list, rhyven_categories"}),
+                json!({"diagnostics":diagnostics,"server":initialize["serverInfo"],"protocol":initialize["protocolVersion"],"tools":names,"collection":discovery["collection"],"workspace":discovery["workspace"],"serving_engine":discovery["engine"],"identity_available":discovery["engine"].is_object(),"apps":discovery["apps"],"probe_scope":"generated configuration; not the running client session","check":"initialize, tools/list, rhyven_categories"}),
             )
         };
         let _ = tx.send(check());

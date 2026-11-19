@@ -31,6 +31,13 @@ pub fn open(root: &Path) -> Result<Connection> {
     let db = Connection::open(state.join("state.sqlite3"))?;
     db.busy_timeout(Duration::from_secs(10))?;
     db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
+      CREATE TABLE IF NOT EXISTS enrichment_settings(connection TEXT PRIMARY KEY,config TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS enrichment_checks(actor TEXT NOT NULL,connection TEXT NOT NULL,challenge TEXT NOT NULL,proof TEXT NOT NULL,issued INTEGER NOT NULL,confirmed INTEGER,tool TEXT,PRIMARY KEY(actor,connection));
+      CREATE TABLE IF NOT EXISTS enrichment_check_outcomes(actor TEXT NOT NULL,connection TEXT NOT NULL,outcome TEXT NOT NULL,observed INTEGER NOT NULL,PRIMARY KEY(actor,connection),FOREIGN KEY(actor,connection) REFERENCES enrichment_checks(actor,connection) ON DELETE CASCADE);
+      CREATE TABLE IF NOT EXISTS enrichment_deliveries(key TEXT PRIMARY KEY,created INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS enrichment_packets(key TEXT PRIMARY KEY,created INTEGER NOT NULL,packet TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS team_claims(task TEXT PRIMARY KEY,owner TEXT NOT NULL,token TEXT NOT NULL,expiry INTEGER NOT NULL,checkpoint TEXT NOT NULL DEFAULT 'null');
+      CREATE TABLE IF NOT EXISTS team_operations(task TEXT NOT NULL,logical_key TEXT NOT NULL,operation_id TEXT NOT NULL UNIQUE,fingerprint TEXT NOT NULL,reference TEXT,PRIMARY KEY(task,logical_key));
       CREATE TABLE IF NOT EXISTS apps (name TEXT PRIMARY KEY, package TEXT NOT NULL, digest TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1);
       CREATE TABLE IF NOT EXISTS records (app TEXT NOT NULL, object TEXT NOT NULL, id TEXT PRIMARY KEY, record TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS records_scope ON records(app,object);

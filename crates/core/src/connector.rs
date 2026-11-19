@@ -68,7 +68,14 @@ pub fn validate(p: &Value) -> Result<()> {
             let target = &action["target"];
             catalog::keys(
                 target,
-                &["method", "path", "path_args", "query_args", "body_arg"],
+                &[
+                    "method",
+                    "path",
+                    "path_args",
+                    "query_args",
+                    "body_arg",
+                    "idempotency_arg",
+                ],
             )?;
             ensure(
                 matches!(
@@ -127,6 +134,16 @@ pub fn validate(p: &Value) -> Result<()> {
                 "package",
                 "Undeclared path placeholder",
             )?;
+            if let Some(arg) = target.get("idempotency_arg") {
+                let name = arg.as_str().unwrap_or("");
+                ensure(
+                    !name.is_empty()
+                        && seen.insert(name)
+                        && action["input"]["properties"][name]["type"] == "string",
+                    "package",
+                    "Idempotency-Key must map to a unique string argument",
+                )?;
+            }
             if let Some(body) = target.get("body_arg") {
                 let name = body.as_str().unwrap_or("");
                 ensure(
@@ -449,6 +466,17 @@ pub fn call(p: &Value, args: &Value) -> Result<Value> {
     let mut r = client()?
         .request(method, url)
         .header("Accept", "application/json");
+    if let Some(key) = target["idempotency_arg"]
+        .as_str()
+        .and_then(|n| input[n].as_str())
+    {
+        ensure(
+            !key.is_empty() && key.len() <= 256 && key.bytes().all(|b| b.is_ascii_graphic()),
+            "validation",
+            "Invalid provider idempotency key",
+        )?;
+        r = r.header("Idempotency-Key", key);
+    }
     if let Some(name) = target["body_arg"].as_str() {
         if let Some(body) = input.get(name) {
             r = r.json(body);

@@ -1,6 +1,6 @@
-# Wobbegong
+# Wobbegong Collection Search
 
-Wobbegong gives agents local BM25 search over selected files and Rhyven records.
+Wobbegong Collection Search gives agents local BM25 search over selected files and Rhyven records.
 Adapters normalize source content into documents, split them into passages and
 commit them to `.wobbegong/wobbegong.db` in the collection's state directory.
 After ingestion returns `committed: true`, subsequent queries can see the content.
@@ -11,6 +11,21 @@ For named collections the directory is
 `WORKSPACE/.rhyven/.wobbegong/`. Each collection has its own index. Backups,
 restores and staged app updates include it. Runtime source checkouts do not
 contain user indexes.
+
+## Import a repository snapshot
+
+The built-in search category is `rhyven/wobbegong`. It owns the passage index used by both manual queries and automatic prompt enrichment. **Repository File Ingestion** (`rhyven/file-rag`, app version 0.4.0 or later) is an optional source. Install it in the same collection and supply repository-relative paths and UTF-8 contents. Include relevant `.gitignore` files if their rules should apply.
+
+```sh
+rhyven --collection my-project call rhyven_call '{"category":"rhyven/file-rag","function":"action_put_files","args":{"repository":"engine","files":[{"path":"docs/setup.md","content":"Install the required compiler before building."}]}}'
+rhyven --collection my-project wobbegong ingest-repository engine --root docs --exclude 'drafts/**'
+rhyven --collection my-project wobbegong query "required compiler"
+rhyven --collection my-project context status editor
+```
+
+The equivalent search action is `action_ingest_repository`. It pages through the app’s `action_export_documents` and commits one complete source, `app:rhyven/file-rag:engine/docs` in this example. An interrupted import or a change between pages preserves the previous snapshot. Repeat the same import after additions, edits or deletions. A file excluded from this selection disappears from its next successful import. The optional app’s `index`, `search` and `summarize` actions still provide its independent whole-file workflow. Collection imports can go directly from `put_files` to `ingest-repository`.
+
+Use `wobbegong status` to list sources. Connection setup and `context status` also report the collection index and its source counts. Preview packets identify the index even when no passage is selected.
 
 ## Ingest selected files
 
@@ -80,13 +95,13 @@ Remote/provider records and platform categories are not supported by this adapte
 Call `action_query` with `search`, optional exact `source`, and `limit` (1–20).
 Words are combined with AND; input is literal search text, not FTS query syntax.
 Results contain passage text, source/document IDs, SHA-256 of the ingested text,
-source reference, chunk number, line range, metadata and BM25 score. Lower BM25
+source reference (the document ID when no reference was supplied), chunk number, line range, metadata and BM25 score. Lower BM25
 scores rank first; the score is not a confidence percentage. JSON record line
 numbers refer to the serialized indexed document, not a repository source file.
 
 File results describe the last supplied snapshot. Wobbegong cannot detect a host
 file edit through MCP. Re-ingest after editing. Record results have `stale: true`
-when the current record revision differs or the app/record is no longer present.
+when the revision changes, the app or record disappears, or another record supersedes it. Prompt enrichment skips stale passages. For objects that declare supersession, a fresh ingestion indexes only current records.
 That check compares revisions, not a content proof across manual database edits.
 Re-ingest records to refresh the snapshot. File results use `stale: null` because
 current host-file freshness is unknown. Retrieval is lexical; it does not generate

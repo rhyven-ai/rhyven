@@ -216,7 +216,7 @@ impl Runtime {
                 let apps = self.call("list_apps", args)?;
                 let apps: Vec<Value> = apps.as_array().unwrap().iter().map(|app| {
                     let package = self.describe(app["name"].as_str().unwrap())?;
-                    Ok(json!({"name":app["name"],"description":app["description"],"version":app["version"],"contract_hash":crate::tools::contract_hash(&package)}))
+                    Ok(json!({"name":app["name"],"display_name":catalog::display_name(&package),"description":app["description"],"version":app["version"],"contract_hash":crate::tools::contract_hash(&package)}))
                 }).collect::<Result<_>>()?;
                 return Ok(
                     json!({"rhyven_protocol":1,"collection":collections::scope(&self.root)?["collection"],"workspace":self.root,"engine":crate::inspection::identity(self)?,"apps":apps}),
@@ -363,6 +363,14 @@ impl Runtime {
             "validation",
             "Rich queries currently require local hosting",
         )?;
+        if operation == "execute" && crate::team::eligible(&p) {
+            let name = args["action"].as_str().unwrap_or("");
+            if crate::team::actions().get(name).is_some() {
+                let result = crate::team::invoke(&tx, &self.actor, &p, name, &args)?;
+                tx.commit()?;
+                return Ok(result);
+            }
+        }
         if operation == "execute"
             && crate::composition::is_workflow(&p["actions"][args["action"].as_str().unwrap_or("")])
         {
@@ -413,8 +421,13 @@ impl Runtime {
             let a = p["actions"]
                 .get(name)
                 .ok_or_else(|| Error::new("not_found", "Unknown action"))?;
-            let input =
-                schema::validate(args.get("args").cloned().unwrap_or(json!({})), &a["input"])?;
+            let mut user_input = args.get("args").cloned().unwrap_or(json!({}));
+            if crate::team::eligible(&p) && a["operation"] == "update" && a["object"] == "task" {
+                if let Some(map) = user_input.as_object_mut() {
+                    map.remove("claim_token");
+                }
+            }
+            let input = schema::validate(user_input, &a["input"])?;
             actual_op = a["operation"].as_str().unwrap().into();
             actual = json!({"app":p["name"],"object":a["object"]});
             if let Some(id) = input.get(a["id_arg"].as_str().unwrap_or("id")) {
@@ -511,6 +524,23 @@ impl Runtime {
                 } else {
                     None
                 };
+                if actual_op == "update" && crate::team::eligible(&p) && object_name == "task" {
+                    let id = string(&actual, "id")?;
+                    if crate::team::managed(&tx, id)? {
+                        crate::team::assert_writer(
+                            &tx,
+                            id,
+                            &self.actor,
+                            args.pointer("/args/claim_token").and_then(Value::as_str),
+                        )?;
+                        if args["action"] == "reassign" {
+                            tx.execute(
+                                "UPDATE team_claims SET owner=?2,token='',expiry=?3 WHERE task=?1",
+                                params![id, args["args"]["owner"].as_str(), now() + 300],
+                            )?;
+                        }
+                    }
+                }
                 if let Some(ref old) = old {
                     ensure(
                         object["immutable"] != true,
@@ -629,6 +659,16 @@ impl Runtime {
                     .as_ref()
                     .map(|v| v["id"].as_str().unwrap().to_owned())
                     .unwrap_or_else(|| uuid::Uuid::new_v4().simple().to_string());
+                if actual_op == "update"
+                    && crate::team::eligible(&p)
+                    && object_name == "task"
+                    && matches!(data["status"].as_str(), Some("done" | "cancelled"))
+                {
+                    tx.execute(
+                        "UPDATE team_claims SET owner='',token='',expiry=0 WHERE task=?1",
+                        [&id],
+                    )?;
+                }
                 let revision = old
                     .as_ref()
                     .map(|v| v["revision"].as_u64().unwrap() + 1)
@@ -714,7 +754,7 @@ pub(crate) fn package(root: &Path, db: &Connection, name: &str) -> Result<Value>
     catalog::validate(&p)?;
     Ok(p)
 }
-fn get(db: &Connection, app: &str, object: &str, id: &str) -> Result<Value> {
+pub(crate) fn get(db: &Connection, app: &str, object: &str, id: &str) -> Result<Value> {
     let raw: String = db
         .query_row(
             "SELECT record FROM records WHERE app=?1 AND object=?2 AND id=?3",

@@ -12,6 +12,16 @@ pub enum Command {
         #[arg(long)]
         source: String,
     },
+    /// Import selected snapshots from Repository File Ingestion into the collection search index.
+    IngestRepository {
+        repository: String,
+        #[arg(long)]
+        root: Option<String>,
+        #[arg(long)]
+        exclude: Vec<String>,
+        #[arg(long, default_value = "rhyven/file-rag")]
+        app: String,
+    },
     /// Refresh one installed local app object's record snapshot.
     IngestRecords {
         category: String,
@@ -78,6 +88,21 @@ pub fn run(r: &Runtime, command: Command) -> Result<Value> {
                 "ingest_files",
                 json!({"source":source,"documents":documents}),
             )
+        }
+        Command::IngestRepository {
+            repository,
+            root,
+            exclude,
+            app,
+        } => {
+            let mut args = json!({"category":app,"repository":repository});
+            if let Some(root) = root {
+                args["root"] = json!(root);
+            }
+            if !exclude.is_empty() {
+                args["exclude"] = json!(exclude);
+            }
+            ("ingest_repository", args)
         }
         Command::IngestRecords {
             category,

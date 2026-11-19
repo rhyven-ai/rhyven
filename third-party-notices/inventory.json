@@ -332,6 +332,17 @@
     "declared_license": "MIT"
   },
   {
+    "name": "constant_time_eq",
+    "version": "0.6.1",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license_files": [
+      "third-party-notices/constant_time_eq-0.6.1/LICENSE-APACHE",
+      "third-party-notices/constant_time_eq-0.6.1/LICENSE-CC0",
+      "third-party-notices/constant_time_eq-0.6.1/LICENSE-MIT0"
+    ],
+    "declared_license": "CC0-1.0 OR MIT-0 OR Apache-2.0"
+  },
+  {
     "name": "convert_case",
     "version": "0.10.0",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
@@ -1313,6 +1324,15 @@
     "declared_license": "MIT"
   },
   {
+    "name": "nix",
+    "version": "0.32.0",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license_files": [
+      "third-party-notices/nix-0.32.0/LICENSE"
+    ],
+    "declared_license": "MIT"
+  },
+  {
     "name": "nom",
     "version": "7.1.3",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
@@ -1656,17 +1676,6 @@
   },
   {
     "name": "rand",
-    "version": "0.10.3",
-    "source": "registry+https://github.com/rust-lang/crates.io-index",
-    "license_files": [
-      "third-party-notices/rand-0.10.3/LICENSE-MIT",
-      "third-party-notices/rand-0.10.3/LICENSE-APACHE",
-      "third-party-notices/rand-0.10.3/COPYRIGHT"
-    ],
-    "declared_license": "MIT OR Apache-2.0"
-  },
-  {
-    "name": "rand",
     "version": "0.8.8",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license_files": [
@@ -1677,13 +1686,13 @@
     "declared_license": "MIT OR Apache-2.0"
   },
   {
-    "name": "rand_core",
-    "version": "0.10.1",
+    "name": "rand",
+    "version": "0.10.3",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license_files": [
-      "third-party-notices/rand_core-0.10.1/LICENSE-MIT",
-      "third-party-notices/rand_core-0.10.1/LICENSE-APACHE",
-      "third-party-notices/rand_core-0.10.1/COPYRIGHT"
+      "third-party-notices/rand-0.10.3/LICENSE-MIT",
+      "third-party-notices/rand-0.10.3/LICENSE-APACHE",
+      "third-party-notices/rand-0.10.3/COPYRIGHT"
     ],
     "declared_license": "MIT OR Apache-2.0"
   },
@@ -1695,6 +1704,17 @@
       "third-party-notices/rand_core-0.6.4/LICENSE-MIT",
       "third-party-notices/rand_core-0.6.4/LICENSE-APACHE",
       "third-party-notices/rand_core-0.6.4/COPYRIGHT"
+    ],
+    "declared_license": "MIT OR Apache-2.0"
+  },
+  {
+    "name": "rand_core",
+    "version": "0.10.1",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license_files": [
+      "third-party-notices/rand_core-0.10.1/LICENSE-MIT",
+      "third-party-notices/rand_core-0.10.1/LICENSE-APACHE",
+      "third-party-notices/rand_core-0.10.1/COPYRIGHT"
     ],
     "declared_license": "MIT OR Apache-2.0"
   },
@@ -1875,12 +1895,12 @@
   },
   {
     "name": "rustls",
-    "version": "0.23.45",
+    "version": "0.23.46",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license_files": [
-      "third-party-notices/rustls-0.23.45/LICENSE-MIT",
-      "third-party-notices/rustls-0.23.45/LICENSE-ISC",
-      "third-party-notices/rustls-0.23.45/LICENSE-APACHE"
+      "third-party-notices/rustls-0.23.46/LICENSE-MIT",
+      "third-party-notices/rustls-0.23.46/LICENSE-ISC",
+      "third-party-notices/rustls-0.23.46/LICENSE-APACHE"
     ],
     "declared_license": "Apache-2.0 OR ISC OR MIT"
   },
@@ -2444,6 +2464,16 @@
     "declared_license": "MIT"
   },
   {
+    "name": "typed-path",
+    "version": "0.13.0",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license_files": [
+      "third-party-notices/typed-path-0.13.0/LICENSE-APACHE",
+      "third-party-notices/typed-path-0.13.0/LICENSE-MIT"
+    ],
+    "declared_license": "MIT OR Apache-2.0"
+  },
+  {
     "name": "typenum",
     "version": "1.20.1",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
@@ -2922,6 +2952,16 @@
     "declared_license": "Apache-2.0 OR MIT"
   },
   {
+    "name": "zeroize_derive",
+    "version": "1.5.0",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license_files": [
+      "third-party-notices/zeroize_derive-1.5.0/LICENSE-APACHE",
+      "third-party-notices/zeroize_derive-1.5.0/LICENSE-MIT"
+    ],
+    "declared_license": "Apache-2.0 OR MIT"
+  },
+  {
     "name": "zerotrie",
     "version": "0.2.5",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
@@ -2950,10 +2990,10 @@
   },
   {
     "name": "zip",
-    "version": "4.6.1",
+    "version": "9.7.3",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license_files": [
-      "third-party-notices/zip-4.6.1/LICENSE"
+      "third-party-notices/zip-9.7.3/LICENSE"
     ],
     "declared_license": "MIT"
   },

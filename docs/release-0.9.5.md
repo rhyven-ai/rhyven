@@ -1,6 +1,6 @@
 # Working with multiple agents in Rhyven 0.9.5
 
-These instructions apply to the source build. Run `cargo build --release --locked --bin rhyven` and use the resulting executable for the CLI and the agent connection. Confirm the executable and version through discovery in the actual client.
+Use the same 0.9.5 executable for the CLI and the agent connection. Check the executable path and version from the connected client.
 
 ## Tasks and handoffs
 

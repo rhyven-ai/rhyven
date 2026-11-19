@@ -323,7 +323,17 @@ pub fn openapi(o: OpenapiOptions) -> Result<Value> {
                         let n = param["name"]
                             .as_str()
                             .ok_or_else(|| Error::new("import", "Parameter name required"))?;
-                        let field = match param["in"].as_str() {Some("path")=>"path_args",Some("query")=>"query_args",_=>return Err(Error::new("import","Only path and query parameters supported; credentials belong in runtime configuration"))};
+                        let field = match param["in"].as_str() {
+                            Some("path") => "path_args",
+                            Some("query") => "query_args",
+                            Some("header") if n.eq_ignore_ascii_case("idempotency-key") => "idempotency_arg",
+                            _ => return Err(Error::new("import","Supported parameters are path, query and Idempotency-Key; credentials belong in runtime configuration")),
+                        };
+                        let n = if field == "idempotency_arg" {
+                            "idempotency_key"
+                        } else {
+                            n
+                        };
                         ensure(
                             input["properties"].get(n).is_none(),
                             "import",
@@ -331,7 +341,11 @@ pub fn openapi(o: OpenapiOptions) -> Result<Value> {
                         )?;
                         input["properties"][n] =
                             normalize(&param["schema"], &spec, 0, &mut warnings)?;
-                        target[field].as_array_mut().unwrap().push(json!(n));
+                        if field == "idempotency_arg" {
+                            target[field] = json!(n);
+                        } else {
+                            target[field].as_array_mut().unwrap().push(json!(n));
+                        }
                         if param["required"] == true || field == "path_args" {
                             input["required"].as_array_mut().unwrap().push(json!(n));
                         }

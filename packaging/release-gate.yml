@@ -28,9 +28,14 @@ jobs:
           python3 qa/connection_check.py target/release/rhyven
           python3 qa/knowledge_merge_check.py target/release/rhyven
           python3 qa/connector_check.py target/release/rhyven
+          python3 qa/prompt_enrichment.py target/release/rhyven
+          python3 qa/team_handoff.py target/release/rhyven
+          target/release/rhyven app check apps/design-review --allow-host
       - name: Distribution and source exports
         run: |
           python3 -m unittest discover -s qa -p 'test_*.py' -v
+          python3 scripts/export-public-engine.py --out "$RUNNER_TEMP/rhyven-source"
+          cargo +1.90.0 check --locked --bin rhyven --manifest-path "$RUNNER_TEMP/rhyven-source/Cargo.toml" --target-dir "$GITHUB_WORKSPACE/target"
           python3 qa/image_scan_review_check.py
           python3 qa/direct_download_check.py target/release/rhyven
           python3 qa/installer_catalog_check.py

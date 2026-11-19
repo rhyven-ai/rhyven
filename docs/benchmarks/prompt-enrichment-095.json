@@ -1,0 +1,63 @@
+{
+  "engine": "0.9.5",
+  "model": "HuggingFaceTB/SmolLM2-135M-Instruct",
+  "revision": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+  "decoding": "greedy CPU, two threads",
+  "usage": "Local tokenizer counts all input and generated tokens in both query-generation and answer calls. No provider billing.",
+  "results": [
+    {
+      "mode": "manual",
+      "topic": "amber handoff",
+      "query": "amber handoff",
+      "answer": "The amber handoff code is KESTREL.",
+      "correct": true,
+      "total_tokens": 264,
+      "seconds": 1.263
+    },
+    {
+      "mode": "automatic",
+      "topic": "amber handoff",
+      "query": null,
+      "answer": "The amber handoff code is KESTREL.",
+      "correct": true,
+      "total_tokens": 132,
+      "seconds": 0.884
+    },
+    {
+      "mode": "manual",
+      "topic": "violet release",
+      "query": "violet release code",
+      "answer": "The violet release code is 175a64",
+      "correct": false,
+      "total_tokens": 265,
+      "seconds": 1.304
+    },
+    {
+      "mode": "automatic",
+      "topic": "violet release",
+      "query": null,
+      "answer": "The violet release code is HERON.",
+      "correct": true,
+      "total_tokens": 127,
+      "seconds": 0.787
+    },
+    {
+      "mode": "manual",
+      "topic": "silver backup",
+      "query": "silver backup code",
+      "answer": "The silver backup code is PLOVER.",
+      "correct": true,
+      "total_tokens": 260,
+      "seconds": 1.111
+    },
+    {
+      "mode": "automatic",
+      "topic": "silver backup",
+      "query": null,
+      "answer": "The silver backup code is PLOVER.\n\nFor",
+      "correct": true,
+      "total_tokens": 131,
+      "seconds": 0.757
+    }
+  ]
+}

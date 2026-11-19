@@ -166,7 +166,7 @@ impl AgentSession {
                 "Marketplace is a universal platform capability, not a standalone app",
             )?;
             let p = backend.describe(app)?;
-            tools = contract_tools(&p);
+            tools = contract_tools(&crate::team::with_actions(&p));
         } else {
             tools.push(tool(
                 "rhyven_categories",
@@ -235,6 +235,9 @@ impl AgentSession {
 
 /// Build the same function manifest for local MCP, REST and remote MCP.
 pub fn manifest(package: &Value) -> Value {
+    let original = package;
+    let expanded = crate::team::with_actions(package);
+    let package = expanded.as_ref();
     let functions:Vec<_>=contract_tools(package).into_iter().filter(|t|t.operation!="describe_app").map(|t| {
         let mut input=t.definition["inputSchema"].clone();
         if t.operation=="execute" {
@@ -254,10 +257,10 @@ pub fn manifest(package: &Value) -> Value {
         }
         function
     }).collect();
-    let mut contract = package.clone();
+    let mut contract = original.clone();
     contract.as_object_mut().unwrap().remove("files");
     strip_artifact_bytes(&mut contract);
-    json!({"category":package["name"],"version":package["version"],"description":package["description"],"functions":functions,"guidance_markdown":package["guide"],"contract":contract})
+    json!({"category":package["name"],"display_name":crate::catalog::display_name(package),"version":package["version"],"description":package["description"],"functions":functions,"guidance_markdown":package["guide"],"contract":contract})
 }
 /// Changes to schemas, guidance or package metadata invalidate cached descriptions.
 pub fn contract_hash(package: &Value) -> String {
@@ -409,7 +412,7 @@ pub fn invoke(runtime: &Runtime, args: Value) -> Result<Value> {
         args.get("args").cloned().unwrap_or(json!({})),
         &definition["inputSchema"],
     )?;
-    let tool = contract_tools(&package)
+    let tool = contract_tools(&crate::team::with_actions(&package))
         .into_iter()
         .find(|t| t.definition["name"] == function)
         .unwrap();

@@ -6,7 +6,7 @@ use std::{
     fs::OpenOptions,
     io::{BufRead, BufReader, Read, Write},
     os::unix::{
-        fs::{DirBuilderExt, PermissionsExt},
+        fs::{DirBuilderExt, MetadataExt, PermissionsExt},
         net::{UnixListener, UnixStream},
     },
     process::{Child, Command, Stdio},
@@ -68,7 +68,14 @@ fn write_frame(writer: &mut impl Write, value: &Value) -> Result<()> {
     Ok(())
 }
 pub(super) fn request(base: &Path, input: Value) -> Result<Value> {
-    let mut s = UnixStream::connect(socket(base)?).map_err(|_| Error::new("service_unavailable", "Supervisor is not available; run rhyven daemon start (with the same --home/--workspace)"))?;
+    let path = socket(base)?;
+    let mut s = UnixStream::connect(&path).map_err(|_| Error::new("service_unavailable", "Supervisor is not available; run rhyven daemon start (with the same --home/--workspace)"))?;
+    let stopping = input["op"] == "shutdown";
+    let original_socket = if stopping {
+        Some(std::fs::symlink_metadata(&path)?)
+    } else {
+        None
+    };
     s.set_read_timeout(Some(Duration::from_secs(if input["op"] == "ping" {
         2
     } else {
@@ -80,7 +87,28 @@ pub(super) fn request(base: &Path, input: Value) -> Result<Value> {
     if let Some(e) = out.get("error") {
         return Err(serde_json::from_value(e.clone())?);
     }
-    Ok(out["result"].clone())
+    let mut result = out["result"].clone();
+    if let Some(original) = original_socket {
+        // The daemon unlinks its socket after draining workers and persisting state.
+        let deadline = Instant::now() + Duration::from_secs(650);
+        loop {
+            match std::fs::symlink_metadata(&path) {
+                Ok(current)
+                    if current.dev() == original.dev() && current.ino() == original.ino() => {}
+                Ok(_) => break,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => break,
+                Err(e) => return Err(e.into()),
+            }
+            ensure(
+                Instant::now() < deadline,
+                "service_unavailable",
+                "Timed out waiting for supervisor shutdown",
+            )?;
+            thread::sleep(Duration::from_millis(25));
+        }
+        result["stopped"] = json!(true);
+    }
+    Ok(result)
 }
 type Logs = Arc<Mutex<VecDeque<u8>>>;
 struct Work {

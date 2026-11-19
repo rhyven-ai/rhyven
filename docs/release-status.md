@@ -1,9 +1,13 @@
 # Release status
 
+The local 0.9.5 source build and its verification notes are documented in [the guide](release-0.9.5.md) and [verification results](verification-0.9.5.md).
+
+## Published 0.9.0 distribution
+
 Signed **0.9.0** binaries and Linux packages are published at
 [rhyvenai.com](https://rhyvenai.com) and in the
 [GitHub release](https://github.com/rhyven-ai/rhyven/releases/tag/v0.9.0).
-The source, website and installer identify 0.9.0.
+The 0.9.0 release website and installer identify 0.9.0.
 
 This release adds Wobbegong retrieval, serving-engine identity, saved-connection
 probes, request reports, bounded audit change reads and `app check`. See

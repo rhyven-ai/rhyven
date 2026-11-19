@@ -11,10 +11,9 @@ no app-specific MCP server or changes to the runtime.
 
 ## Status
 
-The source version is **0.9.0**, adding Wobbegong local BM25 retrieval, serving
-engine diagnostics, request inspection, audit change queries and an isolated app
-check command. See [release notes](docs/release-0.9.0.md) and
-[upgrade notes](docs/migration-0.9.md).
+The source version is **0.9.5**, with atomic task claims, durable handoffs,
+provider reconciliation, a terminal ownership view and optional prompt enrichment
+through installed app actions. See the [0.9.5 guide](docs/release-0.9.5.md).
 
 Linux x86-64 and ARM64 remain the release targets. Native Windows and macOS
 are not supported release targets. Individual app images may support fewer architectures.
@@ -181,11 +180,7 @@ Custom apps can use [declarative file operations](docs/files.md) and
 
 ## Local retrieval and development inspection
 
-These features are included in the 0.9.0 source.
-
-[Wobbegong](docs/wobbegong.md) indexes selected files and local app records for
-BM25 search through the existing agent interface. Each collection owns a
-`.wobbegong/wobbegong.db`; ingestion commits before content becomes queryable.
+**Wobbegong Collection Search** (`rhyven/wobbegong`) is built into Rhyven. In 0.9.5, manual searches and automatic prompt enrichment use the same cited passages. **Repository File Ingestion** (`rhyven/file-rag`, app 0.4.0+) supplies selected repository snapshots and offers optional file summaries. The existing app IDs, commands and stored data work under the new display names. [Collection search and ingestion](docs/wobbegong.md)
 
 Use `rhyven app check PATH` to validate and test drafts in temporary state.
 Connection diagnostics, request reports and a bounded audit change feed help

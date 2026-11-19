@@ -1,0 +1,240 @@
+{
+  "format": 2,
+  "name": "example/team-customization",
+  "version": "0.1.0",
+  "publisher": "example",
+  "description": "Select released documentation and group task ownership records.",
+  "hosting": {
+    "mode": "local"
+  },
+  "execution": {
+    "driver": "script",
+    "protocol": "rhyven.action/1",
+    "language": "python",
+    "entrypoint": "main.py",
+    "environment": "isolated",
+    "timeout_seconds": 30,
+    "python_version": "3.10"
+  },
+  "permissions": [
+    "state.read",
+    "state.write",
+    "host.execute"
+  ],
+  "objects": {},
+  "actions": {
+    "select_releases": {
+      "description": "Select source references named release-*.md.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "excerpts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "reference": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "start_line": {
+                  "type": "integer"
+                },
+                "end_line": {
+                  "type": "integer"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "reference",
+                "source",
+                "sha256",
+                "start_line",
+                "end_line",
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "excerpts"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "selected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "selected"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "group_owners": {
+      "description": "Group one page of tasks by active owner.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "task": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "current_owner": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "assigned_actor": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "task",
+                "status",
+                "current_owner",
+                "assigned_actor"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "owner": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tasks": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "owner",
+                "tasks"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "groups"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "guide": "Use select_releases as a reviewed context filter. group_owners accepts a page returned by Work Management ownership.",
+  "tests": [
+    {
+      "operation": "execute",
+      "args": {
+        "action": "select_releases",
+        "args": {
+          "excerpts": [
+            {
+              "id": "one",
+              "reference": "docs/release-0.9.0.md",
+              "source": "docs",
+              "sha256": "abc",
+              "start_line": 1,
+              "end_line": 1,
+              "text": "Published release."
+            }
+          ]
+        }
+      },
+      "expect": {
+        "selected": [
+          "one"
+        ]
+      }
+    },
+    {
+      "operation": "execute",
+      "args": {
+        "action": "select_releases",
+        "args": {
+          "excerpts": [
+            {
+              "id": "one",
+              "reference": "plan-0.9.5.md",
+              "source": "docs",
+              "sha256": "abc",
+              "start_line": 1,
+              "end_line": 1,
+              "text": "Published release."
+            }
+          ]
+        }
+      },
+      "expect": {
+        "selected": []
+      }
+    }
+  ],
+  "files": [
+    "main.py"
+  ]
+}

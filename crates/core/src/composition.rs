@@ -260,7 +260,9 @@ pub fn check_dependencies(r: &Runtime, p: &Value) -> Result<()> {
                 let d = &p["dependencies"][text(s, "dependency")?];
                 let child = installed(r, text(d, "app")?)?;
                 ensure(
-                    child["actions"].get(text(s, "action")?).is_some(),
+                    crate::team::with_actions(&child)["actions"]
+                        .get(text(s, "action")?)
+                        .is_some(),
                     "package",
                     "Stack target action does not exist",
                 )?;

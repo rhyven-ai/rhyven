@@ -45,6 +45,7 @@ pub fn describe() -> Value {
     actions.insert("connection_info".into(),json!({"description":"Identify the serving engine process, version, executable, actor and collection; never infer these from a local CLI", "input":input(json!({}), &[])}));
     actions.insert("request_report".into(),json!({"description":"Inspect this actor's durable receipt and workflow evidence without retrying; unknown outcomes remain unknown", "input":input(json!({"request_id":{"type":"string","minLength":1,"maxLength":128}}), &["request_id"])}));
     actions.insert("changes".into(),json!({"description":"Read bounded collection audit summaries since a cursor. Polling only; does not wake agents or observe external app changes", "input":input(json!({"after":{"type":"integer","minimum":0},"limit":{"type":"integer","minimum":1,"maximum":100},"app":{"type":"string"}}), &[])}));
+    actions.get_mut("changes").unwrap()["output"] = crate::inspection::changes_output();
     let long_text = json!({"type":"string"});
     let hosting = input(
         json!({"mode":string,"endpoint":long_text,"auth_env":string,"auth":long_text,"privacy":long_text,"account":long_text,"billing":long_text,"domains":{"type":"array","items":string}}),

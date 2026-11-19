@@ -174,13 +174,41 @@ pub fn changes(r: &Runtime, args: Value) -> Result<Value> {
             "actor":event["actor"],"request_id":event["request_id"],"record_id":event["record"]["id"],
             "object":event["record"]["object"],"revision":event["record"]["revision"],
             "file_id":event["file_id"],"time":event.get("time").unwrap_or(&event["record"]["updated_at"])}));
+        if let Some(attempt) = event.get("attempt") {
+            items.last_mut().unwrap()["attempt"] = attempt.clone();
+        }
         next = seq;
     }
     if !more {
         next = high;
     }
     Ok(
-        json!({"scope":collections::scope(&r.root)?,"app":app,"items":items,"next_cursor":next,
+        json!({"contract_version":1,"scope":collections::scope(&r.root)?,"app":app,"items":items,"next_cursor":next,
         "has_more":more,"through_cursor":high,"coverage":"Rhyven audit events; external changes inside apps are not automatically observed"}),
+    )
+}
+
+/// Public polling contract. Earlier or unrelated audit events may omit attempt metadata.
+pub fn changes_output() -> Value {
+    let s = json!({"type":"string"});
+    let n = json!({"type":"integer"});
+    let nullable = |value: &Value| json!({"anyOf":[value,{"type":"null"}]});
+    let object = |properties: Value, required: &[&str]| json!({"type":"object","properties":properties,"required":required,"additionalProperties":false});
+    let entry = object(
+        json!({"cursor":n,"app":s,"operation":nullable(&s),"action":nullable(&s),"actor":nullable(&s),"request_id":nullable(&s),"record_id":nullable(&s),"object":nullable(&s),"revision":nullable(&n),"file_id":nullable(&s),"time":nullable(&n),"attempt":nullable(&s)}),
+        &["cursor", "app", "operation"],
+    );
+    object(
+        json!({"contract_version":n,"scope":object(json!({"collection":nullable(&s),"workspace":s}),&["collection","workspace"]),"app":nullable(&s),"items":{"type":"array","items":entry},"next_cursor":n,"has_more":{"type":"boolean"},"through_cursor":n,"coverage":s}),
+        &[
+            "contract_version",
+            "scope",
+            "app",
+            "items",
+            "next_cursor",
+            "has_more",
+            "through_cursor",
+            "coverage",
+        ],
     )
 }
